@@ -1,3 +1,0 @@
-hello!
-My name is Sarthak Tyagi
-I'll manage the hardware and IoT along with its software
