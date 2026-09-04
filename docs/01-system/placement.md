@@ -2,9 +2,9 @@
 
 Every paper, technique and note mapped to the exact block it lands in.
 
-![Where everything goes](diagrams/2_where_everything_goes.png)
+![Where everything goes](../diagrams/2_where_everything_goes.png)
 
-[`ORDER.md`](ORDER.md) is *when*. [`WORKFLOW.md`](WORKFLOW.md) is *why*. This is
+[`ORDER.md`](order.md) is *when*. [`WORKFLOW.md`](workflow.md) is *why*. This is
 **where** — including which things become hardware, which become code that ships
 on the device, and which never leave the training machine.
 
@@ -49,7 +49,7 @@ cannot fix afterwards.
 
 This is the only code that ships. Read top to bottom; that is the signal flow.
 
-![On-device signal path](diagrams/1_signal_path.png)
+![On-device signal path](../diagrams/1_signal_path.png)
 
 ```
   Mic 1 ──┐
@@ -102,7 +102,7 @@ None of this runs on the device. All of it shapes the weights that do.
 
 | Step | What | From |
 |---|---|---|
-| **Real gunshot capture** | 96 kHz/24-bit, staggered gain, calibrated to Pascals, range IR, 9 quality checks, frozen reference | **Ours** — [`DETAILS.md`](DETAILS.md). Not from any paper, deliberately |
+| **Real gunshot capture** | 96 kHz/24-bit, staggered gain, calibrated to Pascals, range IR, 9 quality checks, frozen reference | **Ours** — [`DETAILS.md`](../02-data-collection/details.md). Not from any paper, deliberately |
 | **Synthetic generator structure** | Real + synthetic sources, onset detection to strip impulses from backgrounds, standardised labels | **IS³** — their data-generation pipeline is the template. They faced our exact problem: no standard dataset existed, so they built one |
 | **Blast waveform model** | Friedlander wave — sharp rise, positive phase, negative underpressure | **Currently uncited.** Already in `make_test_data.py`. Needs a source (see ORDER.md §1b) |
 | **Public noise** | Rotor, vehicle, siren, wind, HVAC | DEMAND, MUSAN, UrbanSound8K, ESC-50, NOISEX-92 |

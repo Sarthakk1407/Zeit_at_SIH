@@ -6,8 +6,8 @@ Everything from microphone to deployed model, built only on what is actually in
 the papers we have read. Where a claim comes from conversation rather than a
 source, it is marked **[unverified]**.
 
-Companion documents: [`DETAILS.md`](DETAILS.md) covers the real-data collection
-system in full. [`WHAT_WE_MEASURE.md`](WHAT_WE_MEASURE.md) covers every measured
+Companion documents: [`DETAILS.md`](../02-data-collection/details.md) covers the real-data collection
+system in full. [`WHAT_WE_MEASURE.md`](../02-data-collection/what-we-measure.md) covers every measured
 quantity. This document covers everything else and ties them together.
 
 ---
@@ -441,12 +441,12 @@ compute, not recordings.
 ### 5.2 Real data — already built
 
 The complete real-data collection system is documented in
-[`DETAILS.md`](DETAILS.md): 96 kHz / 24-bit, staggered-gain array, calibration
+[`DETAILS.md`](../02-data-collection/details.md): 96 kHz / 24-bit, staggered-gain array, calibration
 to absolute Pascals, range impulse response, nine automated quality checks with
 a GO/NO-GO verdict at the range, per-recording folders, a frozen reference with
 checksums of both the data *and* the measurement engine.
 
-Sizing, from [`WHAT_WE_MEASURE.md`](WHAT_WE_MEASURE.md) §8: **never below 10
+Sizing, from [`WHAT_WE_MEASURE.md`](../02-data-collection/what-we-measure.md) §8: **never below 10
 shots per condition, 15 for the core.** At 3 shots the standard deviation — the
 tolerance any synthetic set must land inside — is itself ±46% uncertain, which
 makes both "it matches" and "it does not match" unfalsifiable.
@@ -637,7 +637,7 @@ findings the whole story rests on.
 
 ## Sources
 
-Source notes are in [`../our notes from research paper/`](../our%20notes%20from%20research%20paper/):
+Source notes are in [`../our notes from research paper/`](../../our%20notes%20from%20research%20paper/):
 `PS26052_paper_gap_analysis.docx` (Deep ANC, dual-mic DC-CRN, α-stable — the
 gap analysis §2 is built on), `Combined_Research_Papers_GTCRN_IS3_NOISEX92.docx`,
 `Speech_Enhancement_Literature_Review.docx` (H-GTCRN, DeepFilterNet2),

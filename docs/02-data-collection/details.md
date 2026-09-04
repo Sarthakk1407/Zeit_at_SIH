@@ -459,7 +459,7 @@ DC-offset, wrong-rate, resampled, gated, knocked-stand — and asserts that
 `validate.py` returns NO-GO for each *with the right reason*.
 
 System-wide workflow — architecture, model, training, evaluation, deployment:
-[`WORKFLOW.md`](WORKFLOW.md).
-Full metric definitions: [`WHAT_WE_MEASURE.md`](WHAT_WE_MEASURE.md).
-Tool reference and range-day quickstart: [`README.md`](README.md).
-Code: [`../data_collection/`](../data_collection/) — run every command from there.
+[`WORKFLOW.md`](../01-system/workflow.md).
+Full metric definitions: [`WHAT_WE_MEASURE.md`](what-we-measure.md).
+Tool reference and range-day quickstart: [`README.md`](toolkit-reference.md).
+Code: [`../data_collection/`](../../data_collection/) — run every command from there.

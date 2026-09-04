@@ -1,6 +1,6 @@
 # The order — what happens first, and where each piece plugs in
 
-Read [`WORKFLOW.md`](WORKFLOW.md) for *why* each choice was made. This document
+Read [`WORKFLOW.md`](workflow.md) for *why* each choice was made. This document
 is only about **sequence**: what comes first, what it produces, what cannot
 start until it exists.
 
@@ -10,7 +10,7 @@ Status is honest: **BUILT**, **READY TO START**, **BLOCKED**, or **NOT STARTED**
 
 ## The loop, in one picture
 
-![The order](diagrams/3_the_order.png)
+![The order](../diagrams/3_the_order.png)
 
 ```
   STAGE 0  foundations ─────────────────────────┐
@@ -62,7 +62,7 @@ Nothing here depends on anything else. All four can run in parallel.
 | **Produces** | 16 CLI tools, self-test, run sheet, playback signals |
 | **Where it plugs in** | Stage 1 uses it end to end |
 | **Status** | Done. Self-test green. Waiting only on the microphone |
-| **Docs** | [`DETAILS.md`](DETAILS.md), [`README.md`](README.md) |
+| **Docs** | [`DETAILS.md`](../02-data-collection/details.md), [`README.md`](../02-data-collection/toolkit-reference.md) |
 
 ### 0b. Baseline reproduction — **READY TO START**
 
