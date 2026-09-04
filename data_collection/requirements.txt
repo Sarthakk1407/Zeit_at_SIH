@@ -1,0 +1,13 @@
+# Pinned to what this toolkit was developed and self-tested against.
+# Install BEFORE range day -- there is no internet at the range.
+#     python3 -m pip install -r requirements.txt
+#
+# There is deliberately no soundfile/libsndfile dependency: WAV I/O is done by
+# wavio.py, so a broken native library cannot take the toolkit down in the field.
+numpy==2.4.3
+scipy==1.17.1
+matplotlib==3.10.6
+
+# Only needed to RECORD or to run the live monitor. The analysis tools work
+# without it, so a broken install here cannot stop you processing data.
+sounddevice==0.5.6

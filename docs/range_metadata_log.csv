@@ -1,0 +1,16 @@
+shot_id,session,tier,timestamp,recorder,gain_setting,sample_rate_hz,bit_depth,weapon_make_model,caliber,barrel_length_cm,ammo_type,suppressed,distance_m,azimuth_deg,mic_height_cm,muzzle_height_cm,ground_surface,clipped,temp_c,humidity_pct,wind_kmh,wind_direction,split,notes
+CAL-001,S1,T0,,A,5,96000,24,,,,,,1.0,,120,,concrete,no,,,,,fit,1 kHz tone SPL meter reading = ___ dB
+CAL-002,S1,T0,,A,5,96000,24,,,,,,1.0,,120,,concrete,no,,,,,fit,noise floor mic covered 60s
+SWP-001,S1,T0,,A,5,96000,24,,,,,,1.0,,120,,concrete,no,,,,,fit,mic response sweep speaker at 1m on-axis
+IR-001,S1,T0,,A,5,96000,24,,,,,,10.0,90,120,120,concrete,no,,,,,fit,range IR sweep from firing point
+IR-002,S1,T0,,A,5,96000,24,,,,,,10.0,90,120,120,concrete,no,,,,,fit,range IR balloon pop backup
+SHOT-001,S1,T1,,A,5,96000,24,,,,,,10.0,90,120,120,concrete,no,,,,,fit,
+SHOT-001b,S1,T1,,B-anchor,7,48000,24,,,,,,15.0,135,120,120,concrete,yes,,,,,fit,anchor recorder fixed position
+SHOT-002,S1,T1,,A,5,96000,24,,,,,,10.0,90,120,120,concrete,no,,,,,fit,
+MECH-001,S1,T2,,A,3,96000,24,,,,,,0.3,90,100,,concrete,no,,,,,holdout,bolt cycling close mic
+MECH-002,S1,T2,,A,3,96000,24,,,,,,0.3,90,100,,concrete,no,,,,,holdout,brass ejection onto concrete
+AMB-001,S1,T3,,A,6,96000,24,,,,,,,,120,,concrete,no,,,,,holdout,5 min range ambience no shots
+SPCH-001,S1,T3,,A,6,96000,24,,,,,,0.05,,,,concrete,no,,,,,holdout,Hindi sentences close-talk during live fire
+SPCH-002,S1,T3,,A,6,96000,24,,,,,,0.30,,,,concrete,no,,,,,holdout,English sentences 30cm during live fire
+SPCH-003,S1,T3,,A,6,96000,24,,,,,,0.30,,,,concrete,no,,,,,holdout,same sentences in quiet pause - paired reference
+SPCH-004,S1,T3,,A,6,96000,24,,,,,,0.30,,,,concrete,no,,,,,holdout,Lombard - speaker wearing hearing protection
