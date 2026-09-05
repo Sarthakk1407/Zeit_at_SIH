@@ -98,6 +98,12 @@ Nothing here depends on anything else. All four can run in parallel.
 
 Needs 0a. One trip; nothing here is repeatable.
 
+**Superseded by [`two-mic-capture-plan.md`](two-mic-capture-plan.md).** The
+single-microphone sequence below still describes the calibration, IR and
+quality-check steps correctly, but the capture itself is now two channels —
+one microphone at the gun, one with the speaker — in three take types. Read the
+capture plan first.
+
 | Step | Command | Produces |
 |---|---|---|
 | 1.1 Set up the session | `session.py init --name S1 --out ../DATA` | `DATA/` with plan, run sheet, playback signals |
