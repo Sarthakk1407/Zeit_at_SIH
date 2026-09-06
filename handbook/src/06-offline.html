@@ -1,0 +1,196 @@
+<!-- ============ 08 OFFLINE ============ -->
+<section id="offline">
+  <div class="sec-head"><span class="sec-num">08</span><h2>The offline pipeline</h2></div>
+  <p class="sec-sub">What plays the role of a backend. There is no server and no API — there is a workstation pipeline that produces one file, and that file is the only thing that ships.</p>
+
+  <div class="col">
+    <p>"Where is your backend?" is a question that will be asked, and the answer is worth having ready: <strong>the backend is the offline pipeline, and its output is <code>model.onnx</code></strong>. Everything from data generation to quantisation lives here. None of it runs on the device.</p>
+
+    <h3>Stage 1 — Real data acquisition</h3>
+    <p>Covered in full in section 06. One trip, 96 kHz / 24-bit, calibrated to absolute Pascals, with the range impulse response captured before anything else that can be shortened.</p>
+
+    <h3>Stage 2 — The synthetic generator</h3>
+    <p>The real recordings are the reference; the generator produces the training material. The chain, in order — and most naïve implementations stop at step 2, which is why they sound synthetic:</p>
+    <ol>
+      <li><strong>Sample source parameters</strong> — peak overpressure <em>Ps</em>, positive-phase duration <em>T₀</em>, decay coefficient <em>b</em> — from a distribution fitted to the measured fit set.</li>
+      <li><strong>Generate a Friedlander waveform</strong>: <code>p(t) = Ps·(1 − t/T₀)·e^(−b·t/T₀)</code> — instantaneous rise, exponential decay, then a negative underpressure phase.</li>
+      <li><strong>Apply directivity</strong> by azimuth. A blast is not a point source; it is much louder in front of the weapon than behind it.</li>
+      <li><strong>Apply spherical spreading</strong> over distance — 6 dB per doubling.</li>
+      <li><strong>Apply atmospheric absorption</strong>, which depends strongly on temperature and humidity, and which is why those fields are logged.</li>
+      <li><strong>Add the ground reflection</strong> — delay from the logged geometry, coefficient from the ground surface. This is what produces the comb filtering visible in the spectrum.</li>
+      <li><strong>Convolve with the measured range impulse response</strong>, or an outdoor propagation model.</li>
+      <li><strong>Layer the mechanical action sounds</strong> recorded separately at close range. Almost nobody records this layer, and it is what makes a synthetic shot sound like a weapon rather than a bare pressure pulse.</li>
+      <li><strong>Pass through the device chain</strong> — clipping, AGC, converter quantisation, and the vocoder.</li>
+    </ol>
+    <p>Published anchors worth checking your output against: a .22 pistol is roughly 146 dB at 1 m with a peak near 750 Hz; a .357 Magnum around 155 dB with a peak near 400 Hz. Peak frequency shifts down as calibre grows.</p>
+
+    <h4>The device chain, modelled explicitly</h4>
+    <p>Firearms exceed 154 dB at 3 m; consumer microphones saturate around 120–130 dB. <strong>The field microphone will clip.</strong> So model it rather than pretending otherwise:</p>
+    <ul>
+      <li>Hard and soft clipping at configurable thresholds, calibrated against the deliberately-clipped range recordings.</li>
+      <li>AGC with attack and release, so the pumping behaviour is represented.</li>
+      <li>Microphone self-noise floor and converter quantisation.</li>
+      <li><strong>A low-bitrate vocoder</strong> (MELPe or AMBE class) simulating the radio link downstream of the denoiser.</li>
+    </ul>
+    <p>Calibrating the clipping model against real clipped recordings is what makes it defensible rather than guessed — and it is the direct answer to the gap where every published paper models loudspeaker saturation on the output side and nobody models microphone saturation on the input side.</p>
+
+    <h4>Validating the generator</h4>
+    <p>Measure the synthetic output with <strong>the same engine</strong> that measured the real audio, and compare against the <em>holdout</em> split only. <code>session.py verify</code> confirms the engine has not changed since the reference was frozen.</p>
+    <p>The comparison happens on <code>features.json</code>, not on audio. Audio is the source; two JSON files are what get compared.</p>
+
+    <h3>Stage 3 — Mixing and augmentation</h3>
+    <p>Clean speech convolved with a spread of room responses, mixed with noise at controlled SNRs, then augmented. Everything generated <strong>on the fly at train time from a seeded config</strong> — no pre-rendered mixture files. That keeps the repository small, makes every experiment reproducible from a config hash, and allows SNR and room response to be resampled every epoch.</p>
+
+    <h4>Where the sources come from</h4>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Category</th><th>Sources</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Clean speech — bulk</td><td>LibriSpeech, VCTK, EARS, DNS5 LibriVox subset</td><td>Volume, speaker diversity, high-fidelity targets</td></tr>
+      <tr><td class="name part">Clean speech — Indian</td><td>IndicTTS / SPRING-INX, Common Voice Hindi</td><td><strong>The evaluators speak Hindi and Indian English.</strong> The PS implies both</td></tr>
+      <tr><td class="name part">Clean speech — Lombard</td><td>Lombard GRID — 54 speakers, neutral and Lombard pairs</td><td><strong>Not optional</strong> — see the callout below</td></tr>
+      <tr><td class="name">Impulsive — measured</td><td>Our own range session</td><td>The reference, and the part nobody can copy</td></tr>
+      <tr><td class="name">Impulsive — public</td><td>Cadre Gunshot Audio Forensics (~10,000 recordings, 20 firearms, 20 positions, 4 devices); Kabealo multi-orientation (2,148 time-synced files); Free Firearm Sound Library (CC0)</td><td>The external sanity check our own measurements need — and a reminder to phrase our own claim precisely</td></tr>
+      <tr><td class="name">Impulsive — synthetic</td><td>The Friedlander generator, plus structured α-stable bursts</td><td>Unlimited, and parameterised rather than resampled</td></tr>
+      <tr><td class="name">Stationary + non-stationary</td><td>MUSAN, DEMAND, FSD50K, WHAM!, NOISEX-92, ESC-50, UrbanSound8K, filtered AudioSet</td><td>Extract and tag: helicopter rotor, tracked and wheeled vehicle, generator hum, wind, radio hiss, siren</td></tr>
+      <tr><td class="name">Acoustic paths</td><td>iks|PANDAR measured ANC-headphone paths; openSLR26/28 room responses; our range IR; our own headset once it exists</td><td>PANDAR lets Lane A be simulated before any hardware is built</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p><strong>Keep civilian noise in the mix.</strong> A model trained only on gunshots fails on everything else. Target roughly 35 % impulsive, 35 % non-stationary, 30 % stationary.</p>
+    <p><strong>For outdoor gunshot propagation, do not use room impulse responses.</strong> Model the direct path, the ground reflection and atmospheric absorption analytically instead — a room RIR encodes a small enclosure and will make an open field sound like a corridor.</p>
+
+    <div class="callout warn">
+      <span class="lb">The largest dataset gap in the project — audit F8</span>
+      <p>Under 80+ dB of noise, people involuntarily change how they speak: higher pitch, more level, shifted spectral tilt. That is the <strong><span class="term" data-t="Lombard effect">Lombard effect</span></strong>, and systems trained on neutral read speech lose roughly <strong>5 dB</strong> when tested on Lombard speech — a gap that persists even after level normalisation.</p>
+      <p>The entire use case here is a person shouting under fire. Aim for <strong>at least 20 % Lombard content</strong> in the training mix. Lombard GRID recorded each of its 54 speakers in both conditions, with the Lombard condition induced by 80 dB SPL speech-shaped noise over headphones.</p>
+      <p>Also worth doing: <strong>boom-mic emulation.</strong> Clean corpora are recorded at about 30 cm; a headset boom microphone sits at 2–5 cm. Apply a low-shelf boost for the proximity effect, light saturation, and occasional plosive bursts before mixing, or the model learns the wrong voice.</p>
+    </div>
+
+    <h4>The augmentation — where the novelty is</h4>
+    <ol>
+      <li><strong>α-stable noise instead of Gaussian</strong>, α ≈ 1. The α parameter controls tail heaviness: α = 2 is Gaussian, α = 1 is Cauchy, smaller means more violent spikes. Justified by the Generalized Central Limit Theorem. Using several separate α values beats blending them into one mixture.</li>
+      <li><strong>Below the α = 0.5 floor, and let it clip.</strong> The α-stable authors excluded α &lt; 0.5 because roughly a third of their image pixel values ended up clipped, which they judged to compromise reliability. For us clipping <em>is</em> the physics — a microphone has a maximum SPL and a gunshot exceeds it every single time. We use the regime they excluded, for the reason they excluded it. They also note that truncated α-stable noise still beat truncated Gaussian, so the effect survives clipping.</li>
+      <li><strong>Input-side saturation</strong>, mirroring Deep ANC's scaled-error-function loudspeaker model at the opposite end of the chain.</li>
+      <li><strong>Structured bursts, not i.i.d. spikes.</strong> Their noise is independent sample by sample; a real gunshot has structure over tens of milliseconds — sharp attack, specific spectral shape, exponential decay, reflection tail. Generate heavy-tailed <em>arrival and amplitude</em> but with a measured envelope.</li>
+      <li><strong>γ derived from target SNR</strong> rather than swept blindly. Choosing the dispersion parameter is an open problem in images because there is no natural scale; in audio there is one, and it is SNR.</li>
+      <li><strong>A wide spread of room responses</strong>, near-anechoic through hard-walled, reported separately rather than averaged.</li>
+      <li><strong>HRTF-based head shadow</strong> instead of a flat scalar. The closest prior work scales the secondary channel by a random −10 to 0 dB; real head shadow is strongly frequency-dependent, and their own figure shows it varying across frequency.</li>
+    </ol>
+
+    <h3>Stage 4 — Training</h3>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Element</th><th>Choice</th><th>Source and reason</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Paradigm</td><td>Supervised, noisy/clean pairs</td><td>Wang &amp; Chen 2018 — the standard formulation, and it only works because we can <em>make</em> the pairs</td></tr>
+      <tr><td class="name">Representation</td><td>Complex STFT — magnitude and phase</td><td>DCCRN</td></tr>
+      <tr><td class="name">Frequency compression</td><td>ERB bands</td><td>GTCRN, DeepFilterNet2, IS³</td></tr>
+      <tr><td class="name">Structure</td><td>Full-band and sub-band branches</td><td>FullSubNet — global spectral context plus local frequency behaviour</td></tr>
+      <tr><td class="name">Target</td><td>Complex ratio mask</td><td>Wang &amp; Chen for the mask family; GTCRN for the complex form</td></tr>
+      <tr><td class="name">Applied to</td><td>The <strong>noisy input</strong>, not the separated estimate</td><td>H-GTCRN ablation — separation adds distortion; masking the raw signal avoids compounding it</td></tr>
+      <tr><td class="name">Conditioning</td><td>Both separated speech <em>and</em> noise streams</td><td>H-GTCRN — largest single gain in their study, at a slight SIG cost</td></tr>
+      <tr><td class="name">Feature</td><td>Log-power beats full complex on the IVA branch</td><td>H-GTCRN ablation</td></tr>
+      <tr><td class="name">Loss</td><td>SI-SNR + L1 on real/imaginary/magnitude + multi-resolution spectrogram</td><td>DeepFilterNet2, Tan et al. GTCRN itself weights waveform and spectrogram terms at α = 0.01, β = 0.3</td></tr>
+      <tr><td class="name part">Loss — stretch</td><td>Fractional lower-order moments</td><td>Squared error is maximum-likelihood for Gaussian residuals; under heavy tails one impulsive sample drags the gradient more than a second of speech. Most novel, most likely to fail, must not block anything</td></tr>
+      <tr><td class="name">Optimiser</td><td>Adam, learning rate 1e-3 halved on plateau, or linear warm-up with cosine annealing</td><td>GTCRN and H-GTCRN respectively</td></tr>
+      <tr><td class="name">SNR range</td><td>−15 to +20 dB, reported as curves</td><td>Audit F1. GTCRN trained at −5 to +15; H-GTCRN at −10 to 0 and tested at −12.5, −7.5, −2.5</td></tr>
+      <tr><td class="name">Curriculum</td><td>Pretrain on civilian noise, then fine-tune on the impulsive mix</td><td>Stabilises training and gives a clean ablation point</td></tr>
+      <tr><td class="name">Auxiliary head</td><td>A cheap binary impulse detector over frames</td><td>Gates the denoiser against over-suppressing frames immediately after a blast, and gives a free demo visual — live impulse markers on the spectrogram</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>Stage 5 — Compression and export</h3>
+    <ul>
+      <li><strong>Structured pruning.</strong> Remove whole groups of weights — a full convolution kernel, a whole column of a recurrent matrix — rather than scattered individual ones, because hardware can actually skip a group while scattered zeros still get multiplied. Use <span class="term" data-t="sparse group lasso">sparse group lasso</span> with per-tensor <span class="term" data-t="sensitivity analysis">sensitivity analysis</span>, then prune and fine-tune iteratively. Reference result: <strong>290.44 K → 103.07 K parameters over six iterations</strong>, with STOI down 0.72 %, PESQ down 0.05 and SNR down 0.53 dB at 0 dB input.</li>
+      <li><strong>Quantisation.</strong> The study the reference work never did. INT8, both post-training and quantisation-aware. Report the interaction explicitly: prune-then-quantise is not the same as quantise-then-prune, and speech enhancement is sensitive to reduced precision because it manipulates fine spectral detail.</li>
+      <li><strong>The bonus experiment.</strong> α-stable training produces measurably sparser models — 6.16 % and 7.13 % versus 3.02 % on MNIST-C, 59.49 % versus 51.62 % on CIFAR10-C — and nobody has pruned one. Train two identical models, one Gaussian-augmented and one α-stable, prune both with the same scheme, and plot quality against parameter count. <strong>One experiment, two deliverables:</strong> better impulsive robustness and better edge compression from a single training change.</li>
+      <li><strong>Export.</strong> PyTorch → <code>torch.onnx.export</code> with a pinned opset → ONNX Runtime on ARM, or TensorRT if the board turns out to be a Jetson, or TFLite Micro / CMSIS-NN for the microcontroller argument.</li>
+    </ul>
+
+    <h3>The tech stack</h3>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Layer</th><th>Choice</th><th>Licence</th><th>Why this one</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Real-time path</td><td>C++17</td><td>—</td><td>No garbage-collection pause, no interpreter lock, no allocator surprises</td></tr>
+      <tr><td class="name">Build</td><td>CMake</td><td>—</td><td>Cross-compiling to ARM without a second build system</td></tr>
+      <tr><td class="name">Audio I/O</td><td>PortAudio for development, ALSA on the target</td><td>MIT / LGPL</td><td>Same code on laptop and board; drop to ALSA for lower buffer sizes</td></tr>
+      <tr><td class="name">FFT</td><td>PFFFT</td><td class="ok">BSD-style</td><td><strong>Deliberately not FFTW</strong>, which is GPL or paid — a licensing problem in a DRDO deliverable. Single-file, SIMD-accelerated, fast enough at these sizes</td></tr>
+      <tr><td class="name">Inference</td><td>ONNX Runtime</td><td class="ok">MIT</td><td>The PS names ONNX. Runs everywhere including ARM</td></tr>
+      <tr><td class="name">Linear algebra</td><td>Eigen, header-only</td><td>MPL2</td><td>AR / Levinson-Durbin work in the BMRI path, with no link-time trouble when cross-compiling</td></tr>
+      <tr><td class="name">Tests</td><td>doctest or Catch2</td><td>MIT / BSL</td><td>Header-only, so the test build is not its own project</td></tr>
+      <tr><td class="name">Training</td><td>PyTorch</td><td>BSD</td><td>GTCRN and DeepFilterNet reference implementations are PyTorch</td></tr>
+      <tr><td class="name">Offline DSP</td><td>numpy + scipy + matplotlib</td><td>BSD</td><td>Already the toolkit's only dependencies</td></tr>
+      <tr><td class="name">WAV I/O</td><td>Our own <code>wavio.py</code></td><td>—</td><td>No libsndfile, so a broken native library cannot strand you at the range. Bit-exact round-trip, verified in the self-test</td></tr>
+      <tr><td class="name no">Not using</td><td>FFTW · libsndfile · librosa · an experiment-tracking service</td><td>—</td><td>Licence · field fragility · unnecessary weight · everything already writes JSON</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>Hand-written rather than taken from a library, because no library does exactly these: the lock-free ring buffer, Aux-IVA, robust normalisation over a sliding window, the BMRI impulsive path, the transient classifier, the LMS residual, and the spectral-correction guard.</p>
+
+    <div class="callout warn">
+      <span class="lb">The silent failure that costs a week</span>
+      <p>The C++ implementation produces slightly different numbers from the Python one it was trained as — a different FFT scaling, a different window, a mismatched ERB band edge, a normalisation constant off by one. <strong>Nothing crashes.</strong> The model just quietly performs worse than it did in training, and you spend a week blaming the model.</p>
+      <p>The defence is a <strong>numerical parity test</strong>: fix a small set of input WAVs, run the full Python pipeline dumping every intermediate — after normalisation, after STFT, after the model, after ISTFT — run the C++ pipeline on the same inputs dumping the same points, and assert agreement to a stated tolerance at <em>every</em> stage. Stage-by-stage matters: if only the final output is compared, a normalisation error and an inverse-STFT error can cancel out on the test file and diverge everywhere else. <strong>Build it before the C++ path is finished, not after.</strong></p>
+    </div>
+
+    <h4>Repository layout</h4>
+    <pre><code>Zeit_at_SIH/
+  data_collection/          Python — range toolkit (built)
+  docs/                     design documents
+  handbook/                 these explainers
+  DATA/                     recordings (gitignored)
+
+  training/                 Python — new
+      datasets/             mixing, augmentation, α-stable
+      models/               GTCRN-class definition
+      train.py  export_onnx.py  evaluate.py
+
+  engine/                   C++ — the real-time engine
+      third_party/          vendored single-file deps (pffft, doctest)
+      src/00_core/          ring_buffer.h · scratch.h · config.h
+         01_io/             audio_io.cpp · mic_array.cpp
+         02_analysis/       normalise.cpp · stft.cpp · erb.cpp
+         03_separation/     auxiva.cpp
+         04_decide/         classifier.cpp
+         05_paths/          bmri.cpp · inference.cpp · deepfilter.cpp
+         06_protect/        guard.cpp · lms.cpp
+         07_pipeline/       pipeline.cpp
+      tests/                parity_test.cpp · rt_safety_test.cpp
+  tools/bench.cpp           per-block timing on the target board</code></pre>
+    <p>One rule: <strong>no audio in git.</strong> Manifests and configs only, with every experiment reproducible from a config hash plus a corpus download script.</p>
+
+    <h4>The C++ build order</h4>
+    <p>Deliberately arranged so the riskiest question — does the deadline hold on the real board at all — is answered first, and so that steps 1 to 4 need no trained model and no range data.</p>
+    <ol>
+      <li>Skeleton: audio in → ring buffer → audio out, passthrough. Proves I/O, buffer sizes and the real deadline before any DSP exists.</li>
+      <li><code>rt_safety_test</code> — catch allocations in the callback while the code is still small.</li>
+      <li>STFT → ISTFT, perfect reconstruction. If this is not bit-accurate, nothing after it can be trusted.</li>
+      <li>The parity harness with just the STFT stage in it, to establish the pattern before there is much to compare.</li>
+      <li>Robust normalisation, both sides. The one fix that must exist before any measurement means anything.</li>
+      <li>ONNX Runtime with a dummy model — proves the export path and measures inference cost with a placeholder.</li>
+      <li>The BMRI path in C++, which is independent of the model and can be built in parallel with training.</li>
+      <li>Real model, full parity, benchmark. Everything meets here.</li>
+    </ol>
+
+    <h4>Three numbers to measure on the actual board</h4>
+    <ul>
+      <li><strong>Milliseconds per frame</strong>, per block, <em>worst case</em> over a long run — not the mean.</li>
+      <li><strong>MMAC/s</strong>, counted from the model graph and cross-checked against measured time.</li>
+      <li><strong>Watts</strong>, from a USB power meter, idle versus running. <strong>Nobody in the literature reports this.</strong></li>
+    </ul>
+  </div>
+</section>

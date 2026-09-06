@@ -1,0 +1,158 @@
+<script>
+Object.assign(TERMS, {
+"Spectral centroid":["The energy 'centre of mass' of a spectrum — brightness in one number.","One of our 16 measured quantities, and a cautionary one: AAC compression shifts it 248 Hz, which is 173 times the real shot-to-shot standard deviation of 1.43 Hz. That is why the dataset stays uncompressed."],
+"spectral centroid":["The energy 'centre of mass' of a spectrum — brightness in one number.","One of our 16 measured quantities, and a cautionary one: AAC compression shifts it 248 Hz, which is 173 times the real shot-to-shot standard deviation of 1.43 Hz."],
+"MMAC":["Millions of multiply-accumulate operations per second. One multiply plus one add is the fundamental unit of neural network compute.","GTCRN needs 39.6; the pruned reference dual-mic model needs 125.6. This is the number that decides whether a microcontroller is enough."],
+"Nyquist":["Half the sample rate — the highest frequency representable.","Our bandwidth check works by looking above the ORIGINAL Nyquist: interpolation from a resample puts exactly zero energy there, while any real recording has mic and converter noise filling the band."],
+"aliasing":["The corruption when frequencies above Nyquist are sampled: they masquerade as lower frequencies and cannot be removed afterwards.","Prevented by anti-alias filters in the 96 → 48 → 16 kHz rate chain — filters whose latency is currently uncounted in our budget (audit F6)."],
+"clipping":["What happens when a signal exceeds what the system can represent: peaks are flattened and the information in them is destroyed permanently.","Decided at L1 and irreversible. A 140 dB blast into a 120 dB capsule clips every time, which is why we model input-side saturation rather than pretending otherwise."],
+"AGC":["Automatic Gain Control — circuitry continuously adjusting level to keep signals in range.","Helpful in deployment, fatal in measurement, so it is switched off for range recording — and modelled explicitly in the synthetic device chain."],
+"VAD":["Voice Activity Detection — deciding whether speech is present in a frame.","Proposed as a cheap fix for Deep ANC's unsolved problem: its noise-trained model damages speech, its speech-trained model does not, and nothing switches between them."],
+"beamforming":["Combining several microphones with deliberate delays so the array listens preferentially in one direction.","The alternative to blind separation when you already know where the target is. We use Aux-IVA instead because a headset's target direction is fixed but the noise direction is not."],
+"IRT":["Impulse Recovery Time — milliseconds after an impulse until band-wise SNR returns to 90% of its pre-impulse level.","One of our two proposed metrics, about fifty lines of code. It measures what PESQ and STOI average away: a gunshot destroys ~200 ms, and in a ten-second clip the average barely moves."],
+"WLPS":["Words Lost Per Shot — speech-recognition word errors falling inside the impulse window, normalised per event.","Our second proposed metric, and the most operational number in the project: how many commands does a gunshot actually cost you."],
+"ISO 17201":["The international standard family for measuring the acoustics of shooting ranges.","Our 16 measured quantities follow it rather than being invented, so the numbers mean something to a reviewer outside the team."],
+"SHA-256":["A cryptographic checksum. Any change to a file, however small, produces a completely different value.","Used by session.py freeze on every recording AND on analyze.py, dsp.py and wavio.py — because a modified engine changes every number without touching a single audio file."],
+"iDEX":["Innovations for Defence Excellence — the Ministry of Defence programme funding defence startups. iDEX Prime targets TRL 4 and above.","Part of the frame DRDO evaluates in, and the reason stating your TRL honestly reads better than overclaiming."],
+"DRDO":["Defence Research and Development Organisation — India's military R&D agency, and the sponsor of this problem statement.","Its instinct is qualification, not demonstration: can this be specified, tested, reproduced, made in India, and fielded by someone who has never met you."]
+});
+
+(function(){
+  var doc = document.getElementById('doc');
+  var tip = document.getElementById('tip');
+  if(!doc || !tip) return;
+
+  /* ---- 1. auto-mark terms in prose ---- */
+  var SKIP = {CODE:1,PRE:1,H1:1,H2:1,H3:1,H4:1,H5:1,A:1,SCRIPT:1,STYLE:1,TH:1,DT:1};
+  var keys = Object.keys(TERMS).sort(function(a,b){return b.length-a.length;});
+  var MAXHITS = 3;
+  var hits = {};
+
+  function esc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+  var rx = new RegExp('(^|[^A-Za-z0-9\\-])(' + keys.map(esc).join('|') + ')(?![A-Za-z0-9\\-])','i');
+
+  function marked(node){
+    for(var p=node.parentNode; p && p!==doc; p=p.parentNode){
+      if(SKIP[p.nodeName]) return true;
+      if(p.classList && (p.classList.contains('term')||p.classList.contains('tag'))) return true;
+    }
+    return false;
+  }
+
+  function canonical(s){
+    var low = s.toLowerCase();
+    for(var i=0;i<keys.length;i++){ if(keys[i].toLowerCase()===low) return keys[i]; }
+    return null;
+  }
+
+  var walker = document.createTreeWalker(doc, NodeFilter.SHOW_TEXT, null, false);
+  var nodes = [], n;
+  while((n = walker.nextNode())) if(n.nodeValue.trim().length > 3 && !marked(n)) nodes.push(n);
+
+  nodes.forEach(function(node){
+    var text = node.nodeValue, out = null, guard = 0;
+    while(guard++ < 12){
+      var m = rx.exec(text);
+      if(!m) break;
+      var key = canonical(m[2]);
+      if(!key){ break; }
+      if((hits[key]||0) >= MAXHITS){
+        // already marked enough times — skip past this occurrence
+        var skipAt = m.index + m[1].length + m[2].length;
+        if(!out){ out = document.createDocumentFragment(); }
+        out.appendChild(document.createTextNode(text.slice(0, skipAt)));
+        text = text.slice(skipAt);
+        continue;
+      }
+      hits[key] = (hits[key]||0) + 1;
+      if(!out) out = document.createDocumentFragment();
+      out.appendChild(document.createTextNode(text.slice(0, m.index) + m[1]));
+      var span = document.createElement('span');
+      span.className = 'term';
+      span.setAttribute('data-t', key);
+      span.setAttribute('tabindex','0');
+      span.textContent = m[2];
+      out.appendChild(span);
+      text = text.slice(m.index + m[1].length + m[2].length);
+    }
+    if(out){
+      out.appendChild(document.createTextNode(text));
+      node.parentNode.replaceChild(out, node);
+    }
+  });
+
+  /* ---- 2. make hand-placed terms focusable ---- */
+  Array.prototype.forEach.call(doc.querySelectorAll('.term'), function(el){
+    if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0');
+  });
+
+  /* ---- 3. tooltip ---- */
+  var current = null;
+
+  function lookup(el){
+    var k = el.getAttribute('data-t');
+    if(TERMS[k]) return [k, TERMS[k]];
+    var c = canonical(k || el.textContent);
+    return c ? [c, TERMS[c]] : null;
+  }
+
+  function show(el){
+    var found = lookup(el);
+    if(!found) return;
+    current = el;
+    tip.innerHTML = '<span class="tt"></span><p class="td"></p><p class="tu"><b>How it is used here</b><span></span></p>';
+    tip.querySelector('.tt').textContent = found[0];
+    tip.querySelector('.td').textContent = found[1][0];
+    tip.querySelector('.tu span').textContent = found[1][1];
+    tip.classList.add('show');
+    tip.setAttribute('aria-hidden','false');
+    place(el);
+  }
+
+  function place(el){
+    var r = el.getBoundingClientRect();
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth;
+    var vh = document.documentElement.clientHeight;
+    var x = r.left + r.width/2 - tw/2;
+    x = Math.max(10, Math.min(x, vw - tw - 10));
+    var y = r.top - th - 10;
+    if(y < 10) y = r.bottom + 10;
+    if(y + th > vh - 10) y = Math.max(10, vh - th - 10);
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+
+  function hide(){
+    current = null;
+    tip.classList.remove('show');
+    tip.setAttribute('aria-hidden','true');
+  }
+
+  doc.addEventListener('mouseover', function(e){
+    var t = e.target.closest ? e.target.closest('.term') : null;
+    if(t && t !== current) show(t);
+  });
+  doc.addEventListener('mouseout', function(e){
+    var t = e.target.closest ? e.target.closest('.term') : null;
+    if(t && t === current) hide();
+  });
+  doc.addEventListener('focusin', function(e){
+    var t = e.target.closest ? e.target.closest('.term') : null;
+    if(t) show(t);
+  });
+  doc.addEventListener('focusout', function(e){
+    var t = e.target.closest ? e.target.closest('.term') : null;
+    if(t && t === current) hide();
+  });
+  doc.addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest('.term') : null;
+    if(!t){ hide(); return; }
+    e.preventDefault();
+    if(t === current) hide(); else show(t);
+  });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') hide(); });
+  window.addEventListener('scroll', function(){ if(current) place(current); }, {passive:true});
+  window.addEventListener('resize', function(){ if(current) place(current); });
+})();
+</script>

@@ -1,0 +1,231 @@
+<!-- ============ 05 BLOCKS ============ -->
+<section id="blocks">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Lane B, block by block</h2></div>
+  <p class="sec-sub">The only code that ships and runs in real time. Read top to bottom — that is the signal flow.</p>
+
+  <div class="chain">
+    <div class="chain-row">
+      <div class="blk"><span class="n">1</span><span class="t">Audio in</span><span class="s">3 ch · ring buffer</span></div>
+      <div class="blk"><span class="n">2</span><span class="t">Aux-IVA</span><span class="s">blind separation</span></div>
+      <div class="blk"><span class="n">3</span><span class="t">Normalise</span><span class="s">90th pct / FLOM</span></div>
+      <div class="blk"><span class="n">4</span><span class="t">STFT + ERB</span><span class="s">complex · 32 bands</span></div>
+      <div class="blk cls"><span class="n">5</span><span class="t">Classifier</span><span class="s">kurtosis → γ, β</span></div>
+      <div class="blk"><span class="n">6</span><span class="t">Impulsive</span><span class="s">BMRI · AR interp</span></div>
+    </div>
+    <div class="chain-row" style="margin-top:9px">
+      <div class="blk ai"><span class="n">7</span><span class="t">Neural core</span><span class="s">GTCRN · 24K</span></div>
+      <div class="blk"><span class="n">8</span><span class="t">Deep filter</span><span class="s">harmonics &lt;5 kHz</span></div>
+      <div class="blk"><span class="n">9</span><span class="t">Voice guard</span><span class="s">spectral correction</span></div>
+      <div class="blk"><span class="n">10</span><span class="t">Residual</span><span class="s">optional LMS</span></div>
+      <div class="blk"><span class="n">11</span><span class="t">ISTFT</span><span class="s">overlap-add</span></div>
+      <div class="blk"><span class="n">→</span><span class="t">Vocoder</span><span class="s">MELPe · radio</span></div>
+    </div>
+    <p class="legend">Teal = the learned block · Amber = the block that makes the system "adaptive" · The vocoder is not ours, but everything is judged after it.</p>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">01</span><h4>Audio input</h4><span class="cost">real-time thread · ~0 compute</span></div>
+    <div class="spec-b">
+      <p>Reads 128 samples at a time from three microphones and pushes them into a <span class="term" data-t="lock-free ring buffer">lock-free ring buffer</span>. It does almost nothing, on purpose.</p>
+      <p><strong>Why it does nothing:</strong> this runs on the audio <span class="term" data-t="callback">callback</span> thread, which has a hard deadline. If it is ever late, the sound card runs out of samples and the listener hears a click. So it copies and hands off. It never allocates memory, never takes a lock, never logs, never throws an exception, never grows a <code>std::vector</code> and never touches a <code>std::string</code>. Any one of those can block for an unpredictable time, and violating the rule produces a click that appears once every few minutes and is almost impossible to debug afterwards.</p>
+      <dl class="spec-io">
+        <dt>In</dt><dd>3 channels of raw samples</dd>
+        <dt>Out</dt><dd>The same samples, in a buffer another thread can read safely</dd>
+        <dt>Source</dt><dd>Standard real-time audio practice</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">02</span><h4>Aux-IVA — blind source separation</h4><span class="cost">~0.2 MMAC/s per iteration · negligible params</span></div>
+    <div class="spec-b">
+      <p><strong>Auxiliary-function-based <span class="term" data-t="Independent Vector Analysis">Independent Vector Analysis</span>.</strong> Classical, no training, no neural network.</p>
+      <p>Given three mixed recordings it pulls them apart into three separate streams without being told anything about the sources. It works by assuming the underlying sources are <span class="term" data-t="statistically independent">statistically independent</span> and finding the un-mixing that maximises that independence — and, unlike plain <span class="term" data-t="ICA">ICA</span>, it keeps each source's frequency bins tied together so one source does not get scattered across several outputs.</p>
+      <p><strong>Why the auxiliary-function variant:</strong> ordinary IVA needs a hand-tuned <span class="term" data-t="step size">step size</span>. Too small and it converges too slowly for real time; too large and it becomes unstable. The auxiliary-function form has <em>no step size at all</em> and is mathematically guaranteed to improve at every iteration. That is what makes it usable on a device.</p>
+      <p><strong>What it honestly gives you:</strong> three separated streams in unknown order (<span class="term" data-t="permutation ambiguity">permutation ambiguity</span>) and unknown scale (<span class="term" data-t="scaling ambiguity">scaling ambiguity</span>). It does not label them. That is fine, because we feed all of them to the network and let it decide — which is exactly what H-GTCRN's ablation found works best.</p>
+      <div class="callout amber" style="margin:14px 0 0">
+        <span class="lb">Scope honesty — audit F9</span>
+        <p>H-GTCRN is <strong>dual-channel</strong>, with two microphones 4 cm apart — not three. The three-microphone design is our extension. And IVA is a <em>determined</em> method: N microphones separate at most N sources. A real scene has voice, blast, engine, wind and babble, which is <span class="term" data-t="underdetermined">underdetermined</span>, so the three outputs are each still mixtures. Say "three separated streams, unordered" rather than labelling them voice / impulsive / background on a diagram.</p>
+      </div>
+      <dl class="spec-io">
+        <dt>In</dt><dd>3 channels, time domain</dd>
+        <dt>Out</dt><dd>3 separated streams, unordered and unscaled</dd>
+        <dt>Source</dt><dd>H-GTCRN, using Ono's Aux-IVA (WASPAA 2011)</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">03</span><h4>Robust normalisation — the fix that must come first</h4><span class="cost">negligible · must be allocation-free</span></div>
+    <div class="spec-b">
+      <p>Audio must be scaled to a standard loudness before a model sees it, otherwise the model has to learn to handle every possible volume. Everyone does this with <span class="term" data-t="RMS">RMS</span> — average energy. <strong>RMS is the wrong tool here, and not slightly wrong. It is formally undefined.</strong></p>
+      <p><strong>The practical problem:</strong> a gunshot can be 40 dB above the voice. RMS is dominated by the loudest samples, so the gunshot sets the scale. Divide by it and the voice is squashed toward the numeric noise floor. Worse, the scale factor changes depending on whether a gunshot happened to land inside the window or not.</p>
+      <p><strong>The formal problem:</strong> impulsive noise is <span class="term" data-t="heavy-tailed">heavy-tailed</span>. For α-stable distributions with α below 2 the <span class="term" data-t="variance">variance</span> is <em>infinite</em>. RMS is built on variance. So it is not merely fragile here — it does not exist.</p>
+      <p><strong>What we use instead</strong>, in order of ambition:</p>
+      <ol>
+        <li><strong>90th-percentile scaling</strong> — take the level 90 % of samples fall below and scale by that, so one spike cannot move it. Cheap, works, do this first.</li>
+        <li><strong><span class="term" data-t="FLOM">FLOM</span></strong> — fractional lower-order moments (Shao &amp; Nikias, 1993), statistics built on a power below 2, which stay finite when variance does not. The principled version.</li>
+        <li><strong>Causal AGC with a fast-attack limiter</strong> — solves the deployment problem and the impulsive problem together.</li>
+      </ol>
+      <div class="callout good" style="margin:14px 0 0">
+        <span class="lb">Highest return on effort in the project</span>
+        <p>The closest published dual-microphone system rescales every mixture so the waveform RMS equals 1. Its authors are honest that this is not causal and that deployment would need automatic gain control — but they do not notice that the statistic itself is undefined for their target noise class. This is a real defect in the nearest prior work, the fix is cited <em>inside another paper we already hold</em>, it takes about half a day, and it is explainable in thirty seconds. Everything measured downstream is meaningless until it is done.</p>
+      </div>
+      <dl class="spec-io">
+        <dt>In</dt><dd>Raw or separated streams</dd>
+        <dt>Out</dt><dd>The same, scaled by a statistic that survives impulses</dd>
+        <dt>Source</dt><dd>Shao &amp; Nikias 1993, cited via Yuan et al. 2023</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">04</span><h4>STFT + ERB — turning sound into a picture</h4><span class="cost">FFT dominates the budget · PFFFT</span></div>
+    <div class="spec-b">
+      <p><strong><span class="term" data-t="STFT">STFT</span></strong> — the Short-Time Fourier Transform. Chop the audio into short overlapping slices called <span class="term" data-t="frame">frames</span>, and for each slice work out how much energy sits at each frequency. The result is a picture with time across and frequency up: a <span class="term" data-t="spectrogram">spectrogram</span>. Speech looks like stacked horizontal stripes; a gunshot looks like a vertical wall.</p>
+      <p>We keep the <strong>complex</strong> form — both <span class="term" data-t="magnitude">magnitude</span> and <span class="term" data-t="phase">phase</span>. Phase matters for reconstruction quality; discard it and the output sounds smeared and metallic. <em>One caveat worth carrying:</em> H-GTCRN's own ablation found a magnitude-only log-power feature <em>beat</em> the full complex feature on its separation branch, concluding that phase information "is not as crucial". So "phase is always essential" is too strong a claim to make on a slide.</p>
+      <p><strong><span class="term" data-t="ERB">ERB</span></strong> — Equivalent Rectangular Bandwidth. Instead of hundreds of equal-width frequency bins, group them into about 32 bands that get wider as frequency rises, the way the human ear does. Fewer numbers to process, and the ones kept are the ones people can actually hear. <strong>This is where most of the compute saving comes from.</strong></p>
+      <p>GTCRN is specific about it: 192 high-frequency bands merged to 64 ERB bands, 65 low-frequency bands left untouched, giving a 129-dimensional compressed feature map. The low bands are preserved because that is where speech <span class="term" data-t="harmonic structure">harmonics</span> live.</p>
+      <dl class="spec-io">
+        <dt>In</dt><dd>Time-domain samples</dd>
+        <dt>Out</dt><dd>Complex spectrum plus compressed band features</dd>
+        <dt>Params</dt><dd>20 ms frame / 10 ms hop in the engine; GTCRN publishes 32 / 16 ms</dd>
+        <dt>Source</dt><dd>DCCRN for complex processing; GTCRN, DeepFilterNet2 and IS³ for ERB</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">05</span><h4>The classifier — this is the "adaptive" the PS demands</h4><span class="cost">tiny · a few hundred operations</span></div>
+    <div class="spec-b">
+      <p>A small, fast piece of code that looks at each frame and asks: <strong>is this steady noise, changing noise, or a sudden bang?</strong></p>
+      <p>It measures <strong><span class="term" data-t="kurtosis">kurtosis</span></strong> — a number describing how spiky a signal is. Steady Gaussian noise sits at 3. The Cauchy noise BMRI was validated on measures 27. A gunshot is orders of magnitude higher. Based on the answer it sets two dials: <strong>γ (gamma)</strong>, how aggressively to clean, and <strong>β (beta)</strong>, the detection threshold.</p>
+      <p><strong>Why this block is load-bearing:</strong> the problem statement asks for an <em>adaptive</em> system. This is the piece that makes it adaptive. Without it the pipeline behaves identically for a gunshot and for engine hum, and the word "adaptive" becomes an assertion. The BMRI paper tunes γ by hand, offline, from a chart; replacing that with a live classifier is genuinely our change.</p>
+      <p><strong>It gives operator modes for free</strong>, because γ has a known relationship to how much gets removed:</p>
+    </div>
+    <div class="tblwrap" style="margin:0;border-left:none;border-right:none;border-bottom:none">
+    <table>
+      <thead><tr><th>Mode</th><th>γ</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Listening</td><td class="num">low</td><td>Gentle. Keeps ambient sound so the wearer stays aware of the surroundings</td></tr>
+        <tr><td class="name">Combat</td><td class="num">high</td><td>Aggressive. Protects the voice through gunfire, accepts losing ambient detail</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="spec-b">
+      <dl class="spec-io" style="border-top:none;padding-top:0">
+        <dt>In</dt><dd>Frame statistics — residual kurtosis over a window</dd>
+        <dt>Out</dt><dd>Class label plus γ and β, per frame</dd>
+        <dt>Implementation</dt><dd>SVM, decision tree or a tiny CNN. Hand-written C++, no library</dd>
+        <dt>Source</dt><dd>BMRI's γ, made live — ours</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">06</span><h4>Impulsive path — BMRI</h4><span class="cost">2048-sample blocks · AR order 16–32 · single pass</span></div>
+    <div class="spec-b">
+      <p><strong>Binary Mask Residual Interpolation</strong> (Ruhland, Bitzer, Brandt &amp; Goetze, 2015). Classical, fast, no neural component. Two steps:</p>
+      <p><strong>1 · Split.</strong> A frequency-dependent adaptive threshold — reacting slowly when sound rises and quickly when it falls — separates each block into a "target" part that is probably signal and a "residual" part that is probably noise.</p>
+      <p><strong>2 · Detect and fill.</strong> An <strong><span class="term" data-t="AR model">AR model</span></strong> — autoregressive, predicting each sample from the handful before it — runs over the residual. Where the actual sample diverges wildly from the prediction, that sample is an impulse. The worst γ % are thrown away and <strong>replaced by interpolation</strong> from their neighbours. A final spectral-correction pass removes the low-frequency rumble the interpolation reintroduces.</p>
+      <p><strong>Why this path exists at all.</strong> Deep ANC reduces its own latency by <em>predicting</em> noise one or two frames ahead. That works for engine hum, which repeats. It cannot work for a gunshot. So this path does not predict — it <strong>waits, detects and reacts</strong>. That is the single most important architectural decision in the system, and it follows directly from the physics rather than from taste.</p>
+      <p>Its cost is small by design: 2048-sample blocks, AR order 16 or 32, one interpolation pass, no learned component. Those constants come straight from the paper and should be benchmarked against the latency budget rather than assumed.</p>
+      <div class="callout warn" style="margin:14px 0 0">
+        <span class="lb">Scope limit — audit F4</span>
+        <p>BMRI was validated on <strong>white Cauchy noise at density 0.02, kurtosis 27</strong>, restoring music and speech — optical soundtrack noise on celluloid, rain, gramophone clicks. Not gunshots. Its authors explicitly designed it to avoid artefacts "be it at the cost of obtaining less noise reduction than possible", which is the opposite of our goal. Its SNR improvement is around <strong>3.5 dB</strong> at the matched setting, against a PS target of 15 dB. And it is known to <em>degrade transients</em>: the paper reports negative improvement on pop music because "transients like e.g. drum sounds cause high AR error signals that trigger the interpolation threshold and thus get degraded". Speech plosives are transients.</p>
+        <p>Use it where it fits: the <strong>ballistic crack</strong> (sub-millisecond) and the mechanical layer. For a 50–200 ms muzzle blast, interpolation from neighbours is not interpolation, it is synthesis, and an AR model of order 16–32 cannot do it. The honest goal there is <em>conceal and recover</em>, measured by Impulse Recovery Time.</p>
+      </div>
+      <dl class="spec-io">
+        <dt>In</dt><dd>Frames flagged impulsive by block 5</dd>
+        <dt>Out</dt><dd>The same frames with detected impulses interpolated out</dd>
+        <dt>Source</dt><dd>Ruhland et al., IEEE/ACM TASLP 23(10) 1680–1691, 2015</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">07</span><h4>Neural core — GTCRN</h4><span class="cost">23.7 K params · 39.6 MMAC/s (paper) · 48.2 K / 33.0 (official code)</span></div>
+    <div class="spec-b">
+      <p><strong>Grouped Temporal Convolutional Recurrent Network</strong> (Rong et al., ICASSP 2024). This is the AI/ML the problem statement requires, and the only learned block in the chain.</p>
+      <p>It takes the noisy spectrogram and produces a <strong><span class="term" data-t="mask">mask</span></strong> — a set of numbers, one per frequency band per time slice, saying "keep this much of this band". Multiply the noisy spectrum by the mask and the noise is gone. Specifically it predicts a <span class="term" data-t="complex ratio mask">complex ratio mask</span>, so it corrects phase as well as magnitude, with a <code>tanh</code> output bounding the values to ±1.</p>
+      <p>Five tricks make it small enough for a headset:</p>
+      <ul>
+        <li><strong>ERB band merging</strong> — 192 high-frequency bins compressed to 64 perceptual bands, 65 low bins kept intact. Detail preserved where harmonics live.</li>
+        <li><strong><span class="term" data-t="Grouped convolution">Grouped convolution</span></strong> — split channels into groups processed independently, then <span class="term" data-t="channel shuffle">shuffled</span> so information still crosses. Far fewer connections for nearly the same capability.</li>
+        <li><strong>Grouped RNN</strong> — the same idea applied to the memory part. Input features and hidden states split into 2 groups, each fed to a recurrent layer with half the parameters.</li>
+        <li><strong><span class="term" data-t="SFE">SFE</span></strong>, subband feature extraction — unfold each frequency band together with its <em>k−1</em> neighbours and stack them into the channel dimension, so the following convolution can use frequency relationships directly.</li>
+        <li><strong><span class="term" data-t="TRA">TRA</span></strong>, temporal recurrent attention — pool energy across frequency to get a per-frame energy curve, run it through a small GRU and a fully-connected layer, and use the sigmoid output to weight moments in time. It beats plain time attention for almost no extra compute.</li>
+      </ul>
+      <p>Structurally it is an encoder–decoder: two convolution blocks and three grouped temporal convolution blocks down, a grouped dual-path RNN in the middle (<span class="term" data-t="bidirectional">bidirectional</span> GRU across frequency <em>within</em> a frame, unidirectional GRU across time so <span class="term" data-t="causality">causality</span> holds), then a mirrored decoder with skip connections.</p>
+      <p><strong>Published performance</strong>, for calibration: on VCTK-DEMAND it reaches PESQ 2.87, STOI 0.940, SI-SNR 18.83 dB with 0.02 M parameters. On the DNS3 blind set it scores DNSMOS BAK 3.90 but SIG 3.00 — against a noisy input SIG of 3.20. <strong>It reduces speech quality while improving background suppression</strong>, which is exactly the over-suppression failure mode this project exists to make visible.</p>
+      <p><strong>Two findings from H-GTCRN worth applying directly:</strong> apply the mask to the <em>original noisy input</em>, not to Aux-IVA's cleaned output, because separation adds its own distortion and masking the raw signal avoids compounding it; and feed the network <em>both</em> the separated-speech and the separated-noise streams — the largest single gain in their ablation, though the paper notes it costs a slight SIG degradation.</p>
+      <dl class="spec-io">
+        <dt>In</dt><dd>Complex spectrum plus both separated streams</dd>
+        <dt>Out</dt><dd>Complex ratio mask, applied to the noisy input</dd>
+        <dt>Runs via</dt><dd>ONNX Runtime in C++</dd>
+        <dt>Quote both sizes</dt><dd>23.7 K / 39.6 MMAC/s and 48.2 K / 33.0 MMAC/s — a judge who knows the repo will check</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">08</span><h4>Deep filtering</h4><span class="cost">below ~5 kHz only · order 8 complex filter</span></div>
+    <div class="spec-b">
+      <p>A coarse per-band mask smears fine detail. Voiced speech has <strong>harmonic structure</strong> — regular energy peaks at multiples of the pitch — and one gain per band flattens it, which is what makes over-processed speech sound robotic.</p>
+      <p><strong>Deep filtering</strong> fixes this. Instead of one gain per time-frequency point, it predicts a <em>small complex filter</em> combining several neighbouring points, which rebuilds the harmonic structure a plain mask destroys. DeepFilterNet2 applies it below 5 kHz; IS³ uses order 8 up to about 6 kHz, applying only real-valued filtering above that. Restricting the band is what keeps the cost down.</p>
+      <dl class="spec-io">
+        <dt>In</dt><dd>Masked spectrum</dd>
+        <dt>Out</dt><dd>The same, with harmonic detail restored</dd>
+        <dt>Source</dt><dd>DeepFilterNet2 (2022), IS³ (2025)</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">09</span><h4>Voice guard</h4><span class="cost">one spectral pass</span></div>
+    <div class="spec-b">
+      <p>After the impulsive path fills gaps by interpolation, low-frequency rumble creeps back in. This stage runs a spectral correction that removes it.</p>
+      <p><strong>Why it is a named module and not a footnote:</strong> the problem statement demands that speech intelligibility be <em>preserved</em>. This is the block that guarantees the cleaning never eats the voice. In the BMRI paper it is a step inside a larger method; here it is promoted to a module with its own test, because it is the safety net for the requirement judges will actually check.</p>
+      <dl class="spec-io">
+        <dt>In</dt><dd>Recombined impulsive and neural paths</dd>
+        <dt>Out</dt><dd>The same, with regained LF rumble removed</dd>
+        <dt>Source</dt><dd>BMRI's spectral-correction step, formalised</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">10</span><h4>Residual stage — optional</h4><span class="cost">~20 lines · must earn its latency</span></div>
+    <div class="spec-b">
+      <p>A final classical <span class="term" data-t="LMS">LMS</span> adaptive filter to catch what the learned path leaves. Cheap, textbook, about twenty lines of code, and it handles slow drift a trained model cannot anticipate — a loosening earcup, a changing seal, the wearer moving their head.</p>
+      <p>It is genuinely optional. Whether it earns its latency is a measurement, not an opinion.</p>
+      <div class="callout warn" style="margin:14px 0 0">
+        <span class="lb">Wiring correction — audit F2</span>
+        <p>The current architecture diagram drives this block from the <strong>Mic 3 in-ear error signal</strong> and then sends the result to the radio. That cannot work: Mic 3 measures what the wearer <em>hears</em>, and the transmitted voice never passes through the wearer's ear. Mic 3 and its error loop belong to <strong>Lane A</strong>. If a residual stage stays in Lane B it must be driven by <strong>Mic 2</strong>, the noise reference — which is Widrow's original two-input canceller, and is correct.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-h"><span class="bn">11</span><h4>ISTFT — back to sound</h4><span class="cost">FFT again</span></div>
+    <div class="spec-b">
+      <p>The inverse Short-Time Fourier Transform. Turns the processed picture back into a waveform using <strong><span class="term" data-t="overlap-add">overlap-add</span></strong>: each processed slice is windowed and summed into the output with the same overlap used on the way in, so with the right <span class="term" data-t="window function">window</span> and hop the overlaps sum to exactly one and the joins are inaudible. Because the complex form was kept throughout, phase is intact and the output does not sound smeared.</p>
+      <p>Perfect reconstruction through STFT → ISTFT with no processing in between is the third thing to build in the C++ engine, before any DSP. If that round-trip is not numerically exact, nothing built on top of it can be trusted.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>And then the part that is not ours</h3>
+    <p>The enhanced waveform does not reach a human directly. A tactical radio transmits <strong><span class="term" data-t="MELPe">MELPe</span></strong> — the NATO <span class="term" data-t="STANAG">STANAG</span> 4591 <span class="term" data-t="vocoder">vocoder</span> — at 2400, 1200 or 600 bits per second. That coder does not transmit sound; it transmits a <em>parametric description</em> of speech (pitch, voicing, spectral envelope) and re-synthesises it at the far end.</p>
+    <p>This matters three ways, and none of them is currently in the design:</p>
+    <ul>
+      <li><strong>The metrics are measured in the wrong place.</strong> PESQ and STOI score the denoiser's output; the listener hears the vocoder's output. Artefacts PESQ barely notices — musical noise, a smeared harmonic structure, a mis-tracked pitch across an interpolated gap — can corrupt exactly the parameters MELPe transmits.</li>
+      <li><strong>MELPe already has its own noise pre-processor.</strong> Two suppressors in series can fight each other. That is a real engineering question with a measurable answer, and nobody at SIH will have asked it.</li>
+      <li><strong>It is narrowband</strong>, which reopens the question of why the engine runs at 48 kHz and how much of block 8's harmonic reconstruction survives to the far end.</li>
+    </ul>
+    <div class="callout">
+      <span class="lb">The cheapest original experiment available</span>
+      <p>Put a vocoder stage into the evaluation chain — an open MELPe or Codec2 implementation is enough — and report every metric <strong>twice</strong>: before the vocoder and after it. If the ranking of two methods flips across the vocoder, that single table is a more original contribution than anything else in the plan, and it is exactly the question a DRDO communications evaluator asks first.</p>
+    </div>
+  </div>
+</section>

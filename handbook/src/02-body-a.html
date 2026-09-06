@@ -1,0 +1,268 @@
+<!-- ============ 01 PROBLEM ============ -->
+<section id="problem">
+  <div class="sec-head"><span class="sec-num">01</span><h2>The problem, precisely</h2></div>
+  <p class="sec-sub">What PS 26052 asks for, what each requirement rules out, and the three physical facts that decide the whole design.</p>
+
+  <div class="col">
+    <p>A soldier speaks into a headset while a gun fires nearby. The person at the other end of the radio should hear <strong>the voice, clearly</strong>, and <strong>not the gunshot</strong>. That is the entire job.</p>
+
+    <h3>The five requirements, and what each one closes off</h3>
+  </div>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Requirement</th><th>What it rules out</th></tr></thead>
+    <tbody>
+      <tr><td class="name">AI/ML-enabled</td><td>A purely classical DSP solution. The core denoiser must be learned, not hand-designed</td></tr>
+      <tr><td class="name">Adaptive</td><td>Fixed settings. The system must change behaviour as the noise changes — not just be tuned once</td></tr>
+      <tr><td class="name">Stationary + non-stationary + impulsive</td><td>Any method validated only on steady noise — which is nearly all of the published literature</td></tr>
+      <tr><td class="name">High speech intelligibility</td><td>Aggressive suppression that eats the voice. Measured, not asserted</td></tr>
+      <tr><td class="name">Real-time on embedded hardware</td><td>Large models. Latency and power become first-class constraints, not afterthoughts</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>The stated targets are <strong>SNR &gt; 15 dB, STOI &gt; 0.85, PESQ &gt; 2.5</strong>, real-time, low latency. Section 09 explains why those three numbers must be reported as curves rather than as a single pass/fail gate.</p>
+    <p>The third row is the one that matters. Gunshots and artillery are named in the first paragraph of the problem statement, and — as section 11 shows — almost nothing in the published literature is tested on them.</p>
+
+    <h3>The three facts that decide the architecture</h3>
+    <ol>
+      <li><strong>The gunshot is enormously louder than the voice.</strong> A muzzle blast is 140–155 <span class="term" data-t="dB SPL">dB SPL</span>; a shouted voice is 80–90 dB. That is a factor of ten thousand or more in pressure. Any processing that assumes the two are comparable in size is wrong from the first line.</li>
+      <li><strong>It arrives with no warning.</strong> There is nothing in the milliseconds before a gunshot that says one is coming. This single fact kills every technique that works by <span class="term" data-t="prediction">prediction</span>, which is the mechanism the published state of the art relies on to stay real-time.</li>
+      <li><strong>It has to run in real time on a battery.</strong> No cloud, no laptop, no waiting. That makes <span class="term" data-t="SWaP-C">SWaP-C</span> — size, weight, power and cost — the binding constraint, not model quality.</li>
+    </ol>
+
+    <div class="callout amber">
+      <span class="lb">The intellectual spine of the project</span>
+      <p>The published state of the art buys back processing delay by <em>predicting</em> noise one or two frames ahead. That works for engine hum, which repeats. It cannot work for a gunshot, which is by definition unpredictable. So this architecture does not predict — it <strong>detects and reacts</strong>. Measuring how badly prediction collapses on impulsive noise, when nobody has ever measured it, is the single result the whole project argues from.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 STATE ============ -->
+<section id="state">
+  <div class="sec-head"><span class="sec-num">02</span><h2>What exists today</h2></div>
+  <p class="sec-sub">Stated honestly, because the gap between what is built and what is designed is the most important fact about this project right now.</p>
+
+  <div class="col">
+    <p>Two things exist: a <strong>field-measurement toolkit that works</strong>, and a <strong>design that is unusually well argued</strong>. Nothing of the product itself has been written yet.</p>
+    <p>That is the correct order for a project whose hardest input — real, calibrated gunshot recordings — can only be obtained once, on a single trip, with no retry. But the honest one-line status is: <em>we have built the instrument that measures the problem, and the argument for how to solve it. We have not yet built the solution.</em></p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Thing</th><th>What it is</th><th>Size</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Data-collection toolkit</td><td>21 Python command-line tools: record, calibrate, validate, slice, measure, plot, report, freeze. Own WAV reader, so no native library can fail in the field</td><td class="num">~5,400 lines</td><td class="ok">Working</td></tr>
+      <tr><td class="name">Measurement engine</td><td><code>analyze.py</code> + <code>dsp.py</code> — 16 acoustic quantities per event, 54 per recording</td><td class="num">~560 lines</td><td class="ok">Working</td></tr>
+      <tr><td class="name">Quality gate</td><td><code>validate.py</code> — nine automated checks, GO/NO-GO in under ten seconds at the range</td><td class="num">~640 lines</td><td class="part">Works; crashes on a Windows console (audit F11)</td></tr>
+      <tr><td class="name">Provenance system</td><td><code>session.py freeze</code> — SHA-256 of every audio file <em>and of the measurement code itself</em></td><td class="num">~535 lines</td><td class="ok">Working</td></tr>
+      <tr><td class="name">Design documents</td><td>Six interlocking documents, every claim traced to a source, unverified ones marked</td><td class="num">~2,700 lines</td><td class="ok">Written</td></tr>
+      <tr><td class="name">Research base</td><td>16 papers, 1975–2025, plus a gap analysis naming where each one stops</td><td class="num">16 papers</td><td class="ok">Read</td></tr>
+      <tr><td class="name">Training pipeline</td><td>Dataset mixing, augmentation, model definition, ONNX export</td><td class="num">—</td><td class="no">Not started</td></tr>
+      <tr><td class="name">Real-time engine</td><td>The C++ signal path</td><td class="num">—</td><td class="no">Not started</td></tr>
+      <tr><td class="name">Trained model</td><td>Weights</td><td class="num">—</td><td class="no">Not started</td></tr>
+      <tr><td class="name">Hardware</td><td>Microphones, board, headset</td><td class="num">—</td><td class="no">Not specified</td></tr>
+      <tr><td class="name">Range data</td><td>Real calibrated gunshot recordings</td><td class="num">—</td><td class="no">Trip not taken</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>The seven-step plan</h3>
+    <ol>
+      <li><strong>Measure real impulsive noise ourselves</strong>, calibrated to absolute pressure, on one range trip — so we know what we are modelling rather than guessing from downloaded clips.</li>
+      <li><strong>Build a synthetic generator</strong> producing unlimited realistic gunshots, and validate it against the real recordings we deliberately held back.</li>
+      <li><strong>Mix that noise with clean speech</strong> at controlled signal-to-noise ratios to make training pairs — a noisy input and the clean answer.</li>
+      <li><strong>Train a very small neural network</strong> — <span class="term" data-t="GTCRN">GTCRN</span>, about 24,000 parameters — to strip the noise out.</li>
+      <li><strong>Put a fast classical path beside it</strong> for sharp transient events a network handles badly, with a live classifier deciding which path leads.</li>
+      <li><strong>Shrink the model</strong> by <span class="term" data-t="pruning">pruning</span> and <span class="term" data-t="quantisation">quantisation</span>, export to <span class="term" data-t="ONNX">ONNX</span>, run it in C++ on a small board.</li>
+      <li><strong>Measure everything on the real board</strong> — latency, compute, and watts, which nobody in the literature reports.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 03 LANES ============ -->
+<section id="lanes">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Two lanes, not one system</h2></div>
+  <p class="sec-sub">The most common mistake on this problem statement is treating "noise cancellation" as a single thing. It is two systems with different physics, budgets and metrics.</p>
+
+  <div class="lanes">
+    <div class="lane">
+      <span class="lid">Lane A</span>
+      <h4>Hearing protection</h4>
+      <dl>
+        <dt>Path</dt><dd>Outside mic → earcup speaker → the wearer's ear</dd>
+        <dt>Goal</dt><dd>Make the wearer hear less noise. Protect hearing, preserve situational awareness</dd>
+        <dt>Method</dt><dd>Emit an inverted copy of the noise so the two cancel in the air — <span class="term" data-t="destructive interference">destructive interference</span></dd>
+        <dt>Budget</dt><dd><strong>Sub-millisecond.</strong> The anti-noise must arrive before the real sound does</dd>
+        <dt>Algorithm</dt><dd><span class="term" data-t="FxLMS">FxLMS</span> — classical adaptive filtering. No neural network fits here</dd>
+        <dt>Metric</dt><dd><span class="term" data-t="NMSE">NMSE</span>, or measured attenuation at the in-ear mic</dd>
+        <dt>Owner</dt><dd>Hardware / DSP</dd>
+      </dl>
+    </div>
+    <div class="lane b">
+      <span class="lid">Lane B</span>
+      <h4>Speech enhancement</h4>
+      <dl>
+        <dt>Path</dt><dd>Boom mic → processing → radio transmitter</dd>
+        <dt>Goal</dt><dd>Make the <em>transmitted</em> voice intelligible at the far end</dd>
+        <dt>Method</dt><dd>Estimate which parts of the sound are voice and keep only those — <span class="term" data-t="masking">masking</span></dd>
+        <dt>Budget</dt><dd><strong>20–40 ms.</strong> Radio communication tolerates it</dd>
+        <dt>Algorithm</dt><dd>Neural denoiser plus a classical transient path</dd>
+        <dt>Metric</dt><dd><span class="term" data-t="PESQ">PESQ</span>, <span class="term" data-t="STOI">STOI</span>, <span class="term" data-t="SI-SNR">SI-SNR</span>, <span class="term" data-t="DNSMOS">DNSMOS</span></dd>
+        <dt>Owner</dt><dd>Software / ML</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>Everything the problem statement measures — SNR, STOI, PESQ — is <strong>Lane B</strong>. Everything the phrase "active noise cancellation" strictly means is <strong>Lane A</strong>. The PS asks for both, so the system must contain both, and every number in the pitch must say which lane it belongs to.</p>
+
+    <div class="callout warn">
+      <span class="lb">Why this matters more than it sounds</span>
+      <p>Sound crosses from the outer earcup shell to the eardrum in roughly 0.3–0.6 ms. A feedforward canceller has to get its anti-noise there first. Lane B's budget is <strong>25.3 ms</strong> — forty to eighty times too slow. If the two lanes are fused into one chain, the resulting system cannot do active cancellation at all, no matter how good the model is. Keeping them separate is not a stylistic choice; it is the difference between a system that works and one that cannot.</p>
+    </div>
+
+    <p>The two lanes are also <strong>complementary in what they are good at</strong>. Lane A, being classical adaptive filtering, is genuinely strong on low-frequency continuous noise — engine, rotor, generator, vehicle rumble. Lane B, being learned, is strong on broadband, non-stationary and impulsive content in the speech channel. Saying so explicitly is worth doing: it explains why both exist rather than one being a weaker version of the other.</p>
+  </div>
+</section>
+
+<!-- ============ 04 ARCHITECTURE ============ -->
+<section id="arch">
+  <div class="sec-head"><span class="sec-num">04</span><h2>The architecture, layer by layer</h2></div>
+  <p class="sec-sub">Six layers, from air pressure to a checksummed dataset. Confusing which layer something belongs to is the most common mistake in this project.</p>
+
+  <div class="stack">
+    <div class="layer"><div class="lnum">L0</div><div class="lbody">
+      <p class="lt">Acoustic layer — air, geometry, physics</p>
+      <p class="ld">Where the sound is before anything electrical touches it. Muzzle blast, ballistic crack, ground reflection, head shadow, distance, air absorption. Nothing downstream can recover what is lost here.</p>
+      <span class="lm">Owned by: physics · Modelled by: the synthetic generator</span>
+    </div></div>
+    <div class="layer"><div class="lnum">L1</div><div class="lbody">
+      <p class="lt">Transduction layer — microphones and conversion</p>
+      <p class="ld">Three microphones, preamplifier gain, and the analogue-to-digital converter. This is where clipping happens, and clipping is irreversible.</p>
+      <span class="lm">Owned by: hardware · Constraint: mic max SPL vs a 140–155 dB blast</span>
+    </div></div>
+    <div class="layer"><div class="lnum">L2</div><div class="lbody">
+      <p class="lt">Lane A — real-time hearing protection</p>
+      <p class="ld">A tight feedback loop on a DSP or microcontroller. Reference mic in, anti-noise out, in-ear mic as the error signal. Never touches the transmitted voice.</p>
+      <span class="lm">Owned by: hardware/DSP · Budget: under 1 ms</span>
+    </div></div>
+    <div class="layer"><div class="lnum">L3</div><div class="lbody">
+      <p class="lt">Lane B — the eleven-block speech engine</p>
+      <p class="ld">The C++ real-time path. Normalise, transform, classify, split into two paths, recombine, protect, reconstruct. The only place a neural network runs.</p>
+      <span class="lm">Owned by: software · Budget: 10 ms of compute per 10 ms hop</span>
+    </div></div>
+    <div class="layer"><div class="lnum">L4</div><div class="lbody">
+      <p class="lt">Offline layer — what plays the role of a backend</p>
+      <p class="ld">Data generation, mixing, augmentation, training, pruning, quantisation, evaluation. Runs on a workstation. None of it ships; it only shapes the weights that do.</p>
+      <span class="lm">Owned by: software · Budget: unlimited</span>
+    </div></div>
+    <div class="layer"><div class="lnum">L5</div><div class="lbody">
+      <p class="lt">Provenance layer — how we prove any of it</p>
+      <p class="ld">Calibration to absolute pressure, fit/holdout split assigned before data exists, SHA-256 of data and of the measurement code, config-hash reproducibility.</p>
+      <span class="lm">Owned by: everyone · This is what a DRDO evaluator actually audits</span>
+    </div></div>
+  </div>
+
+  <div class="col">
+    <div class="callout">
+      <span class="lb">The distinction judges test</span>
+      <p><span class="term" data-t="α-stable">α-stable</span> augmentation, the synthetic generator, pruning, every metric — <strong>none of it ships</strong>. It shapes the weights that ship. A judge asking "isn't α-stable noise generation too heavy for embedded?" has misunderstood the question, and you should be able to say why in one sentence: it runs once, on a workstation, months before the device is switched on.</p>
+    </div>
+
+    <h3>L0 — What a gunshot actually is</h3>
+    <p>Not one sound but four, arriving at different times:</p>
+    <ul>
+      <li><strong>The <span class="term" data-t="ballistic crack">ballistic crack</span></strong>, if the round is supersonic. The bullet drags a cone-shaped shockwave behind it. Because the bullet outruns sound, this <em>always arrives before</em> the muzzle blast. It is the physics counter-sniper systems are built on, and our only genuine source of look-ahead.</li>
+      <li><strong>The <span class="term" data-t="muzzle blast">muzzle blast</span></strong> — the expanding pressure wave from propellant gas leaving the barrel. 140–155 dB at close range, with a <span class="term" data-t="rise time">rise time</span> of 10–50 microseconds. Idealised by the <span class="term" data-t="Friedlander wave">Friedlander wave</span>.</li>
+      <li><strong>The mechanical layer</strong> — bolt cycling, brass ejection, trigger. 55–85 dB, buried by the blast in any single recording, which is why the plan records it separately at close range and high gain.</li>
+      <li><strong>The environment's answer</strong> — <span class="term" data-t="ground reflection">ground reflection</span>, which produces visible <span class="term" data-t="comb filtering">comb filtering</span> in the spectrum, and reverberation decaying over tens to hundreds of milliseconds.</li>
+    </ul>
+    <p>The whole event spans roughly <strong>100 dB of <span class="term" data-t="dynamic range">dynamic range</span></strong>:</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Component</th><th>Approximate SPL</th><th>What it tells you</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Muzzle blast peak</td><td class="num">140–155 dB</td><td>The primary impulse-noise number, and what saturates the capsule</td></tr>
+      <tr><td class="name">Early reflections</td><td class="num">120–140 dB</td><td>Geometry — distance to ground and to any hard surface</td></tr>
+      <tr><td class="name">Reverberation tail</td><td class="num">70–100 dB</td><td>The range's own acoustics, captured by the impulse response</td></tr>
+      <tr><td class="name">Bolt, trigger, brass</td><td class="num">55–85 dB</td><td>The mechanical layer that makes a synthetic shot sound real</td></tr>
+      <tr><td class="name">Noise floor beneath</td><td class="num">30–45 dB</td><td>What every signal-to-noise ratio is measured against</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>L1 — The three microphones</h3>
+  </div>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Mic</th><th>Position</th><th>Hears</th><th>Role</th><th>Lane</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Mic 1 — primary</td><td>Boom arm, 2–5 cm from the mouth</td><td>Voice loud, gunshot quieter</td><td>The signal to keep</td><td>B</td></tr>
+      <tr><td class="name">Mic 2 — reference</td><td>Outer earcup shell, facing outward, opposite the boom</td><td>Environment only. Gunshot at full level, voice near zero</td><td>The noise reference</td><td>A + B</td></tr>
+      <tr><td class="name">Mic 3 — error</td><td>Inside the earcup, beside the ear</td><td>What actually reaches the eardrum</td><td>Tells Lane A how much still leaks</td><td>A only</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <div class="callout warn">
+      <span class="lb">The hardware rule software cannot fix</span>
+      <p><strong>Mic 2 must not hear the voice.</strong> An adaptive filter works by making total output power as small as possible. If the voice appears in the reference microphone, the mathematically optimal action is to remove the voice. Widrow proved this in 1975. It is a mechanical requirement — a physical barrier between the mouth and Mic 2, which is why the boom and Mic 2 sit on opposite sides of the head with the earcup shell between them — and no amount of software repairs it afterwards.</p>
+    </div>
+
+    <h4>Why clipping is decided here and nowhere else</h4>
+    <p>An ordinary microphone capsule saturates somewhere above 110–120 dB SPL; a 3.5 mm electret tops out around 100–120 dB. A muzzle blast at 1 m is 140–155 dB. The waveform therefore arrives at the converter <strong>already flat-topped, with information physically destroyed</strong>. No pad, no gain change, no algorithm downstream recovers it. Distance is the only real control — every doubling buys 6 dB.</p>
+    <p>This is why the data pipeline deliberately models <em>input-side</em> saturation. Every published paper models the loudspeaker saturating on the output side; nobody models the microphone saturating on the input side, even though that is what actually happens on a range.</p>
+    <p>Practical consequence for the build: use a <strong>dynamic (moving-coil) microphone</strong> for close blast work — it has no active electronics to overload — and a measurement microphone for sweeps, calibration and ambience.</p>
+
+    <h3>Threading — how the work divides across time</h3>
+    <p>The hard rule: <strong>everything must finish within 10 ms per hop.</strong></p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Thread</th><th>Priority</th><th>Does</th><th>Must never</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Audio callback</td><td>Real-time</td><td>Reads and writes 128 samples. Pushes into a lock-free ring buffer</td><td class="no">Allocate memory, take a lock, log, throw</td></tr>
+      <tr><td class="name">Processing</td><td>High</td><td>The whole chain, blocks 2 to 11</td><td class="no">Overrun 10 ms</td></tr>
+      <tr><td class="name">Control</td><td>Normal</td><td>Metrics, telemetry, mode switching</td><td class="no">Touch the signal path</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>Two threads for the signal, one for everything else. The processing thread is deliberately separated from the callback so that a single slow frame stretches a buffer rather than dropping audio outright.</p>
+    <p><strong>The 10 ms figure is a deadline, not a target.</strong> Miss it and the buffer <span class="term" data-t="underrun">underruns</span>, which is heard as a click. This is also why the project reports <em>worst-case</em> frame time rather than the mean: an average of 3 ms with occasional 12 ms spikes fails a 10 ms deadline, and the average hides it completely. The number to publish is the <span class="term" data-t="99th percentile">99th percentile</span>.</p>
+
+    <h3>The timing budget</h3>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Frame / hop</th><th>STFT latency</th><th>I/O buffer</th><th>Total algorithmic</th><th>Compute per hop</th></tr></thead>
+    <tbody>
+      <tr><td class="name">32 / 16 ms</td><td class="num">32.0 ms</td><td class="num">10.7 ms</td><td class="num">42.7 ms</td><td class="num">16.0 ms</td></tr>
+      <tr><td class="name">20 / 10 ms — chosen</td><td class="num">20.0 ms</td><td class="num">5.3 ms</td><td class="num">25.3 ms</td><td class="num">10.0 ms</td></tr>
+      <tr><td class="name">10 / 5 ms</td><td class="num">10.0 ms</td><td class="num">5.3 ms</td><td class="num">15.3 ms</td><td class="num">5.0 ms</td></tr>
+      <tr><td class="name">8 / 4 ms</td><td class="num">8.0 ms</td><td class="num">2.7 ms</td><td class="num">10.7 ms</td><td class="num">4.0 ms</td></tr>
+      <tr><td class="name">Lane A, for contrast</td><td class="num">—</td><td class="num">—</td><td class="num no">&lt; 1 ms</td><td class="num">—</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>20 ms frame with a 10 ms hop was chosen for three reasons: it matches the frame size used by the closest prior dual-microphone work, so latency and compute comparisons are like-for-like; 25.3 ms sits inside what radio communication tolerates; and 10 ms of compute is comfortable, since that prior work needed 2.78 ms per 20 ms frame on a laptop CPU and a GTCRN-class model is far smaller.</p>
+    <p>Own-voice sidetone — hearing yourself in the earcup — would want far lower latency than 25 ms, so that path stays analogue and does not go through the denoiser at all.</p>
+
+    <div class="callout amber">
+      <span class="lb">An unresolved conflict in this table — audit F6</span>
+      <p>GTCRN and H-GTCRN as published use a <strong>32 ms window with a 16 ms hop at 16 kHz</strong>, mapping 192 high-frequency bins to 64 ERB bands while keeping 65 low-frequency bins intact. That arithmetic assumes 257 bins from a 512-point FFT at 16 kHz. Choosing 20/10 ms at 48 kHz means the published band mapping, the 23.7 K parameter count and the 39.6 MMAC/s figure all stop applying and the model must be retrained. At GTCRN's own settings the real algorithmic latency is closer to <strong>48 ms than 25.3 ms</strong>. Either choice is defensible; claiming both is not. The rate chain — 96 kHz capture, 48 kHz engine, 16 kHz neural core, and the anti-alias filters between them — needs to be written down and its latency counted.</p>
+    </div>
+  </div>
+</section>

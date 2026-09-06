@@ -1,0 +1,335 @@
+<title>ZEIT Prototype Bench</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+:root{
+  --bg:#ffffff; --bg-alt:#f5f5f7; --bg-sunk:#fafafc;
+  --text:#1d1d1f; --text-2:#424245; --text-3:#6e6e73;
+  --rule:#d2d2d7; --rule-soft:#e8e8ed;
+  --link:#0066cc;
+  --ok:#1d7a3e; --warn:#a15c00; --crit:#b3261e;
+  --shadow:0 1px 3px rgba(0,0,0,.07), 0 8px 28px rgba(0,0,0,.06);
+  --radius:12px;
+  --scene:#ececed; --grid:#c9c9ce; --bench:#dcdce0;
+  --m1:#0071e3; --m2:#b25000; --m3:#6a3fa0; --spk:#1d7a3e; --src:#b3261e;
+  --sig:#1d1d1f;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000; --bg-alt:#1d1d1f; --bg-sunk:#161617;
+    --text:#f5f5f7; --text-2:#d2d2d7; --text-3:#86868b;
+    --rule:#424245; --rule-soft:#2c2c2e;
+    --link:#2997ff; --ok:#4cc76a; --warn:#e3a34a; --crit:#ff6b5e;
+    --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.4);
+    --scene:#0b0b0c; --grid:#2a2a2d; --bench:#141416;
+    --m1:#4aa8ff; --m2:#e3a34a; --m3:#a98bd8; --spk:#4cc76a; --src:#ff6b5e;
+    --sig:#f5f5f7;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000; --bg-alt:#1d1d1f; --bg-sunk:#161617;
+  --text:#f5f5f7; --text-2:#d2d2d7; --text-3:#86868b;
+  --rule:#424245; --rule-soft:#2c2c2e;
+  --link:#2997ff; --ok:#4cc76a; --warn:#e3a34a; --crit:#ff6b5e;
+  --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.4);
+  --scene:#0b0b0c; --grid:#2a2a2d; --bench:#141416;
+  --m1:#4aa8ff; --m2:#e3a34a; --m3:#a98bd8; --spk:#4cc76a; --src:#ff6b5e;
+  --sig:#f5f5f7;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:15px;line-height:1.5;letter-spacing:-.003em;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+
+.hdr{max-width:1720px;margin:0 auto;padding:48px 34px 26px}
+.hdr .eb{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  font-weight:600;margin:0 0 13px}
+.hdr h1{font-size:clamp(29px,4.2vw,44px);margin:0 0 13px;font-weight:700;letter-spacing:-.026em;
+  line-height:1.06}
+.hdr p{margin:0;color:var(--text-2);max-width:76ch;font-size:17.5px;line-height:1.45;
+  letter-spacing:-.008em}
+
+.shell{max-width:1720px;margin:0 auto;padding:0 34px 90px}
+.stage{display:grid;grid-template-columns:216px minmax(0,1fr) 352px;gap:16px;align-items:start}
+@media(max-width:1400px){.stage{grid-template-columns:200px minmax(0,1fr)}
+  .side{grid-column:1 / -1}}
+@media(max-width:900px){.stage{grid-template-columns:1fr}}
+
+.card{background:var(--bg-alt);border-radius:var(--radius);overflow:hidden}
+.card > h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin:0;padding:16px 18px 11px}
+.card .pbody{padding:0 18px 18px}
+
+/* ---------- viewport ---------- */
+#viewport{position:relative;background:var(--scene);border-radius:var(--radius);
+  height:clamp(480px,62vh,660px);overflow:hidden;touch-action:none}
+#viewport canvas{display:block;width:100%;height:100%}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;
+  font-size:10.5px;font-weight:600;white-space:nowrap;padding:4px 9px;background:var(--bg);
+  border-radius:13px;box-shadow:var(--shadow);color:var(--text);border:1px solid var(--rule-soft);
+  transition:opacity .16s,border-color .16s}
+.lbl:hover{border-color:var(--text-3)}
+.lbl.dim{opacity:.3}
+.lbl .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:1px}
+#hint{position:absolute;left:14px;bottom:14px;font-size:11px;color:var(--text-3);
+  background:var(--bg);border-radius:8px;padding:6px 10px;box-shadow:var(--shadow)}
+#stagelab{position:absolute;left:14px;top:14px;font-size:11px;color:var(--text-3);
+  background:var(--bg);border-radius:8px;padding:7px 11px;box-shadow:var(--shadow);font-weight:600;
+  letter-spacing:.05em;text-transform:uppercase}
+#loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--scene);
+  font-size:12.5px;color:var(--text-3);z-index:5}
+#loading[hidden]{display:none}
+
+/* ---------- buttons ---------- */
+.btn{display:block;width:100%;text-align:left;padding:9px 12px;margin-bottom:6px;
+  font-family:inherit;font-size:14px;font-weight:500;background:var(--bg);color:var(--text);
+  border:1px solid var(--rule-soft);border-radius:8px;cursor:pointer;line-height:1.26;
+  transition:background .14s,border-color .14s;letter-spacing:-.006em}
+.btn:hover{border-color:var(--text-3)}
+.btn.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:600}
+.btn.run{background:var(--text);border-color:var(--text);color:var(--bg);text-align:center;
+  font-size:14.5px;font-weight:600;padding:12px}
+.btn.run:hover{opacity:.86}
+.btn.run[disabled]{opacity:.4;cursor:default}
+.btn .sub{display:block;font-size:10.5px;font-weight:400;color:var(--text-3);margin-top:2px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.btn.on .sub{color:inherit;opacity:.7}
+.btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.grp{margin-bottom:18px}
+.grp:last-child{margin-bottom:0}
+.grp > .gl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  margin:0 0 8px;font-weight:600}
+
+/* ---------- oscilloscope ---------- */
+.scope{margin-top:16px;background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 14px}
+.scope-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  margin-bottom:12px}
+.scope-h h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin:0}
+.scope-h .note{font-size:11.5px;color:var(--text-3);
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+#scopecv{display:block;width:100%;height:238px;border-radius:8px;background:var(--bg)}
+.scope-k{display:flex;gap:20px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--text-3);
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.scope-k i{display:inline-block;width:18px;height:2px;vertical-align:3px;margin-right:7px}
+
+/* ---------- chain strip ---------- */
+.chainbar{margin-top:16px;background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 18px}
+.chainbar h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin:0 0 13px}
+.cflow{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px}
+.cb{flex:1 0 78px;background:var(--bg);border-radius:7px;padding:9px 5px;text-align:center;
+  transition:background .18s,color .18s}
+.cb .n{font-size:9.5px;color:var(--text-3);display:block;font-weight:600;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.cb .t{font-size:11.5px;font-weight:600;display:block;margin-top:3px;line-height:1.18}
+.cb.lit{background:var(--text);color:var(--bg)}
+.cb.lit .n{color:inherit;opacity:.6}
+.cb.done{background:var(--rule-soft)}
+.cb.ai{box-shadow:inset 0 0 0 2px var(--text)}
+
+/* ---------- side column ---------- */
+.side{display:flex;flex-direction:column;gap:16px}
+.readout{background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 18px}
+.readout h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin:0 0 12px}
+.rrow{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:12.5px}
+.rrow span{color:var(--text-3)}
+.rrow b{font-weight:600;font-variant-numeric:tabular-nums;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
+.readout hr{border:none;border-top:1px solid var(--rule-soft);margin:10px 0}
+#bar{margin-top:12px;height:3px;background:var(--rule-soft);border-radius:2px;overflow:hidden}
+#barfill{height:100%;width:0;background:var(--text);border-radius:2px}
+
+/* ---------- event log ---------- */
+.logcard{background:var(--bg-alt);border-radius:var(--radius);display:flex;flex-direction:column;
+  min-height:280px}
+.logcard .lh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding:16px 18px 10px}
+.logcard h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin:0}
+.logcard .clear{font-size:11px;color:var(--link);cursor:pointer;background:none;border:none;
+  padding:0;font-family:inherit}
+.logcard .clear:hover{text-decoration:underline}
+#log{flex:1;overflow-y:auto;max-height:430px;padding:0 18px 16px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;
+  line-height:1.5}
+.le{display:grid;grid-template-columns:62px 46px 1fr;gap:9px;padding:5px 0;
+  border-top:1px solid var(--rule-soft)}
+.le:first-child{border-top:none}
+.le .t{color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.le .k{font-weight:600;letter-spacing:.03em}
+.le .m{color:var(--text-2)}
+.le .m b{color:var(--text);font-weight:600}
+.le.trig .k{color:var(--src)}
+.le.rx .k{color:var(--m2)}
+.le.cls .k{color:var(--warn)}
+.le.dsp .k{color:var(--text)}
+.le.out .k{color:var(--ok)}
+.le.a .k{color:var(--spk)}
+.le.warn .k{color:var(--crit)}
+.le.hw .k{color:var(--text-3)}
+.logempty{color:var(--text-3);padding:14px 0;font-family:inherit;font-size:13px}
+
+/* ---------- info ---------- */
+.infocard{background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 20px}
+.infocard > h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin:0 0 12px}
+#info .tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+#info h4{margin:0 0 9px;font-size:19px;font-weight:600;letter-spacing:-.018em;line-height:1.18}
+#info p{margin:0 0 11px;font-size:14px;color:var(--text-2);line-height:1.5}
+#info p:last-child{margin-bottom:0}
+#info dl{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--rule-soft);
+  display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.8px}
+#info dt{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);
+  padding-top:3px;font-weight:600}
+#info dd{margin:0;color:var(--text-2)}
+#info .warn{background:var(--bg);border-radius:8px;box-shadow:inset 3px 0 0 var(--warn);
+  padding:12px 14px;margin-top:14px;font-size:13px;color:var(--text-2);line-height:1.48}
+#info .warn b{color:var(--warn);display:block;margin-bottom:4px;font-size:10px;
+  letter-spacing:.05em;text-transform:uppercase}
+
+/* ---------- prose ---------- */
+.notes{max-width:78ch;margin:60px auto 0;color:var(--text-2);font-size:16px;line-height:1.55}
+.notes h3{font-size:21px;margin:36px 0 10px;color:var(--text);font-weight:600;letter-spacing:-.018em}
+.notes p{margin:0 0 14px}
+.notes ul{margin:0 0 14px;padding-left:22px}
+.notes li{margin-bottom:8px}
+.notes code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  font-size:.86em;background:var(--bg-alt);padding:2px 6px;border-radius:5px}
+.tblwrap{overflow-x:auto;margin:20px 0 28px;border-top:1px solid var(--text);
+  border-bottom:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:560px}
+th{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);
+  text-align:left;padding:12px 14px 11px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid var(--rule-soft);vertical-align:top;
+  font-size:14.5px;line-height:1.45;color:var(--text-2)}
+tr:last-child td{border-bottom:none}
+td.name{font-weight:600;color:var(--text)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:13px}
+
+footer{max-width:1720px;margin:70px auto 0;padding:30px 34px 0;border-top:1px solid var(--rule);
+  font-size:13px;color:var(--text-3);line-height:1.65}
+footer p{margin:0 0 12px;max-width:82ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:700px){
+  .hdr{padding:34px 20px 22px}.shell{padding:0 20px 70px}
+  #scopecv{height:200px}
+}
+</style>
+
+<header class="hdr">
+  <p class="eb">Prototype bench · Smart India Hackathon 2026 · Problem Statement 26052 · DRDO</p>
+  <h1>ZEIT Prototype Bench</h1>
+  <p>The complete prototype in three dimensions — the three-microphone headset, the audio interface, the Raspberry&nbsp;Pi&nbsp;5 that runs the engine, and the communication unit the result is delivered to. No development computer sits in the signal path. Fire a shot and the signal is traced through every stage: the wavefronts propagate, the microphones respond, the eleven blocks execute, and every event is written to a timestamped log that stays on screen.</p>
+</header>
+
+<div class="shell">
+<div class="stage">
+
+  <!-- controls -->
+  <div class="card">
+    <h3>Controls</h3>
+    <div class="pbody">
+      <div class="grp">
+        <p class="gl">Run</p>
+        <button class="btn run" id="fire">Fire a shot</button>
+        <button class="btn" id="speed">Rate — 100× slow<span class="sub">13 s for 130 ms</span></button>
+      </div>
+      <div class="grp">
+        <p class="gl">Camera</p>
+        <button class="btn on" data-view="system">System overview</button>
+        <button class="btn" data-view="headset">Headset<span class="sub">3 microphones · driver</span></button>
+        <button class="btn" data-view="iface">Audio interface<span class="sub">UMC202HD</span></button>
+        <button class="btn" data-view="pi">Raspberry Pi 5<span class="sub">engine · cooler · PSU</span></button>
+        <button class="btn" data-view="field">Field<span class="sub">source at 30 m</span></button>
+      </div>
+      <div class="grp">
+        <p class="gl">Display</p>
+        <button class="btn on" data-tog="waves">Wavefronts</button>
+        <button class="btn on" data-tog="flow">Signal flow</button>
+        <button class="btn on" data-tog="cables">Cabling</button>
+        <button class="btn on" data-tog="labels">Labels</button>
+        <button class="btn" data-tog="explode">Exploded view</button>
+        <button class="btn on" data-tog="spin">Slow orbit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- centre -->
+  <div>
+    <div id="viewport">
+      <div id="loading">building geometry…</div>
+      <div id="labels"></div>
+      <div id="stagelab">System overview</div>
+      <div id="hint">drag to orbit · scroll to zoom · right-drag to pan · click a part</div>
+    </div>
+
+    <div class="scope">
+      <div class="scope-h">
+        <h3>Signal monitor — 0 to 200 ms</h3>
+        <span class="note" id="scopenote">idle</span>
+      </div>
+      <canvas id="scopecv" width="1400" height="476"></canvas>
+      <div class="scope-k">
+        <span><i style="background:var(--m1)"></i>MIC 1 — voice + noise</span>
+        <span><i style="background:var(--m2)"></i>MIC 2 — reference</span>
+        <span><i style="background:var(--ok)"></i>ENGINE OUT — transmitted</span>
+        <span id="irtnote"></span>
+      </div>
+    </div>
+
+    <div class="chainbar">
+      <h3>Lane B signal chain — 25.3 ms budget</h3>
+      <div class="cflow" id="cflow">
+        <div class="cb" data-b="1"><span class="n">01</span><span class="t">Audio in</span></div>
+        <div class="cb" data-b="2"><span class="n">02</span><span class="t">Aux-IVA</span></div>
+        <div class="cb" data-b="3"><span class="n">03</span><span class="t">Normalise</span></div>
+        <div class="cb" data-b="4"><span class="n">04</span><span class="t">STFT+ERB</span></div>
+        <div class="cb" data-b="5"><span class="n">05</span><span class="t">Classifier</span></div>
+        <div class="cb" data-b="6"><span class="n">06</span><span class="t">BMRI</span></div>
+        <div class="cb ai" data-b="7"><span class="n">07</span><span class="t">GTCRN</span></div>
+        <div class="cb" data-b="8"><span class="n">08</span><span class="t">Deep filter</span></div>
+        <div class="cb" data-b="9"><span class="n">09</span><span class="t">Voice guard</span></div>
+        <div class="cb" data-b="10"><span class="n">10</span><span class="t">Residual</span></div>
+        <div class="cb" data-b="11"><span class="n">11</span><span class="t">ISTFT</span></div>
+        <div class="cb" data-b="12"><span class="n">→</span><span class="t">Vocoder</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- side -->
+  <div class="side">
+    <div class="readout">
+      <h3>Run state</h3>
+      <div class="rrow"><span>state</span><b id="r-ev">idle</b></div>
+      <div class="rrow"><span>t from trigger</span><b id="r-t">— ms</b></div>
+      <hr>
+      <div class="rrow"><span>crack arrives</span><b>45.2 ms</b></div>
+      <div class="rrow"><span>blast arrives</span><b>87.5 ms</b></div>
+      <div class="rrow"><span>look-ahead won</span><b>42.3 ms</b></div>
+      <hr>
+      <div class="rrow"><span>Δ mic 2 → mic 1</span><b id="r-d">— ms</b></div>
+      <div class="rrow"><span>lane B elapsed</span><b id="r-lb">— / 25.3 ms</b></div>
+      <div class="rrow"><span>lane A elapsed</span><b id="r-la">— / 1.0 ms</b></div>
+      <div id="bar"><div id="barfill"></div></div>
+    </div>
+
+    <div class="logcard">
+      <div class="lh"><h3>Event log</h3><button class="clear" id="clearlog">clear</button></div>
+      <div id="log"><p class="logempty">No run yet. Press <strong>Fire a shot</strong> — every event is timestamped and kept here.</p></div>
+    </div>
+
+    <div class="infocard" id="info">
+      <h3>Selected part</h3>
+      <div id="infobody"></div>
+    </div>
+  </div>
+</div>

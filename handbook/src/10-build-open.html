@@ -1,0 +1,167 @@
+<!-- ============ 16 BUILD ============ -->
+<section id="build">
+  <div class="sec-head"><span class="sec-num">16</span><h2>Build order and risks</h2></div>
+  <p class="sec-sub">What each stage produces, what blocks what, and the two stages that need no hardware and can start today.</p>
+
+  <div class="col">
+    <pre><code>  STAGE 0  foundations ─────────────────────────┐
+      0a toolkit            BUILT                │
+      0b baselines          READY TO START       │
+      0c noise corpora      READY TO START       │
+      0d speech corpus      DECIDE TODAY         │
+                                                 │
+  STAGE 1  real reference ◄── needs 0a           │
+      range trip → calibrate → IR → measure → FREEZE
+                          │                      │
+  STAGE 2  baseline collapse ◄── needs 0b + 0c ──┘
+      normalisation fix → impulsive grid → latency chart
+                          │   ◄── the finding the story rests on
+  STAGE 3  synthetic generator ◄── needs 1 + 2
+      build → measure with the SAME engine → compare vs holdout
+                          ▼   dataset-quality claim proven here
+  STAGE 4  training data ◄── needs 3 + 0d
+      mix at SNRs → augment → convolve with RIRs
+  STAGE 5  model ◄── needs 4
+      two-path architecture → train → evaluate on the grid
+  STAGE 6  edge ◄── needs 5
+      prune → quantize → deploy → measure MMAC, latency, WATTS
+  STAGE 7  the extra experiment ◄── needs 6
+      α-stable vs prune-ability</code></pre>
+
+    <p><strong>Stage 2 does not wait for the range trip.</strong> It needs only public data, it can start today, and it produces the two findings the whole project argues from — the baseline-collapse table and the latency chart.</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Stage</th><th>Produces</th><th>Blocked by</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td class="name">0a · Toolkit</td><td>21 CLI tools, self-test, run sheet, playback signals</td><td>—</td><td class="ok">Built. Waiting only on the microphone</td></tr>
+      <tr><td class="name">0b · Baselines</td><td>GTCRN and DeepFilterNet2 running from official code, one published number each reproduced</td><td class="ok">Nothing</td><td class="part">Ready to start. Everything in Stage 2 is "run the published method on data it was never tested on" — you need it running first</td></tr>
+      <tr><td class="name">0c · Noise corpora</td><td>DEMAND, MUSAN, UrbanSound8K, NOISEX-92, ESC-50 downloaded and tagged</td><td class="ok">Nothing</td><td class="part">Ready to start</td></tr>
+      <tr><td class="name">0d · Speech corpus</td><td>The clean half of every training pair</td><td class="ok">A decision, already answered in the v0 plan</td><td class="no">Blocks all of Stage 4 — decide today</td></tr>
+      <tr><td class="name">1 · Real reference</td><td><code>features.json</code> per take: the acoustic signature, per-condition mean <em>and standard deviation</em>. That σ is the tolerance Stage 3 is judged against</td><td>0a + hardware</td><td class="no">Trip not taken</td></tr>
+      <tr><td class="name">2 · Baseline collapse</td><td>The impulsive evaluation grid and the latency chart</td><td>0b + 0c only</td><td class="part">Start now — no hardware, no range data</td></tr>
+      <tr><td class="name">3 · Synthetic generator</td><td>The dataset-quality claim — the thing shown to judges</td><td>1 + 2</td><td class="no">Not started</td></tr>
+      <tr><td class="name">4 · Training data</td><td>Mixtures at SNRs, augmented, convolved with a spread of RIRs</td><td>3 + 0d</td><td class="no">Not started</td></tr>
+      <tr><td class="name">5 · Model</td><td>The two-path architecture trained and evaluated on the Stage 2 grid</td><td>4</td><td class="no">Not started</td></tr>
+      <tr><td class="name">6 · Edge</td><td>Pruned, quantised, deployed, with MMAC/s, ms/frame and watts measured on the real board</td><td>5</td><td class="no">Not started</td></tr>
+      <tr><td class="name">7 · Extra experiment</td><td>α-stable versus Gaussian prune-ability curves</td><td>6</td><td class="no">Not started</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>Two things to do out of order</h3>
+    <ul>
+      <li><strong>Implement IRT and WLPS before the range trip.</strong> About fifty lines each, no hardware, no range data, no trained model. If the range trip slips, you still have a research contribution.</li>
+      <li><strong>Build the acoustic-path measurement tool before the hardware exists.</strong> Sweep → deconvolution → impulse response. The hardware side will need it the day the first prototype exists, and <code>ir_extract.py</code> already does most of it.</li>
+    </ul>
+
+    <h3>Hardware-matched training — the real co-design argument</h3>
+    <p>Once a prototype headset exists: measure its <strong>primary path</strong> (reference mic → error mic) and <strong>secondary path</strong> (speaker → error mic) by log sweep and deconvolution, feed those measured impulse responses into the mixing engine, and retrain. The model is then matched to <em>your specific hardware</em>, and no competing team can replicate it without your physical device. That is what "hardware-software co-design" actually means, and it directly serves the PS's prototype-demonstration deliverable.</p>
+
+    <h3>The risk register</h3>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td class="name">No working prototype by the finale</td><td class="no">Critical</td><td>The single largest risk. Get <em>anything</em> running end-to-end early, even badly — passthrough C++ on a Raspberry Pi with a placeholder model beats a perfect design</td></tr>
+      <tr><td class="name">Range access denied</td><td class="no">High</td><td>Balloons, firecracker size sweeps and a whip crack need no range. A starter pistol from the sports department gives a real cartridge and real muzzle blast</td></tr>
+      <tr><td class="name">Range recordings unusable — wind, clipping, no calibration</td><td class="no">Critical</td><td>Tier 0 discipline; run <code>validate.py</code> after the first three shots of every block; two recorders always</td></tr>
+      <tr><td class="name"><code>validate.py</code> crashes at the range</td><td class="no">Critical</td><td>Confirmed on Windows (audit F11). One-line fix, and re-run <code>selftest.py</code> on the actual range laptop before the day</td></tr>
+      <tr><td class="name">Receiver sums both transmitters to mono</td><td class="no">Critical</td><td>The whole two-mic plan collapses. Test the day before, not at the range</td></tr>
+      <tr><td class="name">Independent radio latency per transmitter</td><td class="part">High</td><td>The look-ahead number becomes fiction. Measure the fixed offset by clapping with both transmitters co-located, and subtract it</td></tr>
+      <tr><td class="name">Mic 2 picks up the voice</td><td class="no">High</td><td>The filter cancels the speech. Type B takes measure this directly, before any shooting</td></tr>
+      <tr><td class="name">Hardware not ready in time</td><td class="part">High</td><td>iks|PANDAR measured ANC-headphone paths let Lane A proceed with zero hardware</td></tr>
+      <tr><td class="name">GTCRN training unstable</td><td class="part">Medium</td><td>DeepFilterNet2 fallback — larger ecosystem, more reference implementations</td></tr>
+      <tr><td class="name">Latency target missed</td><td class="part">Medium</td><td>Reduce hop size, quantise harder, drop the neural core to 16 kHz</td></tr>
+      <tr><td class="name">Synthetic fails to match real</td><td class="ok">Low</td><td>Report the mismatch as a finding. Honest error bounds beat claimed perfection</td></tr>
+      <tr><td class="name">α-stable augmentation does not help</td><td class="ok">Low</td><td>An honest negative result with an explanation, reported next to the Gaussian baseline</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>The next seven days, in order of what unblocks the most</h3>
+    <ol class="steps">
+      <li><span class="h">Fix the encoding bug and re-run the self-test on the range laptop</span>
+        <p>Twenty minutes. Until this passes on the actual machine going to the range, the range trip is at risk. Audit F11.</p></li>
+      <li><span class="h">Restore the two-lane split at the top of the architecture</span>
+        <p>An afternoon of editing, no new work. It fixes the Mic 3 wiring error, makes the latency budget honest, and is a free differentiator on the pitch slide. Audit F2.</p></li>
+      <li><span class="h">Decide the clean speech corpus and add Lombard content</span>
+        <p>One decision, already answered in the v0 plan. It unblocks all of Stage 4, which currently blocks Stages 5, 6 and 7. Audit F8.</p></li>
+      <li><span class="h">Re-anchor every target number to a published figure</span>
+        <p>DNSMOS SIG/BAK, the PESQ and STOI curves against input SNR, and the SNR definition. Then rewrite the look-ahead caption. All four are claim risks and all four are edits, not experiments. Audit F1, F3, F5.</p></li>
+      <li><span class="h">Write the rate chain down and commit to a frame size</span>
+        <p>96 → 48 → 16 kHz, with the anti-alias filters and their latency counted. Then choose 20/10 ms or 32/16 ms in writing. Audit F6.</p></li>
+      <li><span class="h">Implement IRT and WLPS</span>
+        <p>About fifty lines each. No hardware, no range data, no trained model. The cheapest original contribution available.</p></li>
+      <li><span class="h">Then start Stage 2 — the baseline collapse</span>
+        <p>No hardware and no range data needed, and it produces the two findings the whole story rests on. Everything above is a week; this is the month.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 17 OPEN ============ -->
+<section id="open">
+  <div class="sec-head"><span class="sec-num">17</span><h2>Open questions</h2></div>
+  <p class="sec-sub">What is genuinely undecided, what is unverified, and what is missing from the research. Kept explicit so nobody discovers it on stage.</p>
+
+  <div class="col">
+    <h3>Decisions nobody has made yet</h3>
+  </div>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Item</th><th>Blocks</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Clean speech corpus</td><td class="no">All of Stage 4</td><td>The v0 plan already answers it. This is a decision, not research</td></tr>
+      <tr><td class="name">Target board</td><td class="no">The real compute budget, and every latency claim</td><td>DeepFilterNet2 proves a Raspberry Pi 4 works. A Jetson is probably unnecessary — but say it only after measuring</td></tr>
+      <tr><td class="name">Microphone models</td><td class="no">Whether Mic 2 survives a close blast</td><td>Their maximum SPL is the binding constraint at L1</td></tr>
+      <tr><td class="name">Exact headset geometry</td><td class="part">Mic spacing, and the HRTF simulation</td><td>With the hardware side</td></tr>
+      <tr><td class="name">Frame size — 20/10 or 32/16 ms</td><td class="part">The latency budget and the ERB band mapping</td><td>Audit F6. Both defensible; claiming both is not</td></tr>
+      <tr><td class="name">Whether the LMS residual earns its latency</td><td class="ok">Nothing</td><td>Measure it, then decide</td></tr>
+      <tr><td class="name">Whether Aux-IVA is worth its cost on our geometry</td><td class="ok">Nothing</td><td>Partly answered: H-GTCRN reports 0.20 MMAC/s per iteration and negligible parameters. Budget for iteration count and channel scaling</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>What is missing from the research, and what it blocks</h3>
+    <ol>
+      <li><strong>Gunshot and blast acoustics — deliberately ours, measured not cited.</strong> That decision stands and is a genuine differentiator. But three narrow things do not come from measuring: <em>(a)</em> one external reference figure for expected peak SPL and duration by source type, so a 118 dB reading can be told apart from a saturating capsule; <em>(b)</em> a citation for the Friedlander functional form already in <code>make_test_data.py</code>, which is currently the one physical assumption under the whole generator with no source behind it; <em>(c)</em> a basis for extrapolating beyond the measured envelope. Get those and the measured data becomes <em>stronger</em>, because it can be shown to agree with — or defensibly differ from — a published expectation.</li>
+      <li><strong>Outdoor sound propagation — nothing yet.</strong> Recording at two distances specifically so the generator can be tested on propagation, with no source on spreading loss, air absorption versus temperature and humidity, or ground effect. Blocks generator step 3.1.</li>
+      <li><strong>Room impulse response simulation — nothing yet.</strong> Stage 4 calls for a wide spread of RIRs; we have one measured range IR and no method for simulating the rest.</li>
+      <li><strong>Shao &amp; Nikias is cited second-hand.</strong> FLOM is scheduled to ship on the device as block 3, but the paper is known only through Yuan et al. Get the primary source before implementing a statistic in C++ from a paraphrase.</li>
+      <li><strong>Two papers in the folder are uncited</strong> — Le Roux on SI-SDR, which fixes the metrics argument, and DNSMOS P.835, which is still credited to a screenshot.</li>
+    </ol>
+
+    <h3>What is unverified in this document</h3>
+    <div class="callout amber">
+      <span class="lb">Read this before putting any number on a slide</span>
+      <p>Every published figure here was read from the converted Markdown copies in <code>docs/research/</code>, and table structure did not always survive that conversion cleanly. In particular, <strong>verify Deep ANC's Table 1 cells</strong> — the −11.07 / −9.60 / −7.93 NMSE figures anchoring the latency argument — against the original PDF, and confirm you are reading the engine-noise linear row.</p>
+      <p>No claim in this document has been reproduced experimentally by us. GTCRN's parameter count is reported two different ways by two sources; both are quoted deliberately. And the sizing, allocation and timing figures for the range trip are plans, not outcomes.</p>
+      <p>The project's own rule applies: <strong>if a number in the notes disagrees with the paper, the paper is right.</strong></p>
+    </div>
+
+    <h3>What is already right — protect these from any rewrite</h3>
+    <div class="keeps">
+      <div class="keep-item"><p class="h">The robust-normalisation argument</p><p>RMS is a second moment; for α-stable noise with α &lt; 2 the variance is infinite. A real, explainable defect in the closest prior system, with the fix cited inside another paper you already hold.</p></div>
+      <div class="keep-item"><p class="h">Freezing the measurement engine, not just the data</p><p>SHA-256 of <code>analyze.py</code>, <code>dsp.py</code> and <code>wavio.py</code> alongside every WAV. Almost nobody does this. It answers "how do we know your reference did not drift" before it is asked.</p></div>
+      <div class="keep-item"><p class="h">Assigning fit/holdout at planning time</p><p>Written into the metadata CSV before any data exists. Choosing it afterwards is precisely the circularity it prevents — F12 is a sizing fix, not an argument against the discipline.</p></div>
+      <div class="keep-item"><p class="h">The B + C ≈ A additivity check</p><p>Voice-only plus gun-only against both-at-once, all three real recordings. Tests additive mixing, the clipping model and SNR bookkeeping at once, for the cost of discipline at the range.</p></div>
+      <div class="keep-item"><p class="h">Refusing lossy audio — with measurements</p><p>Mid-band within 0.1 dB, but the 32 kHz band gone at −83 dB and the centroid shifted 248 Hz against a real σ of 1.43 Hz. A 173× shift. That is how to justify a format decision.</p></div>
+      <div class="keep-item"><p class="h">Licence discipline</p><p>PFFFT over FFTW on GPL grounds; no libsndfile so a broken native library cannot strand you at the range. Both correct, and both worth saying out loud to this sponsor.</p></div>
+      <div class="keep-item"><p class="h">The gap analysis itself</p><p>Naming where each published method stops, rather than summarising what it does, is what separates this from every other entry. The α-stable clipping inversion is the single best idea in the pack.</p></div>
+      <div class="keep-item"><p class="h">The real-time rules</p><p>No allocation, no locks, no exceptions, no logging in the audio callback — written down before a line of C++ exists. Student teams almost never do this, and the bug it prevents is nearly undebuggable.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>This document summarises <code>docs/</code>; it does not replace it. Where the two disagree, <code>docs/</code> is authoritative and this is stale. Findings referenced as F1–F13 come from the ZEIT Architecture Audit. Numbers attributed to papers were read from the converted copies in <code>docs/research/</code> and should be checked against the originals before publication. Competition figures come from published SIH programme material and should be confirmed with your SPOC. The DRDO section is informed inference about evaluation posture drawn from TDF and iDEX programme documents, MIL-STD-1474 and ANSI/ASA S3.2 — not a published SIH rubric.</p>
+  <p>ZEIT · SIH 2026 · PS 26052 · 6 September 2026</p>
+</footer>
+
+</div>

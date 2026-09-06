@@ -1,0 +1,158 @@
+<!-- ============ 06 HARDWARE ============ -->
+<section id="hardware">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Hardware and the capture rig</h2></div>
+  <p class="sec-sub">One range trip, no retry. Everything here is built so that a problem is found <em>at the range</em>, while a re-shoot is still possible.</p>
+
+  <div class="col">
+    <h3>Why real data at all</h3>
+    <p>The real recordings are <strong>not the training set</strong>. They are the <em>reference</em> against which the synthetic generator is validated. The network trains on generated audio, which is effectively unlimited — the limit is compute, not recordings. The real set only has to be large enough to establish a <strong>tolerance</strong>.</p>
+    <pre><code>real gunshots (~48–60 events)  ──►  validate the generator
+                                         │
+                                         ▼
+                                synthetic generator
+                                         │
+                                         ▼
+              unlimited noise  ──+──  clean speech corpus
+                                 │
+                                 ▼
+                        training mixtures  ──►  the model</code></pre>
+
+    <h3>Recording settings, and why each one is not negotiable</h3>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Setting</th><th>Value</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Sample rate</td><td class="num">96 kHz</td><td>Gives content to 48 kHz. A gunshot has real energy above 20 kHz; recording at 44.1 or 48 kHz discards it permanently. Also: rise time is 10–50 µs and one sample at 96 kHz is 10.4 µs, so the leading edge is resolved by only a few samples</td></tr>
+      <tr><td class="name">Bit depth</td><td class="num">24-bit</td><td>About 144 dB of theoretical range. A gunshot's <span class="term" data-t="crest factor">crest factor</span> is enormous; at 16-bit the quiet detail sits in the quantisation floor</td></tr>
+      <tr><td class="name">Format</td><td>Uncompressed WAV</td><td>Lossy codecs smear transients — the exact thing being measured</td></tr>
+      <tr><td class="name">Limiter / AGC</td><td class="no">OFF</td><td>Compresses the peak. The peak is the single number the whole trip exists to obtain</td></tr>
+      <tr><td class="name">Low-cut / HPF</td><td class="no">OFF</td><td>Blast waves have real low-frequency content. Use a windshield, not a filter</td></tr>
+      <tr><td class="name">Channels</td><td class="num">2, staggered gain</td><td>One gain setting cannot span 100 dB in a single event</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>The staggered-gain array</h3>
+    <p>Set the gain for the blast and the mechanical detail disappears into the noise floor; set it for the mechanical detail and the blast hits the rails. So two channels are recorded 18–24 dB apart in sensitivity, sample-aligned:</p>
+    <ul>
+      <li><strong>ch1 HOT</strong> — captures the reverberation tail and the quiet detail. <em>Expected to clip on the blast.</em></li>
+      <li><strong>ch2 COLD</strong> — its only job is to catch the peak unclipped.</li>
+    </ul>
+    <p><code>validate.py --array</code> understands this: clipping on the hot channel is <em>not</em> a failure as long as the cold channel holds the peak. Without that flag every take would fail and the operator would learn to ignore warnings — which is the real failure mode that flag exists to prevent.</p>
+
+    <h3>The signal chain, and the one constraint software cannot fix</h3>
+    <pre><code>mic --XLR--&gt; [pad] --&gt; preamp / USB interface --&gt; laptop
+                            │
+                      +48 V phantom: a condenser needs it, a dynamic does not</code></pre>
+    <p><strong>Microphone maximum SPL is the binding constraint.</strong> A 3.5 mm electret tops out around 100–120 dB SPL; a blank pistol at 1 m is 140–155 dB. Once the capsule or its internal FET saturates, no pad and no gain change downstream recovers the waveform. Only distance helps. Check the microphone's published "Max SPL" against the source before trusting any recording of it.</p>
+
+    <h4>Setting gain without live fire</h4>
+    <p>Gain cannot be adjusted mid-string, and an averaging meter under-reads a gunshot peak by 30 dB or more. The procedure:</p>
+    <ol>
+      <li>Gain near minimum, pad ON.</li>
+      <li>Fire a <strong>proxy</strong> — balloon pop or firecracker — at the real distance and angle.</li>
+      <li>Read the true sample peak with <code>monitor.py</code> or <code>record.py --meter</code>, which shows peak with a hold rather than an average.</li>
+      <li>Target <strong>−18 to −12 dBFS</strong> on the proxy.</li>
+      <li>Back off further, because the real source is louder than the proxy.</li>
+    </ol>
+    <p>Too little gain costs noise floor. Too much destroys data permanently. At 24-bit, a −20 dBFS peak is perfectly fine.</p>
+
+    <h3>The two-microphone capture plan — three take types</h3>
+    <p>Beyond the staggered-gain array, the capture is designed as a genuine <strong>primary + reference pair</strong>: one microphone with the speaker, one near the gun. Three take types, each doing a different job, and the order matters.</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Take</th><th>Mic 1 (at the speaker)</th><th>Mic 2 (at the gun)</th><th>What it is for</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Type C — gun only</td><td>The gunshot as heard at the speaker's position</td><td>The gunshot direct at the source</td><td><strong>The most valuable take.</strong> Mic 1 here is exactly the noise signal to mix with clean speech — the real thing, with real propagation and real range acoustics already baked in. Together the two channels also give the source-to-speaker transfer function, measured rather than modelled</td></tr>
+      <tr><td class="name">Type B — voice only</td><td>Clean speech in the real acoustic environment</td><td class="ok">Should be near silent</td><td>Clean targets recorded in the actual environment — and a <strong>direct measurement of Widrow's isolation constraint</strong>. If Mic 2 picks up the voice here, the geometry is wrong and the whole approach fails. Better to find that out before the shooting starts</td></tr>
+      <tr><td class="name">Type A — both at once</td><td>Voice + gunshot</td><td>Gunshot</td><td>The real-world case, and <strong>evaluation data only</strong> — never training data, because the clean target cannot be extracted from it. That is the problem being solved, not an input to it</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>Training pairs are built from <strong>B mixed with C</strong>, where the clean target is known exactly because we made the mixture. Type A is what the finished system is tested against — data never trained on, recorded as it really happens. That is a cleaner experimental design than most of the papers manage; they mix simulated noise and evaluate on simulated mixtures.</p>
+
+    <div class="callout good">
+      <span class="lb">The second validation loop — genuinely publishable-shaped</span>
+      <p>Sound pressures add linearly in air, so at Mic 1: <strong>Type B (voice only) + Type C (gun only) ≈ Type A (both)</strong>. All three sides are real recordings. Run <code>analyze.py</code> on <code>B + C</code> and on <code>A</code>, compare the 16 metrics, and you test three things at once:</p>
+      <p><strong>1.</strong> Is additive mixing valid here? Everyone in speech enhancement assumes it; almost nobody checks it with real paired recordings. <strong>2.</strong> Does the clipping model work? The mic saturates on the gunshot, so B+C will <em>not</em> equal A wherever clipping occurred — and the size of that difference <em>is</em> a measurement of the saturation nobody models. <strong>3.</strong> Is the SNR bookkeeping right? The levels of B and C are known independently.</p>
+      <p>It costs nothing extra — just the discipline of recording all three types at the same geometry, without moving anything between blocks 5 and 6. Do it at a minimum of two distances so the result is not a single point.</p>
+    </div>
+
+    <h3>What must be verified before range day</h3>
+    <p>Six checks, all of which can silently ruin the trip if skipped. Do them the day before, not at the range.</p>
+    <ol>
+      <li><strong>Are the two channels actually different?</strong> When the wireless kit was tested earlier with a single transmitter, the two channels came back <em>bit-identical</em> — one mono source duplicated. With two transmitters they should differ, but that must be proved. Speak into one transmitter only and check the channels diverge. If they do not, the receiver is summing to mono and the entire two-mic plan collapses to one microphone with extra steps.</li>
+      <li><strong>Are the channels sample-aligned?</strong> Put both transmitters in the same place, clap, and measure the sample offset. It should be near zero. Whatever it is, that is the fixed radio offset to subtract from every later measurement. Repeat at the end of the session to check for drift.</li>
+      <li><strong>Gain must be set per channel.</strong> Mic 2 sits near a 140–155 dB source, Mic 1 near a 70–85 dB voice. That is a 60–80 dB difference; they cannot share a setting. Log both and never touch either once shooting starts — a gain change voids the calibration for that channel.</li>
+      <li><strong>Calibration is per channel.</strong> Two channels, two gains, two microphones: two calibration tones, two scale factors.</li>
+      <li><strong>Wireless range and interference.</strong> Check the link holds at the full distance before committing to that geometry. Any dropout on the reference channel destroys the alignment for that take.</li>
+      <li><strong>Run the self-test on the actual range laptop.</strong> <code>selftest.py</code> must print <strong>ALL CHECKS PASSED</strong>. On Windows this currently fails for an encoding reason unrelated to the audio — see audit F11 — so verify it on the machine that is actually going.</li>
+    </ol>
+
+    <h3>The session plan</h3>
+    <p>Ordered by what cannot be redone. Anything irreplaceable happens while there is still time and daylight; anything that can be shortened sits at the end.</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>#</th><th>Block</th><th>Time</th><th>Tool</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td class="name">Radio offset — both transmitters together, clap ×5</td><td class="num">—</td><td>Do first <em>and</em> last</td></tr>
+      <tr><td class="num">1</td><td class="name">Rig, windshield, sandbag the stand, Bluetooth OFF</td><td class="num">25 min</td><td>—</td></tr>
+      <tr><td class="num">2</td><td class="name">Calibration tone ×3 + SPL meter reading, each channel</td><td class="num">8 min</td><td><code>calibrate.py</code></td></tr>
+      <tr><td class="num">3</td><td class="name">Noise floor, 60 s, mic covered</td><td class="num">3 min</td><td><code>validate.py</code></td></tr>
+      <tr><td class="num">4</td><td class="name">Range impulse response — sweep ×2, balloon ×2</td><td class="num">18 min</td><td><code>ir_extract.py</code></td></tr>
+      <tr><td class="num">5</td><td class="name">Gain set on a proxy pop</td><td class="num">10 min</td><td><code>record.py --meter</code></td></tr>
+      <tr><td class="num">6</td><td class="name">Type B — voice only, ~15 sentences</td><td class="num">14 min</td><td>Clean targets + the isolation check</td></tr>
+      <tr><td class="num">7</td><td class="name">Core reference block — 15 shots, distance 1</td><td class="num">15 min</td><td><code>capture.py</code></td></tr>
+      <tr><td class="num">8</td><td class="name">Type A — gun + voice, distance 1, 15 shots</td><td class="num">15 min</td><td>Evaluation + additivity test</td></tr>
+      <tr><td class="num">9</td><td class="name">Second distance — 12 shots</td><td class="num">12 min</td><td>Propagation, second point</td></tr>
+      <tr><td class="num">10</td><td class="name">Second source — 12 shots</td><td class="num">12 min</td><td>Energy scaling</td></tr>
+      <tr><td class="num">11</td><td class="name">Off-axis angle — 9 shots</td><td class="num">9 min</td><td>Directivity</td></tr>
+      <tr><td class="num">12</td><td class="name">Mechanical, dry, no live fire, close mic high gain</td><td class="num">12 min</td><td>The layer the blast buries</td></tr>
+      <tr><td class="num">13</td><td class="name">Ambience 5 min</td><td class="num">6 min</td><td>Stationary background</td></tr>
+      <tr><td class="num">14</td><td class="name">Final validate sweep, contact sheet, <code>status</code>, backup</td><td class="num">12 min</td><td><code>quicklook.py</code>, <code>session.py</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p><strong>If time runs short, cut from the bottom</strong> — off-axis first, then the second source, then shorten speech and mechanical. Never cut calibration, the impulse response, or the core reference block. Without those three the trip produces nothing usable no matter how many rounds were fired.</p>
+    <p><strong>Run <code>validate.py</code> after the first three shots of every block.</strong> If it returns NO-GO, stop there. "We will fix it later" does not exist on a one-visit trip.</p>
+
+    <h3>How many shots, and why</h3>
+    <p>The claim being made later is "synthetic matches real". That needs a <strong>tolerance</strong>, and the tolerance is the real thing's own natural variation — its standard deviation. But the standard deviation is itself an estimate, and it is poor when computed from few samples. Verified by Monte Carlo:</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Shots per condition</th><th>How wrong your own tolerance can be</th></tr></thead>
+    <tbody>
+      <tr><td class="num">3</td><td class="no">±46 %</td></tr>
+      <tr><td class="num">5</td><td class="no">±34 %</td></tr>
+      <tr><td class="num">10</td><td class="part">±23 %</td></tr>
+      <tr><td class="num">15</td><td class="part">±19 %</td></tr>
+      <tr><td class="num">20</td><td class="ok">±16 %</td></tr>
+      <tr><td class="num">30</td><td class="ok">±13 %</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>At three shots the tolerance is itself ±46 % uncertain, which makes both "it matches" and "it does not match" unfalsifiable. <strong>Never fewer than 10; 15 for the core condition.</strong> The consequence is a rule that feels wrong and is right: <strong>fewer conditions with more repeats beats more conditions with three shots each.</strong> If time runs short, cut conditions, not repeats.</p>
+    <p>A workable allocation for about 48 shots: Gun 1 at 5 m / 90° ×15 (core), 10 m / 90° ×12, 5 m / 45° ×9; Gun 2 at 5 m / 90° ×12; plus balloons ×6 and firecrackers ×6 at the same geometry, which are free and give a backup impulse response.</p>
+    <p>Two guns at two distances beats four guns at one distance. Propagation physics is well understood, so a generator that gets 5 m <em>and</em> 10 m right from one model has captured physics rather than memorised a waveform. A third and fourth source add breadth by stealing repeats from the conditions that carry the argument.</p>
+
+    <div class="callout amber">
+      <span class="lb">An arithmetic collision — audit F12</span>
+      <p><code>plan.py</code> reserves 30 % of each condition as holdout, and the generator is validated against the holdout only, correctly, to avoid circularity. But 15 core shots minus 30 % leaves <strong>four or five holdout shots</strong> — squarely in the ±34 to ±46 % band the table above calls unfalsifiable. To get ten or more in the holdout you need roughly <strong>33 shots per core condition</strong>. Pick one and write it down: shoot more, or state the resulting tolerance honestly as wide. A stated wide tolerance is defensible; a tolerance nobody computed is not.</p>
+    </div>
+  </div>
+</section>

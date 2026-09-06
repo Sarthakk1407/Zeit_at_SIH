@@ -1,0 +1,194 @@
+/* ---------------- run control ---------------- */
+var fireBtn=document.getElementById('fire'), rateBtn=document.getElementById('speed');
+rateBtn.innerHTML=RATES[rIdx].l+'<span class="sub">'+RATES[rIdx].s+'</span>';
+rateBtn.addEventListener('click',function(){
+  rIdx=(rIdx+1)%RATES.length;
+  rateBtn.innerHTML=RATES[rIdx].l+'<span class="sub">'+RATES[rIdx].s+'</span>';
+});
+fireBtn.addEventListener('click',function(){
+  SIM.on=true;SIM.t=-6;evIdx=0;SIM.fired++;
+  cbs.forEach(function(c){c.classList.remove('lit','done');});
+  logLine(0,'HW','── run '+SIM.fired+' · '+RATES[rIdx].l.replace('Rate — ','')+' ──');
+  fireBtn.textContent='Running…';fireBtn.disabled=true;
+  elNote.textContent='running';
+});
+function endRun(){
+  SIM.on=false;
+  fireBtn.textContent='Fire a shot';fireBtn.disabled=false;
+  elEv.textContent='complete';elNote.textContent='run '+SIM.fired+' complete — traces held';
+  elBar.style.width='100%';
+  setFront(W_BLAST,0,0);setFront(W_CRACK,0,0);
+  [F1,F2,F3,F4].forEach(function(d){d.visible=false;});
+  cbs.forEach(function(c){c.classList.remove('lit');c.classList.add('done');});
+  drawScope(null);
+}
+function setFront(g,radius,alpha){
+  var s=Math.max(.001,radius);
+  g.userData.wire.scale.setScalar(s);
+  g.userData.shell.scale.setScalar(s);
+  g.userData.ring.scale.setScalar(s);
+  g.userData.wire.material.opacity=alpha*.50;
+  g.userData.shell.material.opacity=alpha*.07;
+  g.userData.ring.material.opacity=alpha*.80;
+  g.visible=alpha>.002;
+}
+
+/* ---------------- per-frame simulation ---------------- */
+function stepSim(dtms){
+  if(!SIM.on)return;
+  SIM.t+=dtms/RATES[rIdx].k;
+  var t=SIM.t;
+
+  while(evIdx<EVENTS.length && t>=EVENTS[evIdx][0]){
+    logLine(EVENTS[evIdx][0],EVENTS[evIdx][1],EVENTS[evIdx][2]);evIdx++;
+  }
+
+  var fb=t/T_BLAST, fc=(t-T_BULLET)/(T_CRACK-T_BULLET);
+  var ab=(t>0&&fb<2.4)?Math.max(0,1-Math.abs(fb-1)*.60-Math.max(0,fb-1)*.34):0;
+  var ac=(t>T_BULLET&&fc<2.4)?Math.max(0,1-Math.abs(fc-1)*.60-Math.max(0,fc-1)*.34):0;
+  setFront(W_BLAST,Math.max(0,fb)*D_BLAST,ab);
+  setFront(W_CRACK,Math.max(0,fc)*D_CRACK,ac);
+
+  if(PARTS.srcGroup)PARTS.srcGroup.userData.flash.material.emissiveIntensity=(t>=0&&t<5)?3.4:.5;
+  if(PARTS.crackMark)PARTS.crackMark.material.emissiveIntensity=(t>=T_BULLET-1&&t<T_BULLET+5)?3.2:.5;
+
+  var ev='in flight';
+  if(t<0)ev='armed';
+  else if(t<T_BULLET)ev='blast expanding';
+  else if(t<T_CRACK)ev='crack en route';
+  else if(t<T_BLAST)ev='crack heard · armed';
+  else if(t<T_LANEB_END)ev='lane B processing';
+  else if(t<T_IRT)ev='recovering';
+  else ev='transmitted';
+  elEv.textContent=ev;
+  elT.textContent=(t<0?0:t).toFixed(1)+' ms';
+  elD.textContent=(t>=T_CRACK1)?'0.58 ms':'— ms';
+  elLB.textContent=(t>=T_BLAST1?Math.min(25.3,t-T_BLAST1).toFixed(1):'—')+' / 25.3 ms';
+  elLA.textContent=(t>=T_BLAST?Math.min(1.0,t-T_BLAST).toFixed(2):'—')+' / 1.0 ms';
+  elBar.style.width=Math.max(0,Math.min(100,(t/T_END)*100))+'%';
+
+  function fl(n,a,b){if(PARTS[n]&&t>=a&&t<b)PARTS[n].userData.flash=1;}
+  fl('mic2',T_CRACK,T_CRACK+3);fl('mic1',T_CRACK1,T_CRACK1+3);
+  fl('mic2',T_BLAST,T_BLAST+3);fl('mic1',T_BLAST1,T_BLAST1+3);
+  fl('spk',T_BLAST+.4,T_BLAST+3);fl('mic3',T_BLAST+1.2,T_BLAST+4);
+
+  if(showFlow){
+    var f1on=t>=T_BLAST1&&t<T_BLAST1+8;
+    F1.visible=f1on;F2.visible=f1on;
+    if(f1on){
+      var u=Math.min(.999,(t-T_BLAST1)/8);
+      CB.mic1.userData.curve.getPointAt(u,F1.position);
+      CB.mic2.userData.curve.getPointAt(u,F2.position);
+    }
+    var f3on=t>=T_BLAST1+8&&t<T_BLAST1+13;
+    F3.visible=f3on;
+    if(f3on)CB.usb.userData.curve.getPointAt(Math.min(.999,(t-T_BLAST1-8)/5),F3.position);
+    var f4on=t>=T_LANEB_END&&t<T_LANEB_END+8;
+    F4.visible=f4on;
+    if(f4on)CB.radio.userData.curve.getPointAt(Math.min(.999,(t-T_LANEB_END)/8),F4.position);
+  }
+
+  if(t>=T_BLAST1){
+    var ub=(t-T_BLAST1)/25.3, idx=Math.floor(((ub-.04)/.86)*12);
+    cbs.forEach(function(c,i){
+      c.classList.toggle('lit',idx>=0&&i===Math.min(11,idx));
+      c.classList.toggle('done',idx>=0&&i<Math.min(11,idx));
+    });
+  }
+
+  drawScope(Math.max(0,Math.min(T_END,t)));
+  if(t>T_END)endRun();
+}
+
+/* ---------------- render loop ---------------- */
+var prev=performance.now();
+if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)spin=false;
+function resize(){
+  var w=vp.clientWidth,h=vp.clientHeight;
+  if(w<2||h<2)return;
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+  var r=cv.getBoundingClientRect();
+  if(r.width>2){cv.width=Math.round(r.width*2);cv.height=Math.round(r.height*2);}
+  drawScope(SIM.on?SIM.t:null);
+}
+window.addEventListener('resize',resize);
+
+var v3=new THREE.Vector3();
+function projectLabels(){
+  if(!showLabels)return;
+  var r=vp.getBoundingClientRect(),placed=[];
+  LBL.forEach(function(o){
+    v3.copy(o.p).project(camera);
+    if(v3.z>=1){o.el.style.display='none';return;}
+    var x=(v3.x*.5+.5)*r.width, y=(-v3.y*.5+.5)*r.height;
+    for(var i=0;i<placed.length;i++)
+      if(Math.abs(placed[i][0]-x)<126&&Math.abs(placed[i][1]-y)<22)y=placed[i][1]+24;
+    placed.push([x,y]);
+    if(x<-100||x>r.width+100||y<-30||y>r.height+30){o.el.style.display='none';return;}
+    o.el.style.display='';o.el.style.left=x+'px';o.el.style.top=y+'px';
+  });
+}
+
+function loop(now){
+  var dt=Math.min(50,now-prev);prev=now;
+
+  if(spin&&!drag)camTo.th+=dt*.000055;
+  dampCamera(dt);
+
+  /* exploded view */
+  var ex=exploded?1:0;
+  if(PARTS.cups)PARTS.cups.forEach(function(c){
+    c.position.x=c.userData.home.x+c.userData.side*ex*6.5;
+  });
+  if(PARTS.boom)PARTS.boom.position.set(-ex*6.5,0,ex*2.0);
+  if(PARTS.cooler)PARTS.cooler.position.y=PARTS.cooler.userData.home.y+ex*7.0;
+  if(PARTS.psuGroup)PARTS.psuGroup.position.z=P_PSU.z+ex*7.0;
+  ['mic1','mic2','mic3','spk'].forEach(function(k){
+    var n=PARTS[k];if(!n)return;
+    var s=(k==='mic1')?-1:1, home=n.userData.home;
+    n.position.set(home.x+s*ex*(k==='mic3'?3.4:6.5),home.y,home.z+(k==='mic1'?ex*2.0:0));
+  });
+
+  /* cooler fan spins whenever the board is powered */
+  if(PARTS.coolerFan)PARTS.coolerFan.rotation.y+=dt*.010;
+
+  /* sensor pulse */
+  ['mic1','mic2','mic3','spk'].forEach(function(k){
+    var n=PARTS[k];if(!n||!n.userData.halo)return;
+    var f=n.userData.flash||0;
+    if(f>0)n.userData.flash=Math.max(0,f-dt*.0032);
+    n.userData.halo.scale.setScalar(1+Math.sin(now*.0026)*.04+f*1.6);
+    n.userData.halo.material.opacity=.12+f*.42;
+    n.userData.core.material.emissiveIntensity=.55+f*2.4;
+  });
+
+  stepSim(dt);
+  projectLabels();
+  renderer.render(scene,camera);
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- init ---------------- */
+applyTheme();
+placeCamera();
+resize();
+drawScope(null);
+L.hidden=true;
+
+/* Draw one frame synchronously so the scene is correct even where
+   requestAnimationFrame is throttled — a hidden pane, a preview, a thumbnail. */
+renderer.render(scene,camera);projectLabels();
+
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){prev=performance.now();resize();
+    renderer.render(scene,camera);projectLabels();}
+});
+try{
+  var mq=window.matchMedia('(prefers-color-scheme: dark)');
+  var onT=function(){applyTheme();drawScope(SIM.on?SIM.t:null);};
+  if(mq.addEventListener)mq.addEventListener('change',onT);else if(mq.addListener)mq.addListener(onT);
+}catch(e){}
+
+requestAnimationFrame(loop);
+})();
+</script>

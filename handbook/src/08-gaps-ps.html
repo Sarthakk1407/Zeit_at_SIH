@@ -1,0 +1,125 @@
+<!-- ============ 11 GAPS ============ -->
+<section id="gaps">
+  <div class="sec-head"><span class="sec-num">11</span><h2>The gaps we build on</h2></div>
+  <p class="sec-sub">Each one is a place a published method stops short of what the PS demands. Every claim is checkable against a specific section or table — verify before it goes on a slide.</p>
+
+  <div class="col">
+    <h3>11.1 — There is no impulsive noise anywhere in Deep ANC</h3>
+    <p>Its test noises are engine, factory, babble and speech-shaped noise from NOISEX-92, in every result table. All four are stationary or close to it. Engine noise hums, factory noise grinds, babble is a steady wash, and SSN is literally noise shaped like the average speech spectrum. Not one gunshot, not one door slam, nothing with a sharp attack. Training used a sound-effects library that probably contained transients, but nothing was ever <em>tested</em> on them.</p>
+    <p><strong>The foundational deep-ANC paper does not address the noise class our sponsor names first.</strong></p>
+    <p><em>What we do:</em> run the test the authors never ran, and report the collapse honestly.</p>
+
+    <h3>11.2 — Delay compensation quietly assumes the noise is predictable</h3>
+    <p>Deep ANC buys back latency by predicting the anti-noise M frames ahead. With 20 ms frames and a 10 ms hop, each frame of prediction buys 10 ms. Its cost on engine noise: −11.07 dB with no prediction, −9.60 dB at one frame, −7.93 dB at two. Roughly 1.5–1.7 dB lost per 10 ms bought back — <em>on periodic noise</em>.</p>
+    <p>Prediction only works if the future resembles the past. A gunshot is by definition unpredictable. So the mechanism that makes deep ANC real-time-viable should degrade far worse on impulsive noise than 1.5 dB per frame — possibly to nothing. <strong>Nobody has measured this.</strong></p>
+    <p><em>What we do:</em> replicate that table with impulsive noise substituted in, and plot both curves on the same axes. And it dictates the architecture: if you cannot predict a gunshot, you must detect and react instead.</p>
+
+    <h3>11.3 — RMS normalisation is formally invalid for impulsive noise</h3>
+    <p>The dual-mic paper rescales every mixture so the waveform RMS equals 1. Its authors are honest that this is not causal and that deployment would need causal AGC — but RMS is a second-moment statistic, and for α-stable noise with α &lt; 2 the variance is <em>infinite</em>. You cannot normalise heavy-tailed audio by RMS in any principled way. <strong>The preprocessing breaks before the model runs.</strong></p>
+    <p><em>What we do:</em> percentile scaling first, then FLOM, then causal AGC. Half a day of work; a real defect in the closest prior system; explainable in thirty seconds.</p>
+
+    <h3>11.4 — Microphone-side clipping is modelled by nobody</h3>
+    <p>Deep ANC carefully models <em>loudspeaker</em> nonlinearity with a scaled error function at four levels, trained and tested. Good work, all of it on the output side. Nothing models what happens when the <em>input</em> overloads — even though a 140 dB blast arrives at the converter already flat-topped.</p>
+    <p><em>What we do:</em> extend their nonlinearity framework to the input side, same spirit and opposite end of the chain, and demonstrate with deliberately clipped recordings we made ourselves. <code>validate.py</code> records precisely which events clipped and by how much.</p>
+
+    <h3>11.5 — The α-stable clipping constraint, inverted</h3>
+    <p>At α below 0.5, roughly a third of the α-stable paper's image pixel values ended up clipped, which they judged to compromise reliability — so they set 0.5 as a lower bound. For them clipping was an artifact of squeezing unbounded noise into a bounded pixel range: a nuisance to design around. <strong>For us clipping is the physics.</strong> They also note that truncated α-stable noise still beat truncated Gaussian, so the effect survives clipping; it only complicated their analysis.</p>
+    <p><em>What we do:</em> generate below their floor deliberately, let it clip, and train the model to reconstruct through it. We use the regime they excluded, for the reason they excluded it — and can point at their sentence to explain why the constraint does not apply to us.</p>
+
+    <h3>11.6 — α-stable augmentation has never touched audio</h3>
+    <p>The authors say so in their conclusion: noise substantially affects audio, video and text, and extension is future work. Their four datasets are two image sets and two time-series sets. Not one audio experiment. And everything is classification; enhancement is regression, which they also list as unexplored.</p>
+    <p><em>What we do:</em> be first — but <strong>do not overclaim</strong>. Frame it as a hypothesis with a Gaussian-augmented baseline alongside. If it helps, we extended a published method to a new task class. If it does not, we have an honest negative result with an explanation. Assuming it works and quietly not checking is the failure mode.</p>
+
+    <h3>11.7 — α-stable training produces sparser models, and nobody pruned them</h3>
+    <p>Reported as a side effect: 6.16 % and 7.13 % sparsity versus 3.02 % for Gaussian on MNIST-C; 59.49 % versus 51.62 % on CIFAR10-C. The authors connect it to generalisation, cite the pruning literature, and never prune anything. The dual-mic paper spends a whole section on structured pruning. <strong>The two papers do not cite each other</strong>, and the untested hypothesis sits in the gap.</p>
+    <p><em>What we do:</em> one experiment, two deliverables.</p>
+
+    <h3>11.8 — The smaller gaps, each worth knowing</h3>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Gap</th><th>Where</th><th>What we do</th></tr></thead>
+    <tbody>
+      <tr><td class="name">The noise-trained ANC model <em>damages</em> speech — STOI 0.79→0.72, PESQ 1.95→1.71 at 5 dB</td><td>Deep ANC Table 2, Fig 9</td><td>A lightweight VAD in front, or one model with a mixed objective that degrades gracefully. The paper never addresses switching between its two models, and radio speech is intermittent by nature</td></tr>
+      <tr><td class="name">Deep ANC was never deployed — the authors list device implementation as future work</td><td>Conclusion</td><td>Quote it. It reframes us from "students reimplement a paper" to "we did the part the authors flagged unfinished"</td></tr>
+      <tr><td class="name">One room, 3×4×2 m, T60 0.15–0.25 s, fixed geometry</td><td>Deep ANC §4.2</td><td>Train across a wide spread of room responses including near-anechoic open field and hard-walled vehicle interior, and report each separately. A soldier's head moves constantly</td></tr>
+      <tr><td class="name">The quiet zone is 5 cm across</td><td>Deep ANC §5.3</td><td>Worth one sentence, not worth building around — our microphones move with the head, so the problem partly dissolves. Saying that shows you understood why the constraint existed</td></tr>
+      <tr><td class="name">Trained and tested <strong>only on babble</strong></td><td>Tan et al. §IV-A</td><td>Run their architecture on a proper stationary / non-stationary / impulsive taxonomy and report the grid</td></tr>
+      <tr><td class="name">Real-time claim measured on an i7 laptop</td><td>Tan et al. §V-A</td><td>Measure on our actual board and publish it — plus watts, which nobody reports</td></tr>
+      <tr><td class="name">Mic spacing fixed at 10 cm, never varied</td><td>Tan et al. §IV-A</td><td>Re-simulate at our real headset geometry, and test robustness to spacing. A model that works at one exact spacing fails the first time someone adjusts the headset</td></tr>
+      <tr><td class="name">Head shadow simulated as a flat −10..0 dB scaling</td><td>Tan et al. §IV-A</td><td>Use published HRTF data. Their own figure shows the inter-channel ratio varying across frequency, which a flat scaling cannot produce</td></tr>
+      <tr><td class="name">Explicit inter-channel features gave no benefit — but only for babble</td><td>Tan et al. Table IV</td><td>Re-run with impulsive noise. An impulse is a single sharp wavefront with a well-defined arrival-time difference — exactly where inter-channel timing should carry information</td></tr>
+      <tr><td class="name">They prune but never quantize</td><td>Tan et al. §III-D</td><td>Add the quantisation study, and report the ordering interaction</td></tr>
+      <tr><td class="name">α-stable noise is i.i.d.; real gunshots are structured</td><td>Yuan et al. §4.1</td><td>Generate structured bursts — heavy-tailed in when and how hard they arrive, with a realistic attack/decay envelope</td></tr>
+      <tr><td class="name">Choosing the dispersion parameter γ is open</td><td>Yuan et al. §6</td><td>In images there is no natural scale. <strong>In audio there is: SNR.</strong> Derive a mapping from target SNR to γ for a given α</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>11.9 — The three cross-paper findings</h3>
+    <p>Visible only when all the papers are read together. None of them cites the others in the relevant way.</p>
+    <p><strong>A. Deep ANC's latency trick and the α-stable noise model are in direct conflict.</strong> Deep ANC buys latency back by prediction; prediction needs predictability. The α-stable premise is that impulsive noise is heavy-tailed — dominated by rare, extreme, isolated events, which are by construction the least predictable thing in a signal. The mechanism that makes deep ANC real-time-viable should fail exactly on the noise class the PS is about. Measured, this is the intellectual spine of the project.</p>
+    <p><strong>B. The dual-mic preprocessing is mathematically undefined under the α-stable noise model.</strong> RMS is a second moment; for α &lt; 2 the variance is infinite. The closest published dual-mic system has a preprocessing step that is not merely fragile but formally invalid for our noise class — and the fix is cited <em>inside</em> the other paper.</p>
+    <p><strong>C. Both enhancement papers use squared-error losses, the wrong estimator here.</strong> Squared error is maximum-likelihood when the residual is Gaussian. Under heavy tails it is dominated by outliers — one impulsive sample drags the gradient more than a second of speech. L1 is better, still not matched. A loss built on fractional lower-order moments would be principled, and is the stretch goal.</p>
+
+    <div class="callout amber">
+      <span class="lb">Two cautions carried from the gap analysis</span>
+      <p><strong>Verify before you cite.</strong> Sections and tables are pointed to rather than reproduced. Open each one and confirm before it goes near a slide. If a number in the notes disagrees with the paper, the paper is right.</p>
+      <p><strong>A gap in the literature is not automatically a good project.</strong> Sometimes nobody did a thing because it does not work, or because it does not matter. Gaps 11.2, 11.3, 11.5 and 11.7 are defensible as genuinely valuable. The rest are worth checking before committing weeks.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 12 PS ============ -->
+<section id="ps">
+  <div class="sec-head"><span class="sec-num">12</span><h2>Meeting the problem statement</h2></div>
+  <p class="sec-sub">Every clause of PS 26052 mapped to the thing that satisfies it, where it lives, and its honest state today.</p>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>PS requirement</th><th>What satisfies it</th><th>Where</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Scalable dataset pipeline for noisy–clean pairs</td><td>Config-driven mixing engine, Friedlander blast synthesiser, measured range corpus, validated against a holdout at four levels</td><td>L4 stages 1–3</td><td class="part">Toolkit built, generator not</td></tr>
+      <tr><td class="name">Handles stationary noise</td><td>Neural core — learned masking is strongest here</td><td>Block 7</td><td class="part">Designed</td></tr>
+      <tr><td class="name">Handles non-stationary noise</td><td>Neural core plus the live classifier retuning γ and β per frame</td><td>Blocks 5, 7</td><td class="part">Designed</td></tr>
+      <tr><td class="name">Handles impulsive noise</td><td>Two-path architecture — BMRI detect-and-react for transients, α-stable augmentation for robustness, input-clipping model</td><td>Blocks 5, 6 + L4</td><td class="part">Designed; scope narrowed per F4</td></tr>
+      <tr><td class="name">AI/ML-enabled</td><td>GTCRN — a learned complex-ratio-mask estimator, not a hand-designed filter</td><td>Block 7</td><td class="part">Chosen, not trained</td></tr>
+      <tr><td class="name">Adaptive</td><td>The kurtosis classifier setting γ and β live, replacing BMRI's offline hand-tuning</td><td>Block 5</td><td class="part">Designed — this is the claim to "adaptive"</td></tr>
+      <tr><td class="name">High speech intelligibility</td><td>Voice guard, deep filtering to restore harmonics, DNSMOS SIG reported separately so over-suppression is visible, plus IRT and WLPS</td><td>Blocks 8, 9 + eval</td><td class="part">Designed; targets need re-anchoring per F5</td></tr>
+      <tr><td class="name">Real-time performance</td><td>25.3 ms algorithmic latency, 10 ms compute budget, no allocation in the callback, worst-case reporting</td><td>L3</td><td class="no">Not measured — no engine yet</td></tr>
+      <tr><td class="name">Embedded hardware deployment</td><td>23.7 K parameters at 39.6 MMAC/s. DeepFilterNet2 proves a Raspberry Pi 4 suffices; a Jetson is likely unnecessary</td><td>L3 + L4 stage 5</td><td class="no">Board unnamed</td></tr>
+      <tr><td class="name">Quantisation, pruning, ONNX / TensorRT</td><td>Structured pruning, INT8, ONNX export, plus the prune/quantise ordering study nobody has done</td><td>L4 stage 5</td><td class="no">Not started</td></tr>
+      <tr><td class="name">Primary + reference microphone integration</td><td>Three-mic headset with the Widrow isolation constraint as a stated hardware requirement, and Type B takes measuring it directly</td><td>L1</td><td class="no">Hardware not specified</td></tr>
+      <tr><td class="name">Live prototype demonstration</td><td>Headset, board, on/off toggle, live spectrogram with impulse markers from the auxiliary detection head</td><td>All layers</td><td class="no">Not started — the biggest risk</td></tr>
+      <tr><td class="name">SNR &gt; 15 dB</td><td>Reported as a curve against input SNR, with the definition stated explicitly</td><td>Eval</td><td class="part">Definition must be fixed — F1</td></tr>
+      <tr><td class="name">STOI &gt; 0.85</td><td>Same, with the crossing point named</td><td>Eval</td><td class="part">Reachable above roughly 0 dB input SNR</td></tr>
+      <tr><td class="name">PESQ &gt; 2.5</td><td>Same</td><td>Eval</td><td class="part">Reachable above roughly 0 dB input SNR</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <div class="callout warn">
+      <span class="lb">The honest summary of this table</span>
+      <p>Eleven of fifteen requirements have a designed answer. <strong>Four have nothing yet, and they are the four a judge can see</strong> — real-time measurement, the board, the compression, and the live demo. A design that answers every requirement on paper loses to a rougher project with something plugged in and working. That is the single largest risk in the programme, and it is not a research risk.</p>
+    </div>
+
+    <h3>Deliverables, mapped</h3>
+  </div>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>PS deliverable</th><th>Ours</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Dataset generation</td><td>Mixing engine + blast synthesiser + measured range corpus</td><td>Repo, dataset card, validation report</td></tr>
+      <tr><td class="name">Training pipeline</td><td>GTCRN training with dynamic mixing and seeded configs</td><td>Repo, reproducible config hashes</td></tr>
+      <tr><td class="name">Inference engine</td><td>Real-time streaming C++ inference with an impulse-detection head</td><td>Repo, measured latency</td></tr>
+      <tr><td class="name">Edge deployment</td><td>ONNX → INT8 → target, benchmarked</td><td>Latency and power table</td></tr>
+      <tr><td class="name">Prototype demo</td><td>Live headset, hardware-matched model, ANC on/off toggle</td><td>Working device</td></tr>
+      <tr><td class="name">The three metric targets</td><td>Evaluation report on held-out real data</td><td>Metrics table plus ablations</td></tr>
+      <tr><td class="name part">Extra, not requested</td><td>Physics validation report with published error bounds · energy-scaling chart · IRT/WLPS definitions and results · measured acoustic-path database · dataset card documenting provenance, splits and limitations</td><td><em>That they were not requested is the point</em></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>

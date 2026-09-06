@@ -1,0 +1,246 @@
+<!-- ============ 07 MEASUREMENT ============ -->
+<section id="measure">
+  <div class="sec-head"><span class="sec-num">07</span><h2>The measurement engine</h2></div>
+  <p class="sec-sub">Every quantity, every algorithm, and every quality check — including the three that were much harder than they look.</p>
+
+  <div class="col">
+    <p>Sixteen quantities per event, 54 per recording. These are the standard descriptors for impulse noise and shooting-range acoustics — the ISO 17201 family — not invented for this project, so the numbers mean something to a reviewer outside the team.</p>
+    <p>Critically, <code>analyze.py</code> is deliberately <strong>one engine</strong>. Whatever is compared against this data later must be measured by the same code. If two sets are measured by different code, part of any difference between them is a difference in the <em>measuring</em>, and the comparison proves nothing.</p>
+
+    <h3>Level</h3>
+  </div>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Metric</th><th>Unit</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Peak SPL</td><td>dB re 20 µPa, Z-weighted</td><td>The loudest instantaneous pressure. The primary impulse-noise number, and the one MIL-STD-1474 limits to 140 dB at the ear. Unweighted, not A-weighted — the low-frequency energy is real and damaging</td></tr>
+      <tr><td class="name"><span class="term" data-t="SEL">SEL</span></td><td>dB</td><td>Sound exposure level — total event energy normalised to one second. Lets a short crack and a long boom be compared fairly, since they can share a peak but differ hugely in energy</td></tr>
+      <tr><td class="name"><span class="term" data-t="Leq">Leq</span></td><td>dB</td><td>Average level over the event window</td></tr>
+      <tr><td class="name">Crest factor</td><td>dB</td><td>Peak ÷ RMS. How tall the peak is relative to the average</td></tr>
+      <tr><td class="name">Kurtosis</td><td>—</td><td>Fourth moment of pressure. How much of the record <em>is</em> peak. Gaussian noise = 3; a gunshot is orders of magnitude higher</td></tr>
+      <tr><td class="name">Noise floor</td><td>dBFS / dB SPL</td><td>The reference every SNR is measured against</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="col">
+    <p>Crest factor and kurtosis are not the same claim: one is peak <em>height</em>, the other is peakiness of the whole distribution. Peak and SEL are also not the same claim — peak says how loud, SEL says how much energy. Recording only one gives half the picture.</p>
+
+    <h3>Time — the shape of the event</h3>
+  </div>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Metric</th><th>Unit</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Rise time</td><td>ms</td><td>10 % → 90 % of peak on the leading edge. <strong>This is what separates a gunshot from a drum hit.</strong> The most fragile number in the set: muzzle-blast rise is 10–50 µs and one sample at 96 kHz is 10.4 µs, so the edge is resolved by only a few samples</td></tr>
+      <tr><td class="name"><span class="term" data-t="A-duration">A-duration</span></td><td>ms</td><td>The initial positive pressure phase — tied directly to blast physics and to the Friedlander model</td></tr>
+      <tr><td class="name"><span class="term" data-t="B-duration">B-duration</span></td><td>ms</td><td>Total time the envelope stays within 20 dB of the peak. The standard impulse-noise duration measure</td></tr>
+      <tr><td class="name">Decay tail</td><td>ms</td><td>How long the space takes to carry the sound away</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>Frequency</h3>
+  </div>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Metric</th><th>Unit</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td class="name">⅓-octave spectrum</td><td>dB, 28–31 bands from 25 Hz</td><td><strong>The reference curve.</strong> Everything else in this section is a summary of it, and this is the curve judges will be shown — real and synthetic overlaid</td></tr>
+      <tr><td class="name"><span class="term" data-t="Spectral centroid">Spectral centroid</span></td><td>Hz</td><td>Energy centre of mass. Brightness in one number</td></tr>
+      <tr><td class="name">95 % rolloff</td><td>Hz</td><td>The frequency below which 95 % of energy lies. A measure of bandwidth</td></tr>
+      <tr><td class="name">Peak frequency</td><td>Hz</td><td>Where the most energy sits. Shifts down as calibre grows</td></tr>
+      <tr><td class="name">Band energy split</td><td>dB ×4</td><td>Below 100 Hz / 100 Hz–1 kHz / 1–8 kHz / above 8 kHz. Coarse but immediately readable</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>Session-level, measured once</h3>
+    <ul>
+      <li><strong>Impulse response</strong> — the range's acoustics. Cannot be measured after leaving.</li>
+      <li><strong><span class="term" data-t="RT60">RT60</span> per octave band</strong>, 62.5 Hz–8 kHz, both T20 and T30 fits.</li>
+      <li><strong>Direct-to-noise ratio</strong> — below about 35 dB the RT60 is fitting noise, not decay.</li>
+      <li><strong>Calibration scale</strong> — Pascals per full scale, and the SPL at full scale.</li>
+    </ul>
+
+    <h3>Written by hand, because no tool can infer them</h3>
+    <p><code>distance_m</code>, <code>azimuth_deg</code>, <code>mic_height_cm</code>, <code>muzzle_height_cm</code>, <code>ground_surface</code>, <code>temp_c</code>, <code>humidity_pct</code>, <code>wind_kmh</code>, <code>wind_direction</code>, <code>recorder</code>, <code>gain_setting</code>, source type, ammunition, barrel length, and <strong><code>split</code> (fit / holdout)</strong>.</p>
+    <p>Geometry determines spreading loss, ground reflection and directivity. Temperature and humidity determine high-frequency <span class="term" data-t="atmospheric absorption">air absorption</span> — at 10 kHz over 10 m, the difference between 30 % and 80 % humidity is several dB. High frequency is exactly where synthetic gunshots go wrong, so without those two fields a mismatch cannot be attributed to the generator rather than to the weather.</p>
+
+    <h3>The algorithms</h3>
+
+    <h4>Event detection — <code>dsp.find_events</code></h4>
+    <p>Locating each shot in a continuous take:</p>
+    <ol>
+      <li><strong>High-pass at 200 Hz.</strong> Without it a wind gust reads as an onset.</li>
+      <li><strong>Moving-RMS envelope</strong>, 5 ms window with a 1 ms hop, computed by cumulative sum rather than a framed gather — O(n) with one temporary array. On a 60 s file at 96 kHz that is about 46 MB instead of 230 MB, and it is why <code>validate.py</code> stays inside its ten-second budget on a laptop running on battery.</li>
+      <li><strong>Adaptive threshold</strong>: <code>max(floor + 12 dB, peak − 40 dB)</code>, where the floor is the 20th percentile — robust to the events themselves.</li>
+      <li><strong>Spectral-flux confirmation</strong> in a ±25 ms window around each candidate. A real impulse produces a broadband spectral jump; a gust or a gain change does not. Candidates below a normalised flux of 0.25 are dropped.</li>
+      <li><strong>Walk back</strong> from the peak to the threshold crossing — that is the true onset, and where the cut goes.</li>
+    </ol>
+    <p>Minimum separation is 0.30 s by default. Full-auto bursts need a smaller value and manual review.</p>
+
+    <h4>Impulse response — the Farina sweep</h4>
+    <p>An exponential sine sweep from 20 Hz to 20 kHz over 10 seconds:</p>
+    <pre><code>x(t) = sin( ω₁·L · (e^(t/L) − 1) ),   L = T / ln(ω₂/ω₁)</code></pre>
+    <p>The matched inverse filter is the time-reversed sweep with a −6 dB/octave amplitude envelope <code>e^(−t/L)</code>, normalised so that <code>conv(sweep, inverse)</code> peaks at exactly 1.0. <code>gen_signals.py</code> verifies this at generation time and reports the peak-to-sidelobe ratio — above 40 dB is required, and it typically comes out around 54 dB. <span class="term" data-t="Deconvolution">Deconvolution</span> is a linear zero-padded FFT multiply, then the impulse response is trimmed to 5 ms before the direct sound. A balloon pop with direct windowing is the fallback for when wind or traffic ruins the sweep.</p>
+
+    <h4>RT60 — Schroeder backward integration</h4>
+    <pre><code>EDC(t) = 10·log₁₀ ( ∫ₜ^∞ p²(τ)dτ  /  ∫₀^∞ p²(τ)dτ )</code></pre>
+    <p>A straight line is fitted between −5 and −25 dB (T20) and between −5 and −35 dB (T30), then extrapolated to a full 60 dB of decay. The r² of the fit is reported: below about 0.98 it is not trustworthy. Computed per octave band from 62.5 Hz to 8 kHz.</p>
+
+    <h4>Calibration — turning numbers into Pascals</h4>
+    <pre><code>p_rms = 20 µPa × 10^(SPL/20)
+scale = p_rms / rms_fullscale        [Pascals per full scale]
+pressure = sample × scale            [any later file]</code></pre>
+    <p>Sanity-checked: a full-scale SPL outside 100–180 dB is flagged as implausible. <strong>Changing the recorder gain voids the calibration</strong> — record a fresh tone at the new setting.</p>
+    <p>Without this step you can say "this is 6 dB louder than that". You can never say "this is 152 dB SPL", and you cannot compare with anyone else's measurement or with a physics-based model, because they have absolute units and you do not.</p>
+
+    <h3>The nine quality checks</h3>
+    <p><code>validate.py</code> returns exit code 0 for GO, 1 for NO-GO, 2 for unreadable. Six are routine; three were much harder than they look, and the reasoning is written into the code so it does not get "simplified" away later.</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Check</th><th>Fails when</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Format</td><td>Sample rate or bit depth is not what was expected; truncated <code>data</code> chunk</td></tr>
+      <tr><td class="name">Clipping</td><td><strong>Any</strong> clipped sample lands on an impulse — the peak is destroyed and the file is unusable for level work. In <code>--array</code> mode, hot-channel clipping is expected and forgiven if the cold channel holds</td></tr>
+      <tr><td class="name">DC offset</td><td>Offset above 1 % of full scale</td></tr>
+      <tr><td class="name">Noise floor</td><td>Floor above −35 dBFS</td></tr>
+      <tr><td class="name">Impulse complete</td><td>File starts or ends loud, or an event sits within 0.5 s of the end</td></tr>
+      <tr><td class="name">Events found</td><td>Count differs from <code>--expect-events</code>, or worst-case event SNR is under 20 dB</td></tr>
+      <tr><td class="name part">Wind / rumble</td><td>Sub-50 Hz energy above −3 dB relative to total — <em>measured only in the gaps between impulses</em></td></tr>
+      <tr><td class="name part">Bandwidth</td><td>The header's sample rate is a lie — the band ends in a cliff into digital silence</td></tr>
+      <tr><td class="name part">Handling noise</td><td>More than three low-frequency-only thumps — cable tugs, stand knocks</td></tr>
+      <tr><td class="name part">Dropouts</td><td>Runs of exact digital zero above 1 %, or any gap over 50 ms</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h4>Why wind is measured only between impulses</h4>
+    <p>Gunshots have huge genuine low-frequency content. Measuring sub-50 Hz energy across the whole file reports the shot, not the weather. The check therefore looks only at the gaps.</p>
+
+    <h4>Why handling noise is separated by spectral shape, not loudness</h4>
+    <p>Two traps here, both found by trying the obvious thing first:</p>
+    <ul>
+      <li>Thresholding on a low percentile does not work. Low-passing to 100 Hz leaves a narrowband signal whose Rayleigh envelope naturally swings over 15 dB, so a relative-prominence test fires constantly on quiet ambience. On real ambience the envelope crest is about 12 dB while a knock is 60 dB or more — so the test has to be crest above the <strong>median</strong>, not above the floor.</li>
+      <li>Excluding candidates that coincide with a detected event does not work either, because a loud enough thump <em>is</em> detected as an event and therefore excludes itself.</li>
+    </ul>
+    <p>The honest discriminator is <strong>spectral shape</strong>. Measured on this data, a gunshot sits at −2 to −16 dB LF/HF ratio and a stand knock at +33 dB, so a +10 dB threshold splits them with roughly 20 dB of margin either side.</p>
+
+    <h4>Why bandwidth needs two signatures, not one</h4>
+    <p>Found on real hardware: a 44.1 kHz microphone accepted a 96 kHz request and the operating system silently upsampled. The header was correct, every other check passed, and everything above about 21 kHz was digital zero. The file was worthless and looked perfect.</p>
+    <p>Detecting this by "where does content end" produces false positives, because a genuinely dull source also ends early. What a resample leaves is two signatures together:</p>
+    <ul>
+      <li><strong>Numerical emptiness</strong> — interpolation puts <em>exactly zero</em> energy above the original Nyquist, while any real recording has microphone and converter noise filling the band all the way up.</li>
+      <li><strong>A cliff</strong> — the drop is near-vertical, where a dull source rolls off gently.</li>
+    </ul>
+    <p>Measured here: a real upsample gave −135 dB with a 62 dB cliff; a merely low-passed but genuine file gave −81 dB and 19 dB. An earlier single-signature version failed the low-passed file — precisely the false positive that teaches an operator to ignore warnings.</p>
+
+    <h4>Why dropouts are detected as exact zeros</h4>
+    <p>A real microphone never outputs an exact zero; there is always self-noise and dither. A run of exact zeros means a noise gate or dropped buffers. Found on a real take: a Bluetooth headset gated 8.3 % of a 33-second recording into silence, including a single 580 ms hole, and the file passed every other check while sounding audibly chopped.</p>
+
+    <h3>Integrity — the parts that protect the claim</h3>
+
+    <h4>Holdout, assigned before data exists</h4>
+    <p>The metadata CSV carries a <code>split</code> column, written by <code>plan.py</code> at planning time. Tuning the generator on all the real data and then comparing against that same data is <span class="term" data-t="circularity">circular</span>, and it is the first thing a sharp reviewer looks for. Choosing the split afterwards is exactly the problem this prevents.</p>
+
+    <h4>The frozen reference</h4>
+    <pre><code>python3 session.py freeze DATA    # once, immediately after analysis
+python3 session.py verify DATA    # before every comparison</code></pre>
+    <p>SHA-256 of every recording, every sliced event, the measured features — <strong>and of the measurement engine itself</strong> (<code>analyze.py</code>, <code>dsp.py</code>, <code>wavio.py</code>). Both paths were tested: making one shot 0.2 dB quieter, which is inaudible, produced <em>"1 REFERENCE FILE(S) CHANGED"</em>; adding a blank line to <code>analyze.py</code> without touching any audio produced <em>"MEASUREMENT ENGINE CHANGED"</em>.</p>
+    <p>The second is the more important one. Re-running a modified engine changes every number without touching a single audio file — that is the silent version of the problem, and the one worth guarding against.</p>
+
+    <h4>Keeping synthetic audio out of the real dataset</h4>
+    <p><code>make_test_data.py</code> produces fake recordings so the tools can be proved to work before range day. Fake audio is indistinguishable from real audio by inspection: same extension, same rate, same waveform shape. So every directory it writes is stamped with <code>_SYNTHETIC_DO_NOT_USE.txt</code>, and <code>ingest.py</code> and <code>analyze.py</code> refuse to touch marked data, exiting with code 3. The marker travels with sliced events.</p>
+
+    <h4>Why the dataset stays uncompressed</h4>
+    <p>Measured on a real event at 256 kbps AAC:</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Quantity</th><th>Damage from AAC</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Mid-band levels, 31 Hz – 8 kHz</td><td class="num">0.1 dB</td><td class="ok">Intact</td></tr>
+      <tr><td class="name">Peak, rise time, B-duration</td><td class="num">0.01 dB / 0.00 ms</td><td class="ok">Intact</td></tr>
+      <tr><td class="name">32 kHz band</td><td class="num no">−83 dB</td><td class="no">Gone entirely</td></tr>
+      <tr><td class="name">Spectral centroid</td><td class="num no">shifted 248 Hz</td><td class="no">173× the real shot-to-shot σ of 1.43 Hz</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>AAC cannot carry 96 kHz at all — it silently downsamples to 48 kHz, taking half the bandwidth and precisely the half where the shock content lives. The centroid shift is 173 times the natural variation being measured, so a comparison run on that data measures the codec, not the gunshot.</p>
+    <p><strong>The dangerous part is that mid-band and timing survive</strong>, which means the files sound completely right. So the rule is mechanical: listen from <code>_listening/</code> (AAC, ~4.5 MB), measure only from <code>03_events/</code> (24-bit WAV, ~43 MB). Making the compressed copies does not disturb the originals — <code>verify</code> still reports "Reference intact" afterwards.</p>
+
+    <h3>What cannot be recovered later</h3>
+    <p>Any <em>metric</em> can be recomputed from the raw WAV at any time — spectral flatness, entropy, 1/6-octave bands, anything not yet invented. The metric list is not a commitment. These five cannot:</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Lost forever</th><th>Why</th><th>Guarded by</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Bandwidth</td><td>If the microphone stopped at 20 kHz, 30 kHz never existed</td><td><code>validate.py</code> Bandwidth check</td></tr>
+      <tr><td class="name">Absolute level</td><td>No calibration tone means dBFS forever</td><td><code>session.py status</code></td></tr>
+      <tr><td class="name">Geometry</td><td>Distance and angle are not in the signal</td><td>The metadata CSV</td></tr>
+      <tr><td class="name">Range acoustics</td><td>Gone the moment you leave</td><td><code>ir_extract.py</code></td></tr>
+      <tr><td class="name">Conditions not shot</td><td>30 m was never recorded</td><td><code>plan.py</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <div class="callout">
+      <span class="lb">The reviewer's real question, and the only honest answer</span>
+      <p>It is not "why is metric X missing" — metric X can be produced on demand. It is: <em>"Your real data covers 5–10 m. Your generator produces 30 m. How was that validated?"</em></p>
+      <p>The answer is to state the envelope explicitly: <strong>"Validated at 5–10 m, 0–45°, concrete ground, this range's acoustics. Outside that envelope the generator is unvalidated."</strong> That is credible. "Everything matched" is what gets taken apart.</p>
+    </div>
+
+    <h3>The 21 tools, in the order you use them</h3>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td class="name">session.py init</td><td>Creates the <code>DATA/</code> folder, the run sheet and the playback signals</td></tr>
+      <tr><td class="name">gen_signals.py</td><td>Sweep plus matched inverse filter, 1 kHz tones, pink noise, printable order sheet</td></tr>
+      <tr><td class="name">plan.py</td><td>The one-trip run sheet and a pre-filled metadata CSV, checked against your actual time slot</td></tr>
+      <tr><td class="name">monitor.py</td><td><strong>Live scope window</strong> — waveform, spectrogram, spectrum, level with peak hold, and a sub-50 Hz wind meter. A view, not a recorder: without <code>--record</code> it saves nothing, and says so on exit</td></tr>
+      <tr><td class="name">record.py</td><td>Terminal-only recorder with a text peak meter, for when there is no display. Hard-refuses Bluetooth headsets (16 kHz mono through AGC) and virtual/loopback devices, and refuses to overwrite a take</td></tr>
+      <tr><td class="name">capture.py</td><td><strong>One command per recording.</strong> Monitor opens, you close it, it names the take and runs validate → slice → measure → plot → report → compressed copy</td></tr>
+      <tr><td class="name">validate.py</td><td><strong>GO / NO-GO on one file in under ten seconds.</strong> The only tool that matters at the range</td></tr>
+      <tr><td class="name">ingest.py</td><td>Slices a take into per-event WAVs and binds them to the metadata CSV, in order. Exits non-zero on a count mismatch</td></tr>
+      <tr><td class="name">calibrate.py</td><td>Turns dBFS into absolute Pascals from an SPL meter reading</td></tr>
+      <tr><td class="name">ir_extract.py</td><td>Range impulse response and RT60 per octave band, sweep or balloon-pop</td></tr>
+      <tr><td class="name">analyze.py</td><td><strong>The measurement engine.</strong> 54 quantities per recording</td></tr>
+      <tr><td class="name">report.py</td><td>One self-contained HTML page, figures embedded as base64, opens with no internet and no server</td></tr>
+      <tr><td class="name">quicklook.py</td><td>Waveform, spectrogram and ⅓-octave levels per event, plus a contact sheet. Clipped events outlined in red</td></tr>
+      <tr><td class="name">session.py status</td><td>Compares disk against the plan and names what is still missing, while a re-shoot is possible</td></tr>
+      <tr><td class="name">session.py freeze / verify</td><td>Locks the reference and the engine so a later comparison cannot move them</td></tr>
+      <tr><td class="name">session.py backup / listen</td><td>Verified copy to a drive; compressed copies for playing</td></tr>
+      <tr><td class="name">make_test_data.py + selftest.py</td><td>The pre-flight check. Synthesises deliberately broken recordings and asserts <code>validate.py</code> returns NO-GO for each <em>with the right reason</em></td></tr>
+      <tr><td class="name">wavio.py · dsp.py · provenance.py · waitmic.py</td><td>Supporting modules: RIFF I/O with no libsndfile, shared DSP, the synthetic guard, and a USB-device watcher</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>Every tool follows the same three rules: never modify its input, write only where told, and fail loudly with a readable message and exit code 2 rather than a traceback.</p>
+    <p><strong>Select the audio device by name, not by index.</strong> PortAudio indices renumber whenever anything is plugged in or removed, so a device noted the day before can silently become a different microphone.</p>
+
+    <h4>Known limits, stated up front</h4>
+    <ul>
+      <li>Event detection assumes impulsive sources separated by at least 0.30 s. Full-auto bursts need a smaller value and manual review.</li>
+      <li>RT60 is only meaningful when direct-to-noise exceeds about 35 dB.</li>
+      <li><code>calibrate.py</code> assumes the recorder gain is unchanged between the tone and the shots.</li>
+      <li>The Friedlander model in <code>make_test_data.py</code> exists to exercise the tools. It is not a source of acoustic claims.</li>
+      <li>Microphone maximum SPL is the binding constraint, and no software here can fix it.</li>
+    </ul>
+  </div>
+</section>

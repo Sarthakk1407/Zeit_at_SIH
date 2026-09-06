@@ -1,0 +1,131 @@
+<!-- ============ 13 DRDO ============ -->
+<section id="drdo">
+  <div class="sec-head"><span class="sec-num">13</span><h2>What DRDO actually wants</h2></div>
+  <p class="sec-sub">A sponsor read. Partly inference from how DRDO and its funding schemes operate rather than a published SIH rubric — treat it as a lens, not a checklist.</p>
+
+  <div class="col">
+    <p>DRDO is a government R&amp;D organisation under the Department of Defence Production. Its institutional instinct is <strong>qualification, not demonstration</strong>. A working demo answers "does it do something". DRDO's question is "can this be specified, tested, reproduced, made in India, and fielded by someone who has never met you."</p>
+
+    <h3>It thinks in Technology Readiness Levels</h3>
+    <p>DRDO's Technology Development Fund exists specifically to raise technologies "from <span class="term" data-t="TRL">TRL</span> 3 onwards" to tri-services specifications, and iDEX Prime targets TRL 4 and above with grants up to ₹10 crore. A hackathon entry is TRL 3–4.</p>
+    <p><strong>The winning move is not to pretend you are at TRL 7 — it is to say precisely where you are and what the next two levels cost.</strong> A slide reading "we are at TRL 4; TRL 5 requires environmental qualification per <span class="term" data-t="JSS 55555">JSS 55555</span> and a 40-hour field trial; here is the plan" reads as competence. A slide claiming a deployable soldier system reads as naïve.</p>
+
+    <h3>It thinks in standards and limits, not benchmarks</h3>
+    <p>An acoustics evaluator has <span class="term" data-t="MIL-STD-1474">MIL-STD-1474</span> in their head, not VCTK-DEMAND. That standard requires impulse peak levels below <strong>140 dB at the ear</strong>, protected or unprotected — while few weapons produce below 150 dB and many exceed 180. That is the frame your project will be heard in, and your measured 140–155 dB muzzle blast figure lands inside a standard they already know.</p>
+    <p>Equally: to a defence evaluator, "speech intelligibility" has a formal meaning — <span class="term" data-t="ANSI/ASA S3.2">ANSI/ASA S3.2</span>, measured by <span class="term" data-t="Diagnostic Rhyme Test">Diagnostic Rhyme Test</span>, Modified Rhyme Test, or phonetically balanced word lists, with human listeners. PESQ and STOI are proxies for that. You do not need to run a DRT, but naming it as the next rung shows you know there is a ladder.</p>
+
+    <h3>It cares about indigenisation and IP</h3>
+    <p>"Make in India" and <em>Atmanirbhar Bharat</em> are procurement policy here, not slogans. Permissive licences, no GPL, no cloud dependency, and a clear statement of what is yours are worth real marks. Our PFFFT-over-FFTW decision was made on exactly these grounds and should be said out loud. Conversely, note that <strong>DNSMOS is an Azure service</strong> — a foreign-cloud evaluation dependency is worth a sentence of acknowledgement and an offline fallback.</p>
+
+    <h3>It rewards honest negative results</h3>
+    <p>This is where the project is unusually well positioned. The gap analysis is exactly the register DRDO respects: naming where each published method stops, then measuring the collapse. "Deep ANC was never tested on the noise class our sponsor names first, and here is what happens when you do" is a stronger DRDO story than a polished demo.</p>
+    <p>The same goes for the provenance discipline. Absolute calibration, a holdout assigned before data exists, and a frozen reference that checksums the measurement engine itself are what <em>qualification</em> looks like at student scale.</p>
+
+    <h3>It will ask what breaks in the field</h3>
+    <p>Temperature, dust, vibration, fungus, EMI, power, and what happens when a component fails. <span class="term" data-t="JSS 55555">JSS 55555</span> is the Indian joint-services environmental specification; MIL-STD-810 is the international analogue. You will not run these tests, but knowing they exist and naming which ones would apply is the difference between a student project and a proposal.</p>
+
+    <div class="callout">
+      <span class="lb">The operational hook worth stating early</span>
+      <p>Reporting from SOF Week 2026 raised questions about the lack of standardised tactical hearing protection among Indian special forces, and the Indian Army has only recently begun inducting DRDO-designed <span class="term" data-t="software-defined radio">software-defined radios</span> built by BEL. Your device sits precisely between those two facts: a headset that protects hearing <em>and</em> feeds an indigenous radio. One sentence, early, converts an academic project into a capability gap.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 14 COMPETITION ============ -->
+<section id="comp">
+  <div class="sec-head"><span class="sec-num">14</span><h2>The competition</h2></div>
+  <p class="sec-sub">The funnel, who survives it, and what the five or six teams beside you at the finale will actually have built.</p>
+
+  <div class="funnel">
+    <div class="fstep"><span class="fn">~45</span><div class="fb"><span class="ft">Your college's internal round</span><span class="fs">Institutions nominate up to 45 teams — roughly 30 software and 15 hardware. Most teams are eliminated here, before the national portal sees anything. Confirm your college's exact quota with your SPOC.</span></div></div>
+    <div class="fstep"><span class="fn">≤500</span><div class="fb"><span class="ft">National submissions for PS 26052</span><span class="fs">SIH accepts up to 500 solutions per problem statement across India. Assume a DRDO hardware PS on a fashionable AI topic sits toward the upper end of that.</span></div></div>
+    <div class="fstep"><span class="fn">5–7</span><div class="fb"><span class="ft">Shortlisted for the Grand Finale</span><span class="fs">SIH selects roughly five to seven teams per problem statement. This is the room you are actually competing in.</span></div></div>
+    <div class="fstep"><span class="fn">36 h</span><div class="fb"><span class="ft">The finale itself</span><span class="fs">Hardware edition, at a nodal centre, judged by industry professionals alongside the sponsoring organisation's own people — in this case DRDO scientists.</span></div></div>
+  </div>
+
+  <div class="col">
+    <h3>What the median competing team will have</h3>
+    <p>This is a well-trodden path and it is genuinely quick, which is why most of the five to seven teams will be on it:</p>
+    <ul>
+      <li>A pretrained denoiser — DeepFilterNet, RNNoise, or a DNS-Challenge baseline — fine-tuned for a few epochs.</li>
+      <li>Gunshot clips pulled from ESC-50, UrbanSound8K or FreeSound, mixed with LibriSpeech at a handful of SNRs.</li>
+      <li>PESQ and STOI numbers, frequently <em>quoted from the source paper</em> rather than measured on their own run.</li>
+      <li>A live laptop demo: speak into a mic, play a gunshot from a speaker, toggle the denoiser on and off. It will sound impressive.</li>
+      <li>A Jetson, if the college owns one, because the PS names it.</li>
+      <li>A polished deck with an architecture diagram that does not distinguish active noise control from speech enhancement.</li>
+    </ul>
+
+    <h3>Where that team is weak</h3>
+    <ul>
+      <li>No calibration — every level is relative, so no claim can be compared to physics or to anyone else's measurement.</li>
+      <li>No holdout discipline — tuned and evaluated on the same data, and unable to answer "how do we know this generalises".</li>
+      <li>No latency or power measured on real hardware; "real-time" asserted from a laptop.</li>
+      <li>Cannot answer "what happens at −10 dB SNR", "what does your denoiser do to the vocoder", or "which of your numbers is Lane A and which is Lane B".</li>
+      <li>Trained on neutral read speech and demonstrated with someone speaking calmly — while the actual use case is a person shouting under fire.</li>
+      <li>No error bounds, no negative results, nothing a reviewer can audit.</li>
+    </ul>
+
+    <h3>Where we are genuinely ahead</h3>
+    <ol>
+      <li><strong>Measured, calibrated, holdout-split, checksum-frozen impulsive data.</strong> Anyone can download ten thousand gunshots this afternoon — the Cadre forensics set alone has that many. Nobody else will have absolute-SPL recordings with a measured range impulse response and a frozen measurement engine. State the claim <em>that</em> precisely and it becomes unassailable rather than merely bold.</li>
+      <li><strong>A gap analysis instead of a literature review.</strong> Naming where each published method <em>stops</em> is a different register from summarising what it does, and it is the register DRDO respects.</li>
+      <li><strong>Correct two-lane architecture.</strong> Most teams will imply a neural network does their active cancellation. Being visibly right about the physics costs nothing and separates you immediately.</li>
+      <li><strong>A SWaP-C argument.</strong> 23.7 K parameters runs on a microcontroller. Saying "the PS suggests a Jetson AGX Orin; we do not need one, and here is the measured power draw" reframes the whole conversation for a soldier-worn device.</li>
+      <li><strong>Reproducibility as engineering practice</strong> — frozen references, provenance guards, seeded configs, a parity test. This is what qualification looks like, and it is what separates a project from a demo.</li>
+      <li><strong>Two metrics nobody else has</strong>, IRT and WLPS, plus the pre/post-vocoder comparison. All three cost days, not weeks.</li>
+    </ol>
+
+    <h3>Where we are genuinely behind</h3>
+    <div class="callout warn">
+      <span class="lb">Be honest about this internally</span>
+      <p>We have no working prototype, no trained model, no named board, and no measured latency. The median team will have a demo that <em>works in the room</em>. <strong>A rough working thing beats an excellent document at a 36-hour hardware finale</strong> — judges are explicitly told to expect a working prototype, not a deck. Every strength listed above only counts if there is something plugged in beside it.</p>
+      <p>The realistic threat is not a team with better research. It is a team from a college with an acoustics lab, or a team that simply got a board running early and spent the remaining weeks polishing the demo while we were reading papers.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 15 DIFFERENTIATION ============ -->
+<section id="diff">
+  <div class="sec-head"><span class="sec-num">15</span><h2>How different we actually are</h2></div>
+  <p class="sec-sub">Separating what is genuinely novel from what is well-executed standard practice — because conflating the two is how a good project gets caught overclaiming.</p>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Element</th><th>Honest classification</th><th>Defensible against a judge?</th></tr></thead>
+    <tbody>
+      <tr><td class="name">GTCRN as the neural core</td><td>Standard practice — using a published model</td><td>Yes, if we say so. Do <em>not</em> claim we designed it</td></tr>
+      <tr><td class="name">Two-lane architecture</td><td>Correct engineering, not novel</td><td>Yes — being right is the point, not being first</td></tr>
+      <tr><td class="name ok">Robust normalisation replacing RMS</td><td><strong>Genuine contribution</strong> — fixes a formal defect in the closest prior system</td><td>Yes. Strongest cheap win available</td></tr>
+      <tr><td class="name ok">Impulsive evaluation grid</td><td><strong>Genuine contribution</strong> — published methods on the noise class they skipped</td><td>Yes. Interesting whichever way it comes out</td></tr>
+      <tr><td class="name ok">Latency vs prediction-horizon collapse</td><td><strong>Genuine contribution</strong> — nobody has measured it</td><td>Yes. One chart carries the whole architecture argument</td></tr>
+      <tr><td class="name ok">α-stable augmentation for audio</td><td><strong>Genuine contribution</strong> — the authors named audio as future work themselves</td><td>Yes, <em>if</em> reported with a Gaussian baseline beside it</td></tr>
+      <tr><td class="name ok">Sub-0.5 α with deliberate clipping</td><td><strong>Genuine contribution</strong> — inverting a constraint into a method</td><td>Yes. Point at their sentence and explain why it does not apply to us</td></tr>
+      <tr><td class="name ok">Input-side saturation model</td><td><strong>Genuine contribution</strong> — nobody models the microphone overloading</td><td>Yes, and we will have our own deliberately clipped recordings</td></tr>
+      <tr><td class="name ok">α-stable vs prune-ability</td><td><strong>Genuine contribution</strong> — sits in the gap between two papers that never cite each other</td><td>Yes. One experiment, two deliverables</td></tr>
+      <tr><td class="name ok">B + C ≈ A additivity test</td><td><strong>Genuine contribution</strong> — tests an assumption everyone makes and nobody checks</td><td>Yes. Costs nothing but discipline at the range</td></tr>
+      <tr><td class="name ok">IRT / WLPS metrics</td><td><strong>Genuine contribution</strong> — standard metrics demonstrably under-report impulsive damage</td><td>Yes, and it is ~50 lines. Currently not implemented</td></tr>
+      <tr><td class="name ok">Pre- vs post-vocoder evaluation</td><td><strong>Genuine contribution</strong> — nobody in the stack does it, and it is the deployment reality</td><td>Yes. Probably the most DRDO-shaped experiment available</td></tr>
+      <tr><td class="name part">Live classifier tuning γ and β</td><td><strong>Modest contribution</strong> — making an offline hand-tuned parameter adaptive</td><td>Yes, and it is what makes "adaptive" true rather than asserted</td></tr>
+      <tr><td class="name ok">Measured calibrated gunshot dataset</td><td><strong>Genuine, and uncopyable</strong> — but only with the precise wording</td><td>Yes: "calibrated, holdout-split, frozen", not "we have real gunshots"</td></tr>
+      <tr><td class="name part">Three mics instead of two</td><td>Extension — H-GTCRN is dual-channel</td><td>Only with the Lane A/B justification, not the "three sources" argument</td></tr>
+      <tr><td class="name no">Geometric look-ahead</td><td><strong>Currently overclaimed</strong> — true of the recording rig, not the product</td><td>Not as written. Reframe around the ballistic crack</td></tr>
+      <tr><td class="name part">FLOM-based loss</td><td>Stretch goal</td><td>Most novel, most likely to fail. Must not block anything</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>Count them: <strong>nine genuine contributions</strong>, most costing days rather than weeks, and none requiring a novel neural architecture. That is the right shape for a hackathon project — the differentiation is in the data, the validation and the measurement, not in inventing a model a large lab would do better.</p>
+
+    <div class="callout amber">
+      <span class="lb">The one claim to rewrite before it reaches a slide — audit F3</span>
+      <p>The capture plan calls the geometric look-ahead "the strongest single idea", and it is printed across the bottom of the flagship architecture diagram: <em>Mic 2 hears the blast ~29 ms early at 10 m</em>. That is true of the <strong>recording rig</strong>, where Mic 2 is deliberately placed at the gun. It is not true of the <strong>product</strong>, where Mic 2 sits on the earcup about 20 cm from Mic 1 — giving <strong>0.6 ms</strong>. The same diagram shows both facts, so a judge reading it left to right finds the contradiction inside the diagram.</p>
+      <p>There is a real, deployable version: a supersonic round's <strong>ballistic crack always arrives before the muzzle blast</strong> — tens of milliseconds of genuine physical look-ahead at a single mic pair on one head, defensible from the counter-sniper literature. Keep the geometric version as what it honestly is, a property of the <em>data-collection</em> design that measures the source-to-speaker transfer function directly, and let the crack carry the deployment claim.</p>
+    </div>
+
+    <div class="callout good">
+      <span class="lb">The one-line pitch</span>
+      <p>"We built a physics-validated generator for impulsive defence noise, measured it against real calibrated recordings, showed that the published state of the art was never tested on the noise class DRDO names first — and then trained a 24,000-parameter model that meets the PESQ and STOI targets on a microcontroller instead of a Jetson."</p>
+    </div>
+  </div>
+</section>

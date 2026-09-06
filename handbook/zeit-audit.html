@@ -1,0 +1,841 @@
+<title>ZEIT Architecture Audit</title>
+<style>
+/* ============================================================
+   ZEIT - neutral document theme (matches the System Handbook)
+   Legacy token names are aliased so inline SVG keeps working.
+   ============================================================ */
+:root{
+  --bg:#ffffff; --bg-alt:#f5f5f7; --bg-sunk:#fafafc;
+  --text:#1d1d1f; --text-2:#424245; --text-3:#6e6e73;
+  --rule:#d2d2d7; --rule-soft:#e8e8ed;
+  --link:#0066cc;
+  --sev-crit:#b3261e; --sev-high:#a15c00; --sev-med:#6e6e73; --sev-ok:#1d7a3e;
+  --shadow:0 1px 3px rgba(0,0,0,.07), 0 8px 28px rgba(0,0,0,.06);
+  --radius:12px;
+  --ink:var(--text); --ink2:var(--text-2); --muted:var(--text-3);
+  --ground:var(--bg); --surface:var(--bg); --sunk:var(--bg-alt);
+  --line:var(--rule-soft); --line-strong:var(--rule);
+  --accent:var(--text); --accent-ink:var(--text); --accent-soft:var(--bg-alt);
+  --crit:var(--sev-crit); --crit-soft:var(--bg-alt);
+  --high:var(--sev-high); --high-soft:var(--bg-alt);
+  --med:var(--sev-med); --med-soft:var(--bg-alt);
+  --keep:var(--sev-ok); --keep-soft:var(--bg-alt);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000; --bg-alt:#1d1d1f; --bg-sunk:#161617;
+    --text:#f5f5f7; --text-2:#d2d2d7; --text-3:#86868b;
+    --rule:#424245; --rule-soft:#2c2c2e;
+    --link:#2997ff;
+    --sev-crit:#ff6b5e; --sev-high:#e3a34a; --sev-med:#86868b; --sev-ok:#4cc76a;
+    --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000; --bg-alt:#1d1d1f; --bg-sunk:#161617;
+  --text:#f5f5f7; --text-2:#d2d2d7; --text-3:#86868b;
+  --rule:#424245; --rule-soft:#2c2c2e;
+  --link:#2997ff;
+  --sev-crit:#ff6b5e; --sev-high:#e3a34a; --sev-med:#86868b; --sev-ok:#4cc76a;
+  --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.4);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:17px;line-height:1.53;letter-spacing:-.003em;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.wrap{max-width:1120px;margin:0 auto;padding:0 32px 120px}
+.col{max-width:74ch}
+h1,h2,h3,h4,.ui{font-family:inherit}
+.mono,code,kbd,td.num,.tag,.rule{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+
+.mast{padding:76px 0 40px}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  font-weight:600;margin:0 0 18px}
+h1{font-size:clamp(40px,6.4vw,68px);line-height:1.05;font-weight:700;letter-spacing:-.028em;
+  margin:0 0 20px;text-wrap:balance}
+.dek{font-size:21px;color:var(--text-2);margin:0;max-width:60ch;line-height:1.42;letter-spacing:-.012em}
+.mast-meta{display:flex;flex-wrap:wrap;gap:10px 34px;margin-top:30px;padding-top:24px;
+  border-top:1px solid var(--rule-soft);font-size:13px;color:var(--text-3)}
+.mast-meta b{color:var(--text-2);font-weight:600}
+
+.verdict{margin:34px 0 0;background:var(--bg-alt);border-radius:var(--radius);overflow:hidden}
+.verdict-head{padding:24px 28px 20px;display:flex;flex-wrap:wrap;align-items:baseline;gap:16px}
+.verdict-head .stamp{font-size:12px;font-weight:600;letter-spacing:.06em;padding:6px 12px;
+  background:var(--text);color:var(--bg);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.verdict-head p{margin:0;font-size:17px;color:var(--text-2);flex:1;min-width:280px;line-height:1.45}
+.tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  border-top:1px solid var(--rule-soft)}
+.tally{padding:20px 28px 22px;border-right:1px solid var(--rule-soft)}
+.tally:last-child{border-right:none}
+.tally .n{font-size:38px;font-weight:700;line-height:1;display:block;
+  font-variant-numeric:tabular-nums;letter-spacing:-.026em}
+.tally .lb{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  margin-top:9px;display:block;font-weight:600}
+.tally.c .n{color:var(--sev-crit)} .tally.h .n{color:var(--sev-high)}
+.tally.m .n{color:var(--text)} .tally.k .n{color:var(--sev-ok)}
+
+section{padding-top:88px}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+.sec-num{font-size:13px;font-weight:600;color:var(--text-3);padding-top:8px;white-space:nowrap;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+h2{font-size:clamp(28px,3.6vw,40px);font-weight:700;letter-spacing:-.024em;margin:0;
+  line-height:1.1;text-wrap:balance}
+.sec-sub{color:var(--text-3);font-size:17px;margin:10px 0 32px;max-width:66ch;line-height:1.45}
+h3{font-size:24px;font-weight:600;margin:48px 0 12px;letter-spacing:-.018em;text-wrap:balance}
+h4{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  margin:30px 0 10px}
+p{margin:0 0 17px}
+strong{font-weight:600;color:var(--text)}
+a{color:var(--link);text-decoration:none}
+a:hover{text-decoration:underline}
+a:focus-visible{outline:2px solid var(--link);outline-offset:3px;border-radius:2px}
+code{font-size:.86em;background:var(--bg-alt);padding:2px 6px;border-radius:5px;color:var(--text-2)}
+ul,ol{margin:0 0 17px;padding-left:24px}
+li{margin-bottom:9px}
+ul.tight li{margin-bottom:5px}
+
+.toc{background:var(--bg-alt);border-radius:var(--radius);padding:26px 28px;margin-top:34px}
+.toc ol{list-style:none;padding:0;margin:0;columns:2;column-gap:44px;font-size:15.5px}
+.toc li{margin-bottom:11px;break-inside:avoid;display:flex;gap:12px}
+.toc .k{font-size:12px;color:var(--text-3);padding-top:2px;flex:0 0 24px;font-weight:500;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.toc a{color:var(--text);text-decoration:none}
+.toc a:hover{color:var(--link);text-decoration:underline}
+@media(max-width:640px){.toc ol{columns:1}}
+
+.tblwrap{overflow-x:auto;margin:22px 0 30px;border-top:1px solid var(--text);
+  border-bottom:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:520px}
+th{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);
+  text-align:left;padding:13px 16px 12px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:14px 16px;border-bottom:1px solid var(--rule-soft);vertical-align:top;
+  font-size:15px;line-height:1.45;color:var(--text-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--bg-sunk)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-size:13.5px;white-space:nowrap}
+td.name{font-weight:600;color:var(--text)}
+.fail{color:var(--sev-crit);font-weight:600}
+.pass{color:var(--sev-ok);font-weight:600}
+
+.finding{border-top:1px solid var(--rule);margin-bottom:0;padding-bottom:10px}
+.finding:first-of-type{border-top:1px solid var(--text)}
+.f-head{padding:30px 0 6px}
+.f-tags{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:13px}
+.tag{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  padding:4px 10px;border-radius:5px;background:var(--bg-alt);color:var(--text-3)}
+.tag.crit{color:var(--bg);background:var(--sev-crit)}
+.tag.high{color:var(--bg);background:var(--sev-high)}
+.tag.med{color:var(--text-2);background:var(--bg-alt)}
+.tag.id{color:var(--text-3);background:transparent;box-shadow:inset 0 0 0 1px var(--rule);
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.tag.verified{color:var(--sev-ok);background:var(--bg-alt)}
+.f-head h3{margin:0;font-size:26px;font-weight:600;line-height:1.18;letter-spacing:-.022em}
+.f-body{padding:0 0 22px;max-width:78ch}
+.f-body>p:first-child{margin-top:0}
+.f-do{margin:22px 0 0;padding:20px 24px;background:var(--bg-alt);border-radius:var(--radius)}
+.f-do .lb{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  display:block;margin-bottom:9px;font-weight:600}
+.f-do p{margin:0;font-size:16px}
+.f-do p+p{margin-top:12px}
+
+blockquote{margin:20px 0;padding:4px 0 4px 22px;box-shadow:inset 2px 0 0 var(--rule);
+  color:var(--text-2);font-size:16.5px;line-height:1.5}
+blockquote cite{display:block;font-style:normal;font-size:12.5px;color:var(--text-3);margin-top:10px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;margin:24px 0 10px}
+.chart{background:var(--bg-alt);border-radius:var(--radius);padding:22px 22px 16px}
+.chart h4{margin:0 0 6px;color:var(--text);font-size:12px}
+.chart .cap{font-size:13.5px;color:var(--text-3);margin:12px 0 0;line-height:1.45}
+svg{display:block;width:100%;height:auto}
+.svg-t{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  font-size:10px;fill:var(--text-3)}
+.svg-t.strong{fill:var(--text-2);font-weight:500}
+.svg-lab{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:11px;font-weight:600}
+
+.chain{background:var(--bg-alt);border-radius:var(--radius);padding:24px 26px;margin:24px 0 30px;
+  overflow-x:auto}
+.chain-row{display:flex;gap:6px;min-width:640px}
+.blk{flex:1;background:var(--bg);border-radius:8px;padding:12px 8px;text-align:center;
+  position:relative;min-width:0}
+.blk .n{font-size:10px;color:var(--text-3);display:block;font-weight:600;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.blk .t{font-size:13px;font-weight:600;display:block;margin-top:4px;line-height:1.2;color:var(--text)}
+.blk .s{font-size:9.5px;color:var(--text-3);display:block;margin-top:5px;line-height:1.3;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.blk.ai{box-shadow:inset 0 0 0 2px var(--text)}
+.blk.flag{box-shadow:inset 0 0 0 2px var(--sev-crit)}
+.blk.flag .n{color:var(--sev-crit)}
+.chain-note{font-size:12.5px;color:var(--text-3);margin:16px 0 0;line-height:1.6}
+.chain-note b{color:var(--sev-crit);font-weight:600}
+
+.callout{background:var(--bg-alt);border-radius:var(--radius);padding:22px 26px;margin:26px 0;
+  max-width:78ch}
+.callout p:last-child{margin-bottom:0}
+.callout p{font-size:16px}
+.callout .lb{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  font-weight:600;display:block;margin-bottom:10px}
+
+.keeps{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px;margin:24px 0 0}
+.keep-item{background:var(--bg-alt);border-radius:var(--radius);padding:20px 22px}
+.keep-item .h{font-weight:600;font-size:16.5px;margin:0 0 7px;color:var(--text);letter-spacing:-.012em}
+.keep-item p{margin:0;font-size:14.8px;color:var(--text-2);line-height:1.47}
+
+.steps{counter-reset:s;list-style:none;padding:0;margin:26px 0 0}
+.steps li{counter-increment:s;position:relative;padding:0 0 26px 52px;margin:0}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:30px;height:30px;
+  background:var(--text);color:var(--bg);border-radius:50%;font-size:13px;font-weight:600;
+  display:grid;place-items:center;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.steps li::after{content:"";position:absolute;left:14.5px;top:34px;bottom:2px;width:1px;
+  background:var(--rule)}
+.steps li:last-child{padding-bottom:0}
+.steps li:last-child::after{display:none}
+.steps .h{font-weight:600;font-size:18px;display:block;margin-bottom:4px;line-height:1.3;
+  letter-spacing:-.014em;color:var(--text)}
+.steps p{margin:0;font-size:16px;color:var(--text-2)}
+
+footer{margin-top:100px;padding-top:30px;border-top:1px solid var(--rule);font-size:13px;
+  color:var(--text-3);line-height:1.65;max-width:80ch}
+footer p{margin:0 0 12px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media(max-width:700px){
+  body{font-size:16.5px}
+  .wrap{padding:0 20px 80px}
+  .mast{padding:48px 0 32px}
+  section{padding-top:64px}
+  .tally{border-right:none;border-bottom:1px solid var(--rule-soft)}
+  .keeps{grid-template-columns:1fr}
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">Design review · SIH 2026 · PS 26052 · DRDO / DDP-iDEX</p>
+  <h1>ZEIT Architecture Audit</h1>
+  <p class="dek">A read of every document, diagram and tool in the repository, checked line by line against the fifteen papers in <code>docs/research/</code> — and against what a DRDO evaluator is actually holding in their head.</p>
+  <div class="mast-meta">
+    <span><b>Repo</b> Zeit_at_SIH @ main</span>
+    <span><b>Reviewed</b> 6 docs · 15 papers · 21 tools · 6 diagrams</span>
+    <span><b>Date</b> 6 Sep 2026</span>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="verdict-head">
+    <span class="stamp">GO, WITH CONDITIONS</span>
+    <p>The research is genuinely strong and the data toolkit is better than anything a weekend produces. Three things will get taken apart by a technical judge, and all three are fixable this week.</p>
+  </div>
+  <div class="tallies">
+    <div class="tally c"><span class="n">2</span><span class="lb">Critical</span></div>
+    <div class="tally h"><span class="n">6</span><span class="lb">High</span></div>
+    <div class="tally m"><span class="n">4</span><span class="lb">Medium</span></div>
+    <div class="tally k"><span class="n">7</span><span class="lb">Keep as is</span></div>
+  </div>
+</div>
+
+<nav class="toc" aria-label="Contents">
+  <ol>
+    <li><span class="k">01</span><a href="#map">What is actually in the repo</a></li>
+    <li><span class="k">02</span><a href="#arch">The architecture as defined</a></li>
+    <li><span class="k">03</span><a href="#drdo">What DRDO actually wants</a></li>
+    <li><span class="k">04</span><a href="#findings">The findings, ranked</a></li>
+    <li><span class="k">05</span><a href="#keep">What is already right</a></li>
+    <li><span class="k">06</span><a href="#next">The next seven days</a></li>
+  </ol>
+</nav>
+
+<!-- ============ 01 ============ -->
+<section id="map">
+  <div class="sec-head"><span class="sec-num">01</span><h2>What is actually in the repo</h2></div>
+  <p class="sec-sub">Two halves that barely touch: a finished field-measurement toolkit, and a paper design for a system that does not exist yet.</p>
+
+  <div class="col">
+    <p>Nothing here is a stub. <code>data_collection/</code> is 21 working Python tools with a self-test, and <code>docs/</code> is six interlocking design documents written to a standard most SIH teams never reach — every claim traced to a paper, and unverified claims explicitly marked <code>[unverified]</code>.</p>
+    <p>The gap is that <strong>no line of the product exists yet</strong>. No <code>training/</code>, no <code>engine/</code>, no model, no C++. The repository is a research base and a measurement rig, not a prototype.</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Area</th><th>Contents</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td class="name">data_collection/</td><td>21 CLI tools — capture, calibrate, validate, ingest, analyze, IR extract, report, session freeze. Self-contained WAV I/O, no libsndfile.</td><td class="pass">Built, self-test green</td></tr>
+      <tr><td class="name">docs/01-system/</td><td>workflow · placement · order · architecture · tech-stack · two-mic-capture-plan</td><td class="pass">Written, thorough</td></tr>
+      <tr><td class="name">docs/02-data-collection/</td><td>16 measured quantities, field checklist, metadata schema. Partly in Hinglish.</td><td class="pass">Written</td></tr>
+      <tr><td class="name">docs/research/</td><td>15 full papers as Markdown — Widrow 1975 through IS³ 2025</td><td class="pass">Present</td></tr>
+      <tr><td class="name">docs/research-summary/</td><td>Gap analysis (the spine of workflow.md), lit reviews, two Notes screenshots</td><td class="pass">Present</td></tr>
+      <tr><td class="name">docs/03-source-material/</td><td>PS text, and <code>project-plan-v0.md</code> marked "kept for history"</td><td class="fail">v0 is being under-used — see F7, F8</td></tr>
+      <tr><td class="name">training/</td><td>Dataset mixing, augmentation, model, ONNX export</td><td class="fail">Does not exist</td></tr>
+      <tr><td class="name">engine/</td><td>The C++ real-time path described in tech-stack.md</td><td class="fail">Does not exist</td></tr>
+      <tr><td class="name">DATA/</td><td>Range recordings</td><td class="fail">Gitignored, range trip not yet taken</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <h3>The one distinction the docs get right</h3>
+    <p><code>placement.md</code> splits everything three ways — <strong>hardware</strong>, <strong>on-device</strong>, <strong>off-device</strong> — and insists that α-stable augmentation, the synthetic generator, pruning and every metric <em>never ship</em>; they only shape the weights that do. That is the correct mental model and it pre-empts the most common judge question. Keep it.</p>
+    <p>By that document's own count, only five of the fifteen papers put code on the device: Widrow, Shao &amp; Nikias, BMRI, GTCRN and H-GTCRN. Everything else is method, baseline or evidence.</p>
+  </div>
+</section>
+
+<!-- ============ 02 ============ -->
+<section id="arch">
+  <div class="sec-head"><span class="sec-num">02</span><h2>The architecture as defined</h2></div>
+  <p class="sec-sub">A three-microphone headset feeding an eleven-block real-time chain, with a 25.3 ms algorithmic budget and 10 ms of compute per hop.</p>
+
+  <h4>The signal chain, as drawn in 4_architecture_full.png</h4>
+  <div class="chain">
+    <div class="chain-row">
+      <div class="blk"><span class="n">1</span><span class="t">Audio in</span><span class="s">3 mics<br>lock-free ring</span></div>
+      <div class="blk flag"><span class="n">2</span><span class="t">Aux-IVA</span><span class="s">blind separation<br>F9</span></div>
+      <div class="blk"><span class="n">3</span><span class="t">Normalise</span><span class="s">90th pct / FLOM<br>never RMS</span></div>
+      <div class="blk flag"><span class="n">4</span><span class="t">STFT + ERB</span><span class="s">complex · 32 bands<br>F6</span></div>
+      <div class="blk"><span class="n">5</span><span class="t">Classifier</span><span class="s">kurtosis → γ, β<br>the adaptive part</span></div>
+      <div class="blk flag"><span class="n">6</span><span class="t">Impulsive</span><span class="s">BMRI AR interp<br>F4</span></div>
+    </div>
+    <div class="chain-row" style="margin-top:10px">
+      <div class="blk ai"><span class="n">7</span><span class="t">Neural core</span><span class="s">GTCRN 23.7K<br>the AI/ML</span></div>
+      <div class="blk"><span class="n">8</span><span class="t">Deep filter</span><span class="s">harmonics below<br>5 kHz</span></div>
+      <div class="blk"><span class="n">9</span><span class="t">Voice guard</span><span class="s">spectral correction<br>kills LF rumble</span></div>
+      <div class="blk flag"><span class="n">10</span><span class="t">LMS clean-up</span><span class="s">Mic 3 error<br>F2</span></div>
+      <div class="blk"><span class="n">11</span><span class="t">ISTFT</span><span class="s">overlap-add<br>phase intact</span></div>
+      <div class="blk"><span class="n">→</span><span class="t">To radio</span><span class="s">clean voice out</span></div>
+    </div>
+    <p class="chain-note">Teal = the only learned block. <b>Red = flagged below.</b> Four of eleven blocks carry a finding; the rest are sound.</p>
+  </div>
+
+  <div class="col">
+    <h3>The microphones</h3>
+    <p>Mic 1 on the boom at the mouth (the signal to keep), Mic 2 on the outer earcup shell (the noise reference), Mic 3 inside the earcup (what still reaches the ear). The hardware rule is stated in red on the diagram and it is correct: <strong>Mic 2 must not hear the voice</strong>, because an adaptive filter minimising total output power will otherwise cancel the voice. That is Widrow, and it is a mechanical constraint software cannot repair.</p>
+    <p>The justification for <em>three</em> mics — "the PS names three noise classes, three sources need three sensors" — is the team's own extension. H-GTCRN, the paper it cites, is dual-channel with 4 cm spacing. See F9.</p>
+
+    <h3>The timing budget</h3>
+    <p>20 ms frame, 10 ms hop, 128-sample I/O buffer → 25.3 ms algorithmic latency, 10 ms of compute per hop. Three threads: a real-time audio callback that never allocates, a high-priority processing thread, a normal-priority control thread. The real-time rules in <code>tech-stack.md</code> §3.3 (no allocation, no locks, no exceptions, no logging in the callback) are exactly right and rarely written down by student teams.</p>
+
+    <h3>The stack</h3>
+    <p>C++17 for the deadline path, Python for everything else, and <strong>one boundary: the ONNX file</strong>. PFFFT instead of FFTW is chosen explicitly on licence grounds — "a GPL dependency in a DRDO deliverable is a conversation nobody wants." That single sentence will land better with a DRDO panel than most of the technical content; say it out loud in the pitch.</p>
+    <p>The numerical parity test in §5 — dump every intermediate from both the Python and C++ pipelines and assert stage-by-stage agreement — is the right call, and building it before the C++ path is finished is the right order.</p>
+
+    <h3>The data toolkit</h3>
+    <p>96 kHz / 24-bit, limiter and HPF off, staggered-gain two-channel array, calibration to absolute Pascals, range impulse response by sweep with a balloon fallback, nine automated quality checks producing a GO/NO-GO verdict in under ten seconds, and a <code>freeze</code> step that takes SHA-256 of the data <em>and of the measurement engine itself</em>. The sizing argument — never fewer than 10 shots per condition, 15 for the core, because at n=3 the standard deviation you are using as a tolerance is itself ±46 % uncertain — is real statistics, not hand-waving.</p>
+  </div>
+</section>
+
+<!-- ============ 03 ============ -->
+<section id="drdo">
+  <div class="sec-head"><span class="sec-num">03</span><h2>What DRDO actually wants</h2></div>
+  <p class="sec-sub">A sponsor read. Partly inference from how DRDO and its funding schemes operate rather than a published SIH rubric — treat it as a lens, not a checklist.</p>
+
+  <div class="col">
+    <p>DRDO is a government R&amp;D organisation under the Department of Defence Production. Its institutional instinct is <strong>qualification, not demonstration</strong>. A working demo answers "does it do something"; DRDO's question is "can this be specified, tested, reproduced, made in India, and fielded by someone who has never met you."</p>
+
+    <h4>It thinks in Technology Readiness Levels</h4>
+    <p>DRDO's Technology Development Fund exists specifically to raise technologies "from TRL 3 onwards" to tri-services specifications, and iDEX Prime targets TRL 4 and above. A hackathon entry is TRL 3–4. <strong>The winning move is not to pretend you are at TRL 7 — it is to say precisely where you are and what the next two levels cost.</strong> A slide that reads "we are at TRL 4; TRL 5 requires environmental qualification per JSS 55555 and a 40-hour field trial; here is the plan" reads as competence. A slide claiming a deployable soldier system reads as naïve.</p>
+
+    <h4>It thinks in standards and limits, not in benchmarks</h4>
+    <p>An acoustics evaluator has MIL-STD-1474 in their head, not VCTK-DEMAND. That standard requires impulse peak levels below <strong>140 dBP at the ear</strong>, protected or unprotected — while few weapons produce below 150 dBP and many exceed 180. That is the frame they will hear your project in. Your measured 140–155 dB muzzle blast figure lands inside a standard they already know.</p>
+    <p>Equally: to a defence evaluator, "speech intelligibility" has a formal meaning — ANSI/ASA S3.2, measured by Diagnostic Rhyme Test, Modified Rhyme Test or PB word lists with human listeners. PESQ and STOI are proxies for that. You do not need to run a DRT, but naming it as the next rung on the ladder shows you know there is a ladder.</p>
+
+    <h4>It cares about indigenisation and IP</h4>
+    <p>"Make in India" and <em>Atmanirbhar Bharat</em> are not slogans in this context, they are procurement policy. Permissive licences, no GPL, no cloud dependency, and a clear statement of what is yours are worth real marks. Note that <strong>DNSMOS is an Azure service</strong> — an evaluation dependency on a foreign cloud is worth a sentence of acknowledgement and an offline fallback.</p>
+
+    <h4>It rewards honest negative results</h4>
+    <p>This is where your project is unusually well positioned. The gap analysis in <code>PS26052_paper_gap_analysis.docx</code> is exactly the register DRDO respects: naming where each published method stops, then measuring the collapse. "Deep ANC was never tested on the noise class our sponsor names first, and here is what happens when you do" is a stronger DRDO story than a polished demo.</p>
+
+    <div class="callout">
+      <span class="lb">The operational hook worth stating</span>
+      <p>Reporting from SOF Week 2026 raised questions about the lack of standardised tactical hearing protection among Indian special forces, and the Indian Army has only recently begun inducting DRDO-designed software-defined radios. Your device sits precisely between those two facts: a headset that protects hearing <em>and</em> feeds an indigenous radio. Say that in one sentence early — it converts an academic project into a capability gap.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 ============ -->
+<section id="findings">
+  <div class="sec-head"><span class="sec-num">04</span><h2>The findings, ranked</h2></div>
+  <p class="sec-sub">Every claim below is traced to a specific paper in your own docs/research folder, a specific line in your own docs, or something I ran on this machine.</p>
+
+  <!-- F1 -->
+  <article class="finding crit">
+    <div class="f-head">
+      <div class="f-tags">
+        <span class="tag id">F1</span><span class="tag crit">Critical</span><span class="tag verified">Verified in your papers</span>
+      </div>
+      <h3>The PS targets are not reachable at the SNR band your documents advocate</h3>
+    </div>
+    <div class="f-body">
+      <p><code>workflow.md</code> §5.6 argues for training and reporting at <strong>−12.5 to −2.5 dB</strong>, "the regime gunfire actually produces," citing H-GTCRN. That reasoning is sound. But H-GTCRN's own results table, sitting in your <code>docs/research/H-GTCRN_highlighted.md</code>, reports what it achieves there:</p>
+
+      <div class="charts">
+        <div class="chart">
+          <h4>PESQ vs input SNR</h4>
+          <svg viewBox="0 0 340 210" role="img" aria-label="PESQ against input SNR. H-GTCRN reaches 1.71 at minus 2.5 dB; GTCRN on VCTK-DEMAND reaches 2.87 at positive SNR; the PS target of 2.5 sits between them.">
+            <!-- grid -->
+            <line x1="46" y1="30" x2="326" y2="30" stroke="var(--line)" stroke-width="1"/>
+            <line x1="46" y1="66" x2="326" y2="66" stroke="var(--line)" stroke-width="1"/>
+            <line x1="46" y1="102" x2="326" y2="102" stroke="var(--line)" stroke-width="1"/>
+            <line x1="46" y1="138" x2="326" y2="138" stroke="var(--line)" stroke-width="1"/>
+            <line x1="46" y1="174" x2="326" y2="174" stroke="var(--line-strong)" stroke-width="1"/>
+            <!-- y labels: 1.0 at 174, 3.0 at 30  => 72 px per unit -->
+            <text class="svg-t" x="40" y="178" text-anchor="end">1.0</text>
+            <text class="svg-t" x="40" y="142" text-anchor="end">1.5</text>
+            <text class="svg-t" x="40" y="106" text-anchor="end">2.0</text>
+            <text class="svg-t" x="40" y="70" text-anchor="end">2.5</text>
+            <text class="svg-t" x="40" y="34" text-anchor="end">3.0</text>
+            <!-- target line at 2.5 => y=66 -->
+            <line x1="46" y1="66" x2="326" y2="66" stroke="var(--crit)" stroke-width="1.5" stroke-dasharray="5 3"/>
+            <text class="svg-lab" x="322" y="60" text-anchor="end" fill="var(--crit)">PS target 2.5</text>
+            <!-- x: -12.5 at 66, -7.5 at 116, -2.5 at 166, +10 at 291 -->
+            <text class="svg-t" x="66" y="192" text-anchor="middle">−12.5</text>
+            <text class="svg-t" x="116" y="192" text-anchor="middle">−7.5</text>
+            <text class="svg-t" x="166" y="192" text-anchor="middle">−2.5</text>
+            <text class="svg-t" x="291" y="192" text-anchor="middle">+2.5…17.5</text>
+            <text class="svg-t strong" x="186" y="206" text-anchor="middle">input SNR (dB)</text>
+            <!-- H-GTCRN 1.39,1.58,1.71 -> y = 174-(v-1)*72 -->
+            <polyline points="66,146.1 116,132.2 166,122.9" fill="none" stroke="var(--text)" stroke-width="2.2"/>
+            <circle cx="66" cy="146.1" r="3.4" fill="var(--text)"/>
+            <circle cx="116" cy="132.2" r="3.4" fill="var(--text)"/>
+            <circle cx="166" cy="122.9" r="3.4" fill="var(--text)"/>
+            <text class="svg-lab" x="172" y="119" fill="var(--text)">H-GTCRN 1.71</text>
+            <!-- GTCRN baseline 1.09,1.16,1.31 -->
+            <polyline points="66,167.5 116,162.5 166,151.7" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-dasharray="4 3"/>
+            <circle cx="166" cy="151.7" r="2.8" fill="var(--muted)"/>
+            <text class="svg-t" x="172" y="156">GTCRN 1.31</text>
+            <!-- VCTK-DEMAND point 2.87 -> y = 174-1.87*72 = 39.4 -->
+            <circle cx="291" cy="39.4" r="4.6" fill="var(--keep)"/>
+            <text class="svg-lab" x="286" y="35" text-anchor="end" fill="var(--keep)">2.87</text>
+            <!-- axis -->
+            <line x1="46" y1="30" x2="46" y2="174" stroke="var(--line-strong)" stroke-width="1"/>
+          </svg>
+          <p class="cap">Teal: H-GTCRN, the dual-mic hybrid your architecture is built on. Green: GTCRN on VCTK-DEMAND, averaged over its 2.5–17.5 dB test conditions. The target line is crossed only on the right.</p>
+        </div>
+        <div class="chart">
+          <h4>STOI vs input SNR</h4>
+          <svg viewBox="0 0 340 210" role="img" aria-label="STOI against input SNR. H-GTCRN reaches 0.82 at minus 2.5 dB; GTCRN on VCTK-DEMAND reaches 0.94; the PS target of 0.85 sits between them.">
+            <line x1="46" y1="30" x2="326" y2="30" stroke="var(--line)" stroke-width="1"/>
+            <line x1="46" y1="66" x2="326" y2="66" stroke="var(--line)" stroke-width="1"/>
+            <line x1="46" y1="102" x2="326" y2="102" stroke="var(--line)" stroke-width="1"/>
+            <line x1="46" y1="138" x2="326" y2="138" stroke="var(--line)" stroke-width="1"/>
+            <line x1="46" y1="174" x2="326" y2="174" stroke="var(--line-strong)" stroke-width="1"/>
+            <!-- 0.60 at 174 ... 1.00 at 30 => 360 px per unit -->
+            <text class="svg-t" x="40" y="178" text-anchor="end">0.60</text>
+            <text class="svg-t" x="40" y="142" text-anchor="end">0.70</text>
+            <text class="svg-t" x="40" y="106" text-anchor="end">0.80</text>
+            <text class="svg-t" x="40" y="70" text-anchor="end">0.90</text>
+            <text class="svg-t" x="40" y="34" text-anchor="end">1.00</text>
+            <!-- target 0.85 => y = 174-(0.85-0.60)*360 = 84 -->
+            <line x1="46" y1="84" x2="326" y2="84" stroke="var(--crit)" stroke-width="1.5" stroke-dasharray="5 3"/>
+            <text class="svg-lab" x="322" y="78" text-anchor="end" fill="var(--crit)">PS target 0.85</text>
+            <text class="svg-t" x="66" y="192" text-anchor="middle">−12.5</text>
+            <text class="svg-t" x="116" y="192" text-anchor="middle">−7.5</text>
+            <text class="svg-t" x="166" y="192" text-anchor="middle">−2.5</text>
+            <text class="svg-t" x="291" y="192" text-anchor="middle">+2.5…17.5</text>
+            <text class="svg-t strong" x="186" y="206" text-anchor="middle">input SNR (dB)</text>
+            <!-- H-GTCRN .7238 .7901 .8196 -> y=174-(v-.6)*360 -->
+            <polyline points="66,129.4 116,105.6 166,101.3" fill="none" stroke="var(--text)" stroke-width="2.2"/>
+            <circle cx="66" cy="129.4" r="3.4" fill="var(--text)"/>
+            <circle cx="116" cy="105.6" r="3.4" fill="var(--text)"/>
+            <circle cx="166" cy="101.3" r="3.4" fill="var(--text)"/>
+            <text class="svg-lab" x="172" y="106" fill="var(--text)">H-GTCRN 0.82</text>
+            <!-- GTCRN .4746 .6112 .7294 : .4746 below axis -> clamp start at -7.5 -->
+            <polyline points="116,169.8 166,131.4" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-dasharray="4 3"/>
+            <circle cx="166" cy="131.4" r="2.8" fill="var(--muted)"/>
+            <text class="svg-t" x="172" y="136">GTCRN 0.73</text>
+            <!-- VCTK .940 -> y = 174-.34*360 = 51.6 -->
+            <circle cx="291" cy="51.6" r="4.6" fill="var(--keep)"/>
+            <text class="svg-lab" x="286" y="48" text-anchor="end" fill="var(--keep)">0.94</text>
+            <line x1="46" y1="30" x2="46" y2="174" stroke="var(--line-strong)" stroke-width="1"/>
+          </svg>
+          <p class="cap">Same picture. GTCRN's −12.5 dB STOI of 0.475 falls below the plotted range and is omitted rather than clipped.</p>
+        </div>
+      </div>
+
+      <p>Tan et al.'s pruned dual-mic system — the other "closest prior work" — reaches STOI 0.876, PESQ 2.56 and <strong>SNR 8.61 dB</strong> on diffuse babble at favourable SNR. Nothing in your fifteen papers reaches SNR &gt; 15 dB, and nothing reaches PESQ 2.5 below 0 dB input SNR.</p>
+      <p>This is not a reason to abandon the low-SNR regime. It is a reason to <strong>stop treating the three PS numbers as a single pass/fail gate</strong>. They are almost certainly written as improvement over the unprocessed input at a moderate SNR, not as absolute scores at −12 dB — but the PS does not say, and if you do not define it, a judge will define it against you.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Put one slide up that says: "We report PESQ, STOI and SNR as curves against input SNR from −15 to +20 dB, not as single numbers. We meet the PS targets above <em>X</em> dB input SNR. Below that, no published lightweight system meets them, and here is the evidence." Then show the two charts above with your own curve on them.</p>
+        <p>Also settle whether "SNR &gt; 15 dB" means output SNR or ΔSNR, state your reading in one line, and report both. Improvement from −10 dB is a completely different claim from an absolute 15 dB output.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F2 -->
+  <article class="finding crit">
+    <div class="f-head">
+      <div class="f-tags">
+        <span class="tag id">F2</span><span class="tag crit">Critical</span><span class="tag med">Architecture</span>
+      </div>
+      <h3>"ANC" and speech enhancement are fused into one chain, and the latency budget only works for one of them</h3>
+    </div>
+    <div class="f-body">
+      <p>Deep ANC is <em>active</em> noise control: a CRN predicts an anti-noise signal, a loudspeaker emits it, and NMSE is measured at an error microphone in the acoustic field. It is not speech enhancement, and GTCRN cannot stand in for it — GTCRN outputs enhanced speech, not an anti-noise waveform. Treating them as interchangeable baselines (<code>workflow.md</code> §2.1) will not survive questioning.</p>
+      <p>The consequence shows up as a wiring error in the diagram. Block <strong>[10] LMS clean-up, driven by the Mic 3 in-ear error signal</strong>, feeds block [11] and then <strong>"clean voice out → to the radio."</strong> But Mic 3 measures what the <em>wearer hears</em>. That is the hearing-protection loop. It contains no information about the transmitted voice, because the transmitted voice never passes through the wearer's ear. Two different signal chains have been joined at a point where no signal actually flows.</p>
+      <p>And the timing is decisive. True feedforward ANC must emit anti-noise before the acoustic wave physically arrives at the ear — the electronic path has to beat roughly 0.3–0.6 ms of travel from earcup to eardrum. Your budget is <strong>25.3 ms</strong>. That is forty to eighty times too slow. Deep ANC's entire delay-compensation section exists because of exactly this constraint.</p>
+      <blockquote>
+        A neural network cannot live inside Lane A on affordable embedded hardware. The anti-noise must be emitted before the acoustic wave physically arrives at the ear — that is microseconds of headroom, not milliseconds. Any team claiming a transformer does their active cancellation has not measured their own latency.
+        <cite>docs/03-source-material/project-plan-v0.md §1.1 — your own document, marked "kept for history"</cite>
+      </blockquote>
+      <p>You already solved this and then deleted the solution. v0 splits the system into <strong>Lane A</strong> (reference mic → speaker → ear, sub-millisecond, FxLMS, hardware) and <strong>Lane B</strong> (boom mic → radio uplink, 20–40 ms, neural denoiser, software) and calls being right about it "a free differentiator." It is.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Restore the two-lane split as the top-level architecture, above the eleven blocks. Blocks [1]–[9] and [11] are Lane B and stay exactly as they are. Move block [10] and Mic 3 into Lane A with their own budget, their own algorithm (FxLMS with secondary-path estimation) and their own metric (NMSE or in-ear attenuation, not PESQ).</p>
+        <p>Then say it on the pitch slide. Most teams will claim a neural network does their active cancellation. Being visibly right here costs you nothing and separates you immediately.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F3 -->
+  <article class="finding high">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F3</span><span class="tag high">High</span><span class="tag med">Claim risk</span></div>
+      <h3>The 29 ms of "free look-ahead" belongs to the recording rig, not to the product</h3>
+    </div>
+    <div class="f-body">
+      <p><code>two-mic-capture-plan.md</code> §2 calls this "the strongest single idea in this plan," and it is printed across the bottom of your flagship architecture diagram: <em>"because Mic 2 sits nearer the gun than Mic 1, it hears the blast ~29 ms early at 10 m: real look-ahead from geometry, not from prediction."</em></p>
+      <p>That is true of the <strong>capture rig</strong>, where you deliberately place Mic 2 at the gun. It is not true of the <strong>product</strong>. The same diagram, six inches to the left, shows Mic 2 on the outer earcup shell — on the soldier's own head, roughly 20 cm from Mic 1. That is <strong>0.6 ms</strong>, not 29 ms. For incoming fire the shooter is far away and both mics sit on one head, so the differential is essentially zero.</p>
+      <p>A judge who reads the diagram left-to-right will find the contradiction inside the diagram itself. This is the single highest-risk claim in the pack.</p>
+      <div class="callout">
+        <span class="lb">There is a real, deployable version of this idea</span>
+        <p>A supersonic round produces a <strong>ballistic shockwave</strong> — the crack — that propagates as an expanding cone from the bullet's trajectory and <em>always arrives before the muzzle blast</em> in the region where it exists. This is the physics that counter-sniper systems such as Boomerang and PILAR are built on. For incoming fire it gives you tens of milliseconds of genuine, physical look-ahead <em>at a single mic pair on one head</em> — the crack tells you the blast is coming.</p>
+        <p>That is a far stronger version of the claim: it survives the transition from rig to product, it is defensible from the counter-sniper literature, and it makes your two-path architecture inevitable rather than convenient. It also gives your transient classifier something concrete to detect.</p>
+      </div>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Rewrite the caption. Keep the geometric look-ahead as what it is — a property of the <em>data-collection</em> design that lets you measure the source-to-speaker transfer function directly, which is genuinely valuable. Replace the deployment claim with the crack-before-blast argument, and measure the crack-to-blast interval at the range as a headline quantity alongside the inter-channel delay.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F4 -->
+  <article class="finding high">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F4</span><span class="tag high">High</span><span class="tag verified">Verified in RBBG15</span></div>
+      <h3>BMRI is being asked to do a job its authors explicitly designed it not to do</h3>
+    </div>
+    <div class="f-body">
+      <p><code>workflow.md</code> says BMRI is chosen "because it is proven on exactly this noise class." Reading the paper in your own folder, it is proven on a different one.</p>
+      <ul>
+        <li><strong>The noise is white Cauchy at density 0.02, kurtosis 27</strong> — dense, low-amplitude clicks. Not muzzle blast. The stated applications are optical soundtrack noise on celluloid, rain noise and gramophone clicks.</li>
+        <li><strong>The material is music and speech restoration</strong>, evaluated by SNR improvement, PSMt and listening tests with ten musically-trained listeners.</li>
+        <li><strong>The SNR improvement is roughly 3.5 dB</strong> at the matched setting (γ = 5.25 %), 12.5 % for the "high setting". The PS asks for 15 dB.</li>
+        <li><strong>Its design goal is the opposite of yours.</strong> The authors write that unlike enhancement for hands-free car systems or ASR pre-processing, in high-quality restoration it is crucial to <em>not</em> introduce artefacts "be it at the cost of obtaining less noise reduction than possible."</li>
+      </ul>
+      <p>Two mechanisms make this worse for your use case:</p>
+      <p><strong>It eats transients.</strong> The paper reports negative SNR improvement on pop music at 15–20 dB input SNR because "transients like e.g. drum sounds cause high AR error signals that trigger the interpolation threshold and thus get degraded." Speech plosives — /p/, /t/, /k/ — are transients, and they are exactly the consonants that carry intelligibility. Your block [9] "voice guard" is guarding against damage that block [6] causes.</p>
+      <p><strong>Interpolation has a duration limit.</strong> The method is built for events "lasting only a few milliseconds," replaced from surrounding unaffected samples. A close muzzle blast plus its room decay destroys 50–200 ms. Filling 200 ms of speech from its neighbours is not interpolation, it is synthesis, and an AR model of order 16–32 cannot do it.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Keep BMRI, narrow its job. It is genuinely good for the <em>ballistic crack</em> (sub-millisecond), the mechanical layer, and dense low-level impulsive noise — which is a real part of the problem. Say so precisely instead of claiming it covers gunshots.</p>
+        <p>For the blast itself, the honest framing is <strong>conceal and recover</strong>, not remove: the information is gone, and the metric that matters is how fast intelligibility comes back. That is <strong>IRT (Impulse Recovery Time)</strong> from your own v0 plan — and it is why F8 matters.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F5 -->
+  <article class="finding high">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F5</span><span class="tag high">High</span><span class="tag verified">Verified in GTCRN + H-GTCRN</span></div>
+      <h3>The DNSMOS targets of SIG 4.1 / BAK 4.2 are not achievable, and they come from a screenshot</h3>
+    </div>
+    <div class="f-body">
+      <p>Four documents carry these targets. <code>placement.md</code> honestly sources them as "Your Notes screenshot" — and the screenshot is in the repo: a hand-written note reading <em>"We need to get our sig score as 4.1 (excellent voice preservation) and bak score as 4.2 (high noise suppression)."</em> They are an aspiration, not a benchmark.</p>
+      <p>Here is what the published systems actually score on the 1–5 scale:</p>
+      <div class="tblwrap">
+      <table>
+        <thead><tr><th>System</th><th>Condition</th><th>SIG</th><th>BAK</th><th>OVRL</th></tr></thead>
+        <tbody>
+          <tr><td class="name">Noisy input</td><td>DNS3 blind</td><td class="num">3.20</td><td class="num">2.65</td><td class="num">2.33</td></tr>
+          <tr><td class="name">GTCRN</td><td>DNS3 blind</td><td class="num fail">3.00</td><td class="num">3.90</td><td class="num">2.70</td></tr>
+          <tr><td class="name">H-GTCRN</td><td>−2.5 dB</td><td class="num">2.74</td><td class="num">3.87</td><td class="num">2.44</td></tr>
+          <tr><td class="name">H-GTCRN</td><td>−12.5 dB</td><td class="num">2.36</td><td class="num">3.76</td><td class="num">2.09</td></tr>
+          <tr><td class="name">Your target</td><td>—</td><td class="num fail">4.10</td><td class="num fail">4.20</td><td class="num">—</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Note the first two rows carefully. <strong>GTCRN reduces SIG from 3.20 to 3.00</strong> — the neural core you have chosen degrades speech quality on its own paper's blind test set while improving background suppression. That is precisely the over-suppression failure your documents worry about, already measured, already published, sitting in your folder. It is evidence <em>for</em> your argument, and you should use it rather than setting an unreachable target beside it.</p>
+      <p>SIG above 4 essentially means "indistinguishable from clean studio speech." No denoiser reaches that at negative SNR.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Keep DNSMOS — the SIG/BAK split is the right instrument and the reasoning in your docs is correct. Re-anchor the targets to the literature: "beat GTCRN's SIG 3.00 without giving up its BAK 3.90" is a claim you can defend and might actually achieve. Cite <code>docs/research/2110.01763v4.md</code> (Reddy et al., DNSMOS P.835) instead of the screenshot — the paper is already in your folder.</p>
+        <p>Add one caveat sentence: DNSMOS is trained on English DNS-challenge material and served from Azure. Hindi speech mixed with muzzle blast is out of its training distribution, and a cloud dependency is awkward for a DRDO deliverable. Acknowledging both is cheaper than being caught by either.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F6 -->
+  <article class="finding high">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F6</span><span class="tag high">High</span><span class="tag med">Integration</span></div>
+      <h3>Sample rate and frame size do not agree across the stack, and the resampling chain is written down nowhere</h3>
+    </div>
+    <div class="f-body">
+      <p><code>tech-stack.md</code> §2 chooses 20 ms frame / 10 ms hop at 48 kHz, justified partly because "it matches Tan et al.'s frame size, so latency and MMAC comparisons are like-for-like." The frame duration matches; the sample rate does not — Tan et al. work at 16 kHz. More importantly it does <em>not</em> match the model that actually ships:</p>
+      <div class="tblwrap">
+      <table>
+        <thead><tr><th>Component</th><th>Rate</th><th>Frame / hop</th><th>Implied STFT latency</th></tr></thead>
+        <tbody>
+          <tr><td class="name">Your range recordings</td><td class="num">96 kHz</td><td>—</td><td class="num">—</td></tr>
+          <tr><td class="name">tech-stack.md engine</td><td class="num">48 kHz</td><td>20 / 10 ms</td><td class="num">25.3 ms total</td></tr>
+          <tr><td class="name">GTCRN (as published)</td><td class="num fail">16 kHz</td><td class="fail">32 / 16 ms</td><td class="num fail">~48 ms</td></tr>
+          <tr><td class="name">H-GTCRN (as published)</td><td class="num fail">16 kHz</td><td class="fail">32 / 16 ms</td><td class="num fail">~48 ms</td></tr>
+          <tr><td class="name">Deep ANC</td><td class="num">16 kHz</td><td>20 / 10 ms</td><td class="num">—</td></tr>
+          <tr><td class="name">DeepFilterNet2</td><td class="num">48 kHz</td><td>—</td><td class="num">full-band</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>GTCRN's band-merging is not a free parameter either: it maps <strong>192 high-frequency bands to 64 ERB while keeping 65 low-frequency bands unaltered</strong>, giving a 129-dimensional feature map. That arithmetic assumes 257 bins from a 512-point FFT at 16 kHz. Change the frame size or the rate and the published band mapping, the reported 23.7 K parameters and the 39.6 MMAC/s figure all stop applying, and the model must be retrained from scratch.</p>
+      <p>At GTCRN's own settings your algorithmic latency is closer to <strong>48 ms than 25.3 ms</strong> — still inside radio tolerance, but nearly double what the budget table claims.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Write one short section — call it "the rate chain" — that states explicitly: capture at 96 kHz, archive at 96 kHz, decimate to 48 kHz for the engine, decimate to 16 kHz for the neural core, upsample the mask back. Name the anti-alias filters and their latency, because they are part of the budget and are currently uncounted.</p>
+        <p>Then decide deliberately: retrain GTCRN at 20/10 ms (costs you the published numbers, buys the budget) or adopt 32/16 ms (keeps the published numbers, costs 23 ms). Either is defensible. Silently claiming both is not.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F7 -->
+  <article class="finding high">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F7</span><span class="tag high">High</span><span class="tag med">Was in v0</span></div>
+      <h3>The radio vocoder has disappeared from the chain, and it is the last thing before the listener</h3>
+    </div>
+    <div class="f-body">
+      <p>Your diagram ends at <em>"clean voice out → to the radio."</em> But a tactical radio does not transmit your waveform. It transmits <strong>MELPe</strong> — the NATO STANAG 4591 vocoder — at 2400, 1200 or 600 bits per second, narrowband, with its own noise pre-processor and its own post-filter.</p>
+      <p>This matters three ways:</p>
+      <ul>
+        <li><strong>Your PESQ and STOI are measured in the wrong place.</strong> They score the denoiser's output; the listener hears the vocoder's output. A 2400 bps parametric coder re-synthesises speech from pitch, voicing and spectral-envelope estimates. Artefacts that PESQ barely notices — musical noise, a smeared harmonic structure, a mis-tracked pitch across an interpolated gap — can corrupt exactly those parameters.</li>
+        <li><strong>MELPe already has a noise pre-processor.</strong> Two suppressors in series can fight each other. That is a genuine engineering question with a measurable answer, and nobody at SIH will have asked it.</li>
+        <li><strong>The vocoder is narrowband.</strong> Which reopens the question of why the engine runs at 48 kHz, and how much of block [8]'s harmonic reconstruction below 5 kHz survives to the far end.</li>
+      </ul>
+      <p>Your v0 plan had this: the device chain was <em>"clip / AGC / vocoder"</em>, with "optional low-bitrate vocoder (MELP/AMBE class) simulating the radio link downstream of the denoiser."</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Put a vocoder stage back into the evaluation chain — an open MELPe or Codec2 implementation is enough — and report every metric <strong>twice</strong>: before the vocoder and after it. If the ranking of two methods flips across the vocoder, that single table is a more original contribution than anything else in the plan, and it is exactly the question a DRDO communications evaluator would ask first.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F8 -->
+  <article class="finding high">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F8</span><span class="tag high">High</span><span class="tag med">Was in v0</span></div>
+      <h3>The v0 plan is being treated as history, and four of its best ideas went with it</h3>
+    </div>
+    <div class="f-body">
+      <p><code>project-plan-v0.md</code> is filed under "kept for history." The newer documents are better organised and far more rigorous about citation — but they are not strictly better, and four things were lost in the rewrite.</p>
+
+      <h4>1 · Lombard speech — the biggest dataset gap in the project</h4>
+      <p>People shouting in gunfire do not speak like people reading sentences. Under noise, speakers raise pitch, raise level and shift spectral tilt. v0 records that systems trained on neutral speech lose roughly 5 dB when tested on Lombard speech, and that the gap survives level normalisation. It specifies Lombard GRID — 54 speakers, neutral and Lombard pairs, induced by 80 dB SPL noise — and targets ≥20 % Lombard content.</p>
+      <p><strong>The word "Lombard" does not appear once in the current documents.</strong> Your entire use case is Lombard speech. This is a larger practical risk than any of the α-stable work.</p>
+
+      <h4>2 · The clean speech corpus, still marked BLOCKED</h4>
+      <p><code>order.md</code> lists stage 0d as "BLOCKED — undecided," blocking all of stage 4, and calls it "the largest open item in the dataset plan." v0 already answered it: LibriSpeech and VCTK for bulk, EARS for high-fidelity targets, <strong>IndicTTS / SPRING-INX and Common Voice Hindi</strong> for the languages your evaluators actually speak, Lombard GRID for the Lombard content. Unblock it today; it costs one decision and unblocks a whole stage.</p>
+
+      <h4>3 · IRT and WLPS — the cheapest original contribution available</h4>
+      <p>PESQ and STOI average over an utterance. A gunshot destroys ~200 ms; in a ten-second clip the average barely moves. <strong>The standard metrics hide exactly the damage this problem statement is about.</strong> v0 proposes two that do not: <em>Impulse Recovery Time</em> (ms until band-wise SNR returns to 90 % of its pre-impulse level) and <em>Words Lost Per Shot</em> (ASR word errors inside the impulse window, per event). Both are about fifty lines of code, and the narrative — "we showed the standard metrics under-report impulsive damage, so we propose two that don't" — is a genuine measurement contribution of exactly the kind DRDO respects.</p>
+
+      <h4>4 · Public gunshot corpora already exist</h4>
+      <p><code>order.md</code> §1a worries that "you cannot sanity-check your own number" — if peak SPL reads 118 dB, is that the source or a saturating capsule? v0 names the answer: the Cadre <em>Gunshot Audio Forensics Dataset</em> (~10,000 recordings, 20 firearms, 20 positions, 4 devices), the Kabealo multi-orientation set (2,148 time-synced files with per-shot timestamps), and the Free Firearm Sound Library. These are the external reference your measured data needs.</p>
+      <p>They also temper a claim. "Nobody else at SIH will have real gunshot data" is weaker than it looks — anyone can download ten thousand gunshots this afternoon. What nobody else will have is <em>calibrated, absolute-SPL, holdout-split, checksum-frozen</em> gunshot data with a measured range IR. Make the claim that precise, and it becomes unassailable instead of merely bold.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Promote v0 out of <code>03-source-material/</code> and merge these four items into the live documents. Then delete the rest of v0 so there is one source of truth, not two.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F9 -->
+  <article class="finding">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F9</span><span class="tag med">Medium</span><span class="tag verified">Verified in H-GTCRN</span></div>
+      <h3>Aux-IVA on three microphones is over-claimed — but it is cheaper than you feared</h3>
+    </div>
+    <div class="f-body">
+      <p>Three corrections to <code>architecture.md</code> §2, all checkable in your own copy of the H-GTCRN paper:</p>
+      <ul>
+        <li><strong>H-GTCRN is dual-channel, not three.</strong> Its RIRs come from "a linear array with two microphones placed 4 cm apart." The three-mic design is your extension, which is fine — just do not attribute it to the paper.</li>
+        <li><strong>"Three sources need three sensors" cuts both ways.</strong> IVA is a determined method: N microphones separate at most N sources. A real scene has voice + blast + engine + wind + babble, which is underdetermined, and IVA will hand you three streams that are each mixtures. The document's reasoning — that voice plus three noise classes "collapse into three useful streams" — is assertion, not derivation.</li>
+        <li><strong>IVA has permutation and scaling ambiguity.</strong> Nothing tells you which output is the voice. H-GTCRN sidesteps this by feeding <em>both</em> separated streams to the network and letting it decide, which your design also does — so the fix is already in place. But labelling the outputs "voice / impulsive / background" on the diagram promises something IVA does not deliver.</li>
+      </ul>
+      <p>The good news closes an open item. <code>architecture.md</code> §7 lists "Aux-IVA cost on our geometry — must be benchmarked" as unresolved. H-GTCRN answers it: Aux-IVA contributes a negligible parameter increase and <strong>0.20 MMAC/s per iteration</strong>. Budget for your iteration count and channel scaling and it is close to free.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Relabel the Aux-IVA outputs as "three separated streams, unordered" and keep feeding all of them to the network. Justify three mics on the grounds you can actually defend — Mic 3 is an in-ear error sensor for Lane A, not an IVA input — which also resolves F2 cleanly.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F10 -->
+  <article class="finding">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F10</span><span class="tag med">Medium</span><span class="tag verified">Verified</span></div>
+      <h3>Two of your fifteen papers are uncited — and one of them fixes the hole in your metrics argument</h3>
+    </div>
+    <div class="f-body">
+      <p><code>workflow.md</code> lists fourteen sources. The folder holds fifteen. The extras:</p>
+      <p><strong><code>1811.02508v1.md</code> — Le Roux et al., "SDR – Half-baked or Well Done?"</strong> Never mentioned in any document. It should be, because its Figure 3 <em>is</em> your over-suppression argument, with a citation attached: as a growing proportion of frequency bins are deleted from a signal, <strong>SDR stays between 10 and 15 dB and actually increases at 40 % masking</strong>, while SI-SDR decreases monotonically. Deleting frequency bins is exactly what a mask-based denoiser does, and what BMRI's interpolation does in the time domain.</p>
+      <p>That gives you three things you currently lack: a published reason that a single SNR number hides over-suppression (today this rests on a Notes screenshot); a reason to report SI-SDR rather than SDR; and a principled way to resolve the PS's ambiguous "SNR &gt; 15 dB" from F1.</p>
+      <p><strong><code>2110.01763v4.md</code> — Reddy et al., DNSMOS P.835.</strong> Present in the folder, but <code>placement.md</code> still sources the DNSMOS targets to "Your Notes screenshot." Cite the paper.</p>
+      <p>Running the other way: <strong>Shao &amp; Nikias (1993)</strong> on fractional lower-order moments is cited in four documents and is scheduled to <em>ship on the device</em> as block [3] — but the paper is not in the folder. It is currently known only second-hand through Yuan et al.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Add Le Roux and Reddy to the source table (that makes sixteen sources, which is also a better number to say out loud). Get the Shao &amp; Nikias paper before FLOM goes into C++ — you should not implement a statistic on device from a second-hand description.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F11 -->
+  <article class="finding">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F11</span><span class="tag med">Medium</span><span class="tag verified">Reproduced on this machine</span></div>
+      <h3>validate.py crashes on Windows after every check passes, and the self-test reports fourteen false failures</h3>
+    </div>
+    <div class="f-body">
+      <p>I ran the toolkit. <code>selftest.py</code> printed <strong>"14 PROBLEM(S) — DO NOT GO TO THE RANGE"</strong>, with every file returning NO-GO and an empty failure reason. The tools are not broken. The cause is one character.</p>
+      <p><code>validate.py</code> runs all ten checks correctly, then prints its GO banner — which is ASCII art built from <strong>U+2588 FULL BLOCK</strong>. On a Windows console the default encoding is cp1252, the print raises <code>UnicodeEncodeError</code>, the process exits non-zero, and <code>selftest.py</code> reads that exit code as NO-GO.</p>
+      <div class="tblwrap">
+      <table>
+        <thead><tr><th>Run</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td class="name">python selftest.py</td><td class="fail">14 PROBLEM(S) — DO NOT GO TO THE RANGE</td></tr>
+          <tr><td class="name">PYTHONIOENCODING=utf-8 python selftest.py</td><td class="pass">ALL CHECKS PASSED — toolkit is range-ready</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Your own documents call <code>validate.py</code> "the only tool that matters on range day," insist it be run after the first three shots of every block, and state that the range trip is one visit with no retry. On a Windows laptop at the range this tool would report NO-GO on every take after doing all the work correctly. Either you abandon it, or you believe your recordings are bad and stop shooting.</p>
+      <p>Related portability: <code>session.py</code> shells out to <code>afinfo</code> and <code>afconvert</code> for the listening copies — both macOS-only — and the docs use <code>lpr</code>, <code>open</code>, <code>/Volumes/USB</code> and <code>python3</code>. The toolkit was clearly developed on macOS; this repository is on a Windows machine.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Add <code>sys.stdout.reconfigure(encoding="utf-8", errors="replace")</code> at the top of <code>validate.py</code>, <code>monitor.py</code> and <code>report.py</code> — or fall back to ASCII banners when the console cannot encode them. Then run the self-test on whichever laptop is actually going to the range, on that laptop, before range day. Add a Windows path for the AAC conversion (ffmpeg) or make it skip cleanly.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F12 -->
+  <article class="finding">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F12</span><span class="tag med">Medium</span><span class="tag med">Arithmetic</span></div>
+      <h3>The holdout fraction and the sample-size rule contradict each other</h3>
+    </div>
+    <div class="f-body">
+      <p>Two rules in your own documents collide, and the collision is only visible when you multiply them.</p>
+      <ul>
+        <li><code>what-we-measure.md</code> §8: <strong>never fewer than 10 shots per condition, 15 for the core</strong> — because the standard deviation you use as a tolerance is itself ±46 % uncertain at n = 3, ±34 % at n = 5, ±23 % at n = 10.</li>
+        <li><code>plan.py</code> defaults to <code>--holdout 0.3</code>, and <code>order.md</code> stage 3.3 says the generator is compared <strong>against the holdout only</strong>, correctly, to avoid circularity.</li>
+      </ul>
+      <p>So the tolerance is computed from the holdout. Fifteen core shots minus 30 % leaves <strong>four or five holdout shots</strong> — right in the ±34 to ±46 % band your own table calls unfalsifiable. The rule that protects the claim and the rule that protects against circularity cancel each other out.</p>
+      <p>To get ten or more shots in the holdout you need roughly <strong>33 shots per core condition</strong>, which at your logged pace is about 33 minutes for that block alone.</p>
+      <div class="f-do">
+        <span class="lb">What to do</span>
+        <p>Pick one and write down which: either shoot ~33 per core condition (and cut a condition to pay for it — your own guidance already says cut conditions, not repeats), or keep 15 and state the resulting tolerance honestly as wide. A stated wide tolerance is defensible. A tolerance nobody computed is not.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- F13 -->
+  <article class="finding">
+    <div class="f-head">
+      <div class="f-tags"><span class="tag id">F13</span><span class="tag med">Medium</span><span class="tag med">Consistency</span></div>
+      <h3>Smaller flags worth an hour</h3>
+    </div>
+    <div class="f-body">
+      <ul>
+        <li><strong>architecture.md contradicts H-GTCRN on phase.</strong> §[4] says "phase matters enormously — throw it away and you can never subtract one sound from another properly." H-GTCRN's ablation found the log-power-spectrum feature <em>beat</em> the complex feature, concluding "phase information is not as crucial." <code>placement.md</code> records this correctly; <code>architecture.md</code> does not. Fix one so a judge reading both does not find the seam.</li>
+        <li><strong>The H-GTCRN ablation has a caveat you dropped.</strong> Feeding both the separated speech and noise channels is indeed the largest single gain — but the paper notes "a slight degradation in SIG is observed." Given F5, that caveat is worth carrying.</li>
+        <li><strong>IS³ is 2.2 M parameters</strong> — roughly a hundred times GTCRN. Your docs correctly treat it as a data-pipeline template rather than a deployable model, but the word "lightweight" appears near it in several places. Be precise; someone will check.</li>
+        <li><strong>Verify Deep ANC's Table 1 cells before they go on a slide.</strong> The −11.07 / −9.60 / −7.93 NMSE figures anchoring your latency argument came through the gap-analysis summary, and the table structure did not survive the Markdown conversion cleanly. Open the PDF and confirm you are reading the engine-noise linear row. Your own documents say this: "if a number in the notes disagrees with the paper, the paper is right."</li>
+        <li><strong>The 25.3 ms budget omits the anti-alias filters</strong> implied by F6's rate chain, and omits Aux-IVA's iteration count. Both belong in the table.</li>
+        <li><strong>No power figure anywhere yet.</strong> Your docs correctly note that nobody in the literature reports watts and call it a free differentiator. It stays free only if someone buys the USB power meter.</li>
+      </ul>
+    </div>
+  </article>
+</section>
+
+<!-- ============ 05 ============ -->
+<section id="keep">
+  <div class="sec-head"><span class="sec-num">05</span><h2>What is already right</h2></div>
+  <p class="sec-sub">A review that only lists problems is misleading. These are the parts to protect from any rewrite.</p>
+
+  <div class="keeps">
+    <div class="keep-item">
+      <p class="h">The robust-normalisation argument</p>
+      <p>RMS is a second moment; for α-stable noise with α &lt; 2 the variance is infinite. It is a real defect in the closest prior system, the fix is cited inside another paper you hold, and it is explainable in thirty seconds. Still the highest return-on-effort item you have.</p>
+    </div>
+    <div class="keep-item">
+      <p class="h">Freezing the measurement engine, not just the data</p>
+      <p><code>session.py freeze</code> takes SHA-256 of <code>analyze.py</code>, <code>dsp.py</code> and <code>wavio.py</code> alongside every WAV. Almost nobody does this. It answers "how do we know your reference did not drift" before it is asked.</p>
+    </div>
+    <div class="keep-item">
+      <p class="h">Assigning fit/holdout at planning time</p>
+      <p>The split is written into the metadata CSV before any data exists. Choosing it afterwards is precisely the circularity it prevents — and F12 is a sizing fix, not an argument against the discipline.</p>
+    </div>
+    <div class="keep-item">
+      <p class="h">The B + C ≈ A additivity check</p>
+      <p>Voice-only plus gun-only compared against both-at-once, all three real recordings. It tests additive mixing, the clipping model and your SNR bookkeeping at once, and it costs nothing but discipline at the range. Genuinely publishable-shaped.</p>
+    </div>
+    <div class="keep-item">
+      <p class="h">Refusing MP3/AAC for the dataset — with measurements</p>
+      <p>You measured it: mid-band within 0.1 dB, but the 32 kHz band gone at −83 dB and the spectral centroid shifted 248 Hz against a real shot-to-shot σ of 1.43 Hz. A 173× shift. That is how to justify a format decision.</p>
+    </div>
+    <div class="keep-item">
+      <p class="h">Licence discipline</p>
+      <p>PFFFT over FFTW on GPL grounds, no libsndfile so a broken native library cannot strand you at the range. Both decisions are correct and both are worth saying out loud to this particular sponsor.</p>
+    </div>
+    <div class="keep-item">
+      <p class="h">The gap analysis itself</p>
+      <p>Naming where each published method stops, rather than summarising what it does, is what separates this from every other entry. The α-stable clipping inversion — using the α &lt; 0.5 regime the authors excluded, <em>for the reason they excluded it</em> — is the single best idea in the pack.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section id="next">
+  <div class="sec-head"><span class="sec-num">06</span><h2>The next seven days</h2></div>
+  <p class="sec-sub">Ordered by what unblocks the most, not by what is most interesting.</p>
+
+  <ol class="steps">
+    <li>
+      <span class="h">Fix the encoding bug and re-run the self-test on the range laptop</span>
+      <p>Twenty minutes. Until this passes on the actual machine going to the range, the range trip is at risk. F11.</p>
+    </li>
+    <li>
+      <span class="h">Restore the two-lane split at the top of architecture.md</span>
+      <p>An afternoon of editing, no new work. It fixes the wiring error, makes the latency budget honest, and is a free differentiator on the pitch slide. F2.</p>
+    </li>
+    <li>
+      <span class="h">Decide the clean speech corpus and add Lombard</span>
+      <p>One decision, already answered in v0. It unblocks all of stage 4, which currently blocks stages 5, 6 and 7. F8.</p>
+    </li>
+    <li>
+      <span class="h">Re-anchor every target number to a published figure</span>
+      <p>DNSMOS SIG/BAK, the PESQ/STOI-vs-SNR curves, the SNR definition. Then rewrite the look-ahead caption. All four are claim risks, all four are edits. F1, F3, F5.</p>
+    </li>
+    <li>
+      <span class="h">Write the rate chain down and pick a frame size</span>
+      <p>96 → 48 → 16 kHz, with filters and their latency counted. Then commit to 20/10 ms or 32/16 ms in writing. F6.</p>
+    </li>
+    <li>
+      <span class="h">Implement IRT and WLPS</span>
+      <p>About fifty lines each, no hardware, no range data, no trained model. The cheapest original contribution available and it needs nothing you do not already have. F8.</p>
+    </li>
+    <li>
+      <span class="h">Then start stage 2 — the baseline collapse</span>
+      <p><code>order.md</code> is right that this needs no hardware and no range data, and produces the two findings the whole story rests on. Everything above is a week; this is the month.</p>
+    </li>
+  </ol>
+</section>
+
+<footer>
+  <p>Sources for every claim: the fifteen papers in <code>docs/research/</code>, the six design documents in <code>docs/01-system/</code>, <code>docs/03-source-material/project-plan-v0.md</code>, and the toolkit run on this machine. Numbers attributed to papers were read from your own converted copies; where a table did not survive conversion cleanly it is flagged in F13. The DRDO section is a sponsor read drawn from TDF and iDEX programme documents, MIL-STD-1474 and ANSI/ASA S3.2 — informed inference about evaluation posture, not a published SIH rubric.</p>
+  <p>ZEIT · SIH 2026 · PS 26052 · reviewed 6 September 2026</p>
+</footer>
+
+</div>

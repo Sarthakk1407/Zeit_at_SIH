@@ -1,0 +1,66 @@
+<div class="notes">
+  <h3>What this model shows</h3>
+  <p>This is the prototype as it is specified to be built — not an illustration of a concept. The headset, the audio interface and the single-board computer are modelled to their published dimensions, connected by the cabling they actually require, and the signal is traced through them in the order it physically travels.</p>
+  <p>The geometry is constructed procedurally in code rather than loaded from downloaded assets. That is partly a constraint — this page is served under a policy that blocks external 3D files — and partly a decision: every dimension comes from a datasheet or from <code>docs/01-system/architecture.md</code>, so what is on screen is the specification rather than an artist's approximation, and there is no third-party asset licence to carry into a defence deliverable.</p>
+
+  <h3>The hardware on the bench</h3>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Item</th><th>Qty</th><th>Indicative cost (₹)</th><th>Why this specific part</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Raspberry Pi 5, 8 GB</td><td class="num">1</td><td class="num">—</td><td>Runs the Lane B engine. 8 GB is for headroom during development, not because inference needs it — the model itself is roughly 24,000 parameters</td></tr>
+      <tr><td class="name">Official 27 W USB-C PSU</td><td class="num">1</td><td class="num">1,800–2,200</td><td><strong>Not optional.</strong> Third-party supplies cause undervoltage throttling that presents exactly like a model bug — intermittent latency spikes with no code change behind them</td></tr>
+      <tr><td class="name">Official Active Cooler</td><td class="num">1</td><td class="num">600–900</td><td><strong>Not optional.</strong> The Pi 5 thermally throttles under sustained inference. Latency figures drift upward over a long run without it, which invalidates the measurement</td></tr>
+      <tr><td class="name">microSD 128 GB A2<br><span style="color:var(--text-3);font-weight:400">SanDisk Extreme or Samsung Evo Plus</span></td><td class="num">2</td><td class="num">1,200 each</td><td>Two identical images. One is the demonstration card and is never experimented on — a corrupted card on the morning of a demo is an unrecoverable failure, and cloning one takes ten minutes</td></tr>
+      <tr><td class="name">Micro-HDMI → HDMI cable<br><span style="color:var(--text-3);font-weight:400">bring-up only</span></td><td class="num">1</td><td class="num">300–500</td><td>For configuring the board and reading logs. The Pi 5 takes micro-HDMI rather than full size, which is a discovery best made at the bench than at the venue. <strong>Not part of the deployed chain</strong> — the demonstrated system runs headless</td></tr>
+      <tr><td class="name">Communication unit</td><td class="num">1</td><td class="num">—</td><td>Where the enhanced speech actually goes. The problem statement asks for integration with headphones or communication units, so the demonstrated chain terminates at a radio rather than at a screen — and the return path carries received audio back to the earcups</td></tr>
+      <tr><td class="name">Behringer UMC202HD</td><td class="num">1</td><td class="num">—</td><td>Two-channel USB audio interface with Midas preamplifiers, 48 V phantom power and 24-bit / 192 kHz conversion. Two channels is exactly what a primary-plus-reference pair needs</td></tr>
+      <tr><td class="name">Behringer microphones</td><td class="num">2+</td><td class="num">—</td><td>Primary at the mouth and reference on the earcup. A dynamic capsule is preferred for close blast work because it has no active electronics to overload</td></tr>
+      <tr><td class="name">Behringer headset / monitoring</td><td class="num">1</td><td class="num">—</td><td>The return path and the platform the three microphones are mounted to</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout" style="background:var(--bg-alt);border-radius:var(--radius);padding:22px 26px;margin:26px 0">
+    <p style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);font-weight:600;margin:0 0 10px">No development computer in the signal path</p>
+    <p style="margin:0 0 12px">The deployed chain is <strong>microphones → audio interface → single-board computer → communication unit</strong>, with a return path to the earcups. The board boots from its own card, runs the engine headlessly and never needs a host.</p>
+    <p style="margin:0">The micro-HDMI cable is retained on the parts list because the board has to be configured at some point, but it is bring-up equipment and is deliberately not drawn on the bench. The problem statement calls for a prototype integrated with microphones and headphones or communication units, and that is what is modelled.</p>
+  </div>
+
+  <h3>The scenario the run plays</h3>
+  <p>A shooter at <strong>30 m</strong> firing a supersonic round. Every timing is derived from that geometry and the speed of sound, not chosen for effect.</p>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>t</th><th>Event</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0 ms</td><td class="name">Trigger</td><td>The muzzle blast begins expanding at 343 m/s</td></tr>
+      <tr><td class="num">36.5 ms</td><td class="name">Bullet passes</td><td>At roughly Mach 2.4 the round reaches its closest approach and the shockwave is generated there — about 3 m away, not 30</td></tr>
+      <tr><td class="num">45.2 ms</td><td class="name">Crack arrives</td><td>36.5 ms of bullet flight plus 8.7 ms of sound over the remaining 3 m</td></tr>
+      <tr><td class="num">87.5 ms</td><td class="name">Blast arrives</td><td>30 m ÷ 343 m/s. The <strong>42.3 ms</strong> gap between crack and blast is the only genuine look-ahead a headset has, and it exists because the two sounds originate in different places — not because one travels faster</td></tr>
+      <tr><td class="num">+0.58 ms</td><td class="name">Mic 1 after Mic 2</td><td>The two microphones are about 20 cm apart on one head. Far too small to use as prediction, which is why the architecture detects and reacts rather than forecasting</td></tr>
+      <tr><td class="num">+25.3 ms</td><td class="name">Lane B completes</td><td>Eleven blocks on one 20 ms frame with a 10 ms hop. Lane A has already responded within a millisecond, because anti-noise must beat sound across the earcup</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Reading the signal monitor</h3>
+  <p>The three traces are the heart of the demonstration. <strong>MIC 1</strong> carries the voice with the crack and blast on top of it. <strong>MIC 2</strong> carries the same impulsive events with no voice — that separation is what Widrow's two-input architecture depends on, and it is a mechanical requirement rather than a software one. <strong>ENGINE OUT</strong> is what reaches the radio.</p>
+  <p>Watch the moment the blast lands. On MIC 1 the waveform saturates and the voice is buried. On ENGINE OUT the impulse is suppressed and the speech envelope resumes — and the interval before it fully recovers is marked as <strong>IRT</strong>, the impulse recovery time. That interval is the number that matters operationally and the one PESQ and STOI average away: a gunshot destroys roughly 200 ms, and across a ten-second clip the average barely moves.</p>
+  <p class="mono" style="font-size:13px;color:var(--text-3);border-top:1px solid var(--rule-soft);padding-top:14px">
+  The monitor traces are generated from the physical model described above and are <strong>illustrative of the intended behaviour</strong>. The engine has not been built, so no trace here is a measured result. Every figure that is measured — and every figure that is not — is identified in the System Handbook.</p>
+
+  <h3>Controls</h3>
+  <ul>
+    <li><strong>Drag</strong> to orbit, <strong>scroll</strong> or pinch to zoom, <strong>right-drag</strong> to pan.</li>
+    <li><strong>Click any part</strong>, in the scene or on a label, for its specification.</li>
+    <li><strong>Camera presets</strong> move between the field, the headset, the interface and the board.</li>
+    <li><strong>Exploded view</strong> separates each assembly along its own axis — the cooler lifts off the Pi, the earcups separate from the head.</li>
+    <li>The <strong>event log</strong> keeps every entry after the run ends. Fire repeatedly and the runs accumulate.</li>
+  </ul>
+</div>
+</div>
+
+<footer>
+  <p>Companion to the ZEIT System Handbook and the ZEIT Architecture Audit. Geometry follows published component dimensions and the internal architecture specification; it is not a manufacturing drawing. Processing latencies are the design budget rather than measured values, and the signal monitor is a physical simulation rather than a recording — no engine has been built yet.</p>
+  <p>ZEIT · Smart India Hackathon 2026 · Problem Statement 26052 · DRDO / Department of Defence Production · Rendered with three.js r128</p>
+</footer>

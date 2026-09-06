@@ -1,0 +1,405 @@
+/* =====================================================================
+   Geometry. World scale 1 unit = 10 mm.
+   Component dimensions follow published datasheets.
+   ===================================================================== */
+var PARTS={};
+function pick(mesh,key){mesh.userData.pick=key;return mesh;}
+function box(w,h,d,m){return new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);}
+function cyl(rt,rb,h,s,m){return new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,s||20),m);}
+function at(o,x,y,z){o.position.set(x,y,z);return o;}
+
+/* ---------------------------------------------------------------
+   HEAD + HEADSET + STAND       centred at (-34, 22, 0)
+   Head 190 mm wide → radius 9.5 units.
+   --------------------------------------------------------------- */
+var HEAD_O=new THREE.Vector3(-34,22,0);
+var P_MIC1,P_MIC2,P_MIC3,P_SPK;
+(function(){
+  var g=new THREE.Group();g.position.copy(HEAD_O);
+
+  var skull=new THREE.Mesh(new THREE.SphereGeometry(9.5,48,34),MAT.skin);
+  skull.scale.set(.90,1.04,1.00);skull.position.y=1.0;g.add(skull);
+  var jaw=new THREE.Mesh(new THREE.SphereGeometry(6.9,34,26),MAT.skin);
+  jaw.scale.set(.94,.80,1.00);jaw.position.set(0,-6.0,1.5);g.add(jaw);
+  var nose=new THREE.Mesh(new THREE.ConeGeometry(1.2,2.9,18),MAT.skin);
+  nose.rotation.x=Math.PI/2;nose.position.set(0,-1.0,9.6);g.add(nose);
+  var mouth=box(3.6,1.3,1.2,std(0x55555c,.9,0,.55));
+  at(mouth,0,-5.0,8.3);pick(mouth,'mouth');g.add(mouth);
+  [-1,1].forEach(function(s){
+    var ear=new THREE.Mesh(new THREE.SphereGeometry(1.9,22,16),MAT.skin);
+    ear.scale.set(.34,1.05,.72);ear.position.set(s*8.6,-0.6,0.4);g.add(ear);
+  });
+
+  /* headband */
+  var band=new THREE.Mesh(new THREE.TorusGeometry(11.2,.55,16,80,Math.PI),MAT.plasticD);
+  band.position.y=1.1;pick(band,'band');g.add(band);
+  var bpad=new THREE.Mesh(new THREE.TorusGeometry(11.2,.86,14,30,Math.PI*.40,Math.PI*.20),MAT.foam);
+  bpad.position.y=1.1;g.add(bpad);
+
+  /* earcups */
+  var cups=[];
+  [-1,1].forEach(function(s){
+    var cup=new THREE.Group();cup.position.set(s*10.2,-0.2,0.4);
+    var shell=cyl(4.3,4.3,2.0,44,MAT.plasticD);shell.rotation.z=Math.PI/2;cup.add(shell);
+    var outer=cyl(4.3,3.9,1.0,44,MAT.plastic);outer.rotation.z=Math.PI/2;
+    outer.position.x=s*1.4;pick(outer,'cup');cup.add(outer);
+    var cush=new THREE.Mesh(new THREE.TorusGeometry(3.5,1.0,14,36),MAT.foam);
+    cush.rotation.y=Math.PI/2;cush.position.x=-s*1.1;cup.add(cush);
+    var yoke=new THREE.Mesh(new THREE.TorusGeometry(4.9,.34,12,32,Math.PI*.7),MAT.plasticD);
+    yoke.rotation.y=Math.PI/2;yoke.rotation.z=Math.PI*.15;yoke.position.x=s*0.9;cup.add(yoke);
+    cup.userData.side=s;cup.userData.home=cup.position.clone();
+    g.add(cup);cups.push(cup);
+  });
+  PARTS.cups=cups;
+
+  /* boom arm on the left cup */
+  var boom=new THREE.Group();
+  var cv=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-10.8,-2.0,2.0),new THREE.Vector3(-10.0,-5.2,6.2),
+    new THREE.Vector3(-7.0 ,-6.8,10.2),new THREE.Vector3(-3.3,-6.2,11.6),
+    new THREE.Vector3(-1.6 ,-5.6,11.2)]);
+  var tube=new THREE.Mesh(new THREE.TubeGeometry(cv,64,.33,12,false),MAT.plasticD);
+  pick(tube,'boom');boom.add(tube);
+  var caps=cyl(.78,.78,1.5,22,MAT.plasticD);
+  at(caps,-1.6,-5.6,11.2);caps.rotation.z=Math.PI/2;caps.rotation.y=-.45;
+  pick(caps,'mic1');boom.add(caps);
+  var grille=cyl(.62,.62,.30,22,MAT.metalD);
+  at(grille,-2.2,-5.6,11.3);grille.rotation.z=Math.PI/2;grille.rotation.y=-.45;boom.add(grille);
+  boom.userData.home=boom.position.clone();
+  g.add(boom);PARTS.boom=boom;
+
+  /* stand */
+  var pole=cyl(.55,.55,22,20,MAT.metalD);at(pole,0,-11-11,0);
+  var base=cyl(5.5,6.2,.9,32,MAT.metalD);at(base,0,-21.6,0);
+  var yokeArm=cyl(.45,.45,7,16,MAT.metalD);at(yokeArm,0,-11.4,0);
+  g.add(pole,base,yokeArm);
+
+  gHead.add(g);PARTS.headGroup=g;
+
+  P_MIC1=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-1.6,-5.6,11.2));
+  P_MIC2=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(12.0,-0.2,0.4));
+  P_MIC3=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3( 8.7,-0.2,0.9));
+  P_SPK =new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(10.0,-0.2,-0.5));
+})();
+
+/* sensor markers */
+function sensor(k,pos,c,r){
+  var g=new THREE.Group();g.position.copy(pos);
+  var core=new THREE.Mesh(new THREE.SphereGeometry(r,24,18),
+    new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.55,roughness:.3}));
+  pick(core,k);g.add(core);
+  var halo=new THREE.Mesh(new THREE.SphereGeometry(r*1.8,20,14),
+    new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.14,depthWrite:false}));
+  g.add(halo);
+  g.userData={core:core,halo:halo,flash:0,home:pos.clone()};
+  root.add(g);PARTS[k]=g;return g;
+}
+sensor('mic1',P_MIC1,COL.m1,.72);
+sensor('mic2',P_MIC2,COL.m2,.72);
+sensor('mic3',P_MIC3,COL.m3,.58);
+sensor('spk' ,P_SPK ,COL.spk,.82);
+
+/* ---------------------------------------------------------------
+   BEHRINGER UMC202HD        128 × 130 × 47 mm, front faces +Z
+   --------------------------------------------------------------- */
+var IF_O=new THREE.Vector3(-6,0,0);
+var P_IF_IN1,P_IF_IN2,P_IF_USB;
+(function(){
+  var g=new THREE.Group();g.position.copy(IF_O);
+  var W=12.8,H=4.7,D=13.0;
+
+  var body=box(W,H,D,MAT.behringer);at(body,0,H/2,0);pick(body,'iface');g.add(body);
+  var top=box(W*0.99,0.12,D*0.99,MAT.behrDark);at(top,0,H,0);g.add(top);
+  var frontPlate=box(W*0.995,H*0.9,0.14,MAT.behrDark);at(frontPlate,0,H/2,D/2+0.02);g.add(frontPlate);
+
+  /* two XLR / TRS combo jacks */
+  [-1,1].forEach(function(s,i){
+    var ring=cyl(1.28,1.28,.42,28,MAT.metal);
+    at(ring,s*3.9,H*0.52,D/2+0.20);ring.rotation.x=Math.PI/2;g.add(ring);
+    var bore=cyl(0.95,0.95,.30,24,MAT.black);
+    at(bore,s*3.9,H*0.52,D/2+0.30);bore.rotation.x=Math.PI/2;pick(bore,'ifin');g.add(bore);
+    for(var p=0;p<3;p++){
+      var ang=p*(Math.PI*2/3)-Math.PI/2;
+      var pin=cyl(.15,.15,.22,10,MAT.metalD);
+      at(pin,s*3.9+Math.cos(ang)*.42,H*0.52+Math.sin(ang)*.42,D/2+0.36);
+      pin.rotation.x=Math.PI/2;g.add(pin);
+    }
+  });
+
+  /* gain knobs, monitor knob, phones knob */
+  var knobX=[-1.4,0.2,1.8,3.4];
+  knobX.forEach(function(x,i){
+    var k=cyl(.72,.62,.62,24,MAT.knob);
+    at(k,x*1.0+(i>1?1.6:0),H*0.52,D/2+0.34);k.rotation.x=Math.PI/2;g.add(k);
+    var cap=cyl(.30,.30,.10,16,MAT.white);
+    at(cap,x*1.0+(i>1?1.6:0),H*0.52+0.42,D/2+0.46);cap.rotation.x=Math.PI/2;g.add(cap);
+  });
+  /* phantom + pad buttons with indicator */
+  [[-5.6,0xcc2222],[-4.4,0x333338]].forEach(function(b){
+    var bt=box(.72,.42,.22,std(b[1],.5,.1));
+    at(bt,b[0],H*0.80,D/2+0.16);g.add(bt);
+  });
+  /* headphone jack */
+  var hp=cyl(.52,.52,.30,20,MAT.metal);
+  at(hp,5.6,H*0.30,D/2+0.20);hp.rotation.x=Math.PI/2;g.add(hp);
+
+  /* rear: USB-B and two TRS outputs */
+  var usbb=box(1.2,1.0,.7,MAT.metalD);at(usbb,-4.4,H*0.5,-D/2-0.3);pick(usbb,'ifusb');g.add(usbb);
+  [-1,1].forEach(function(s){
+    var trs=cyl(.52,.52,.5,18,MAT.metal);
+    at(trs,s*2.2+3.0,H*0.5,-D/2-0.22);trs.rotation.x=Math.PI/2;g.add(trs);
+  });
+  /* rubber feet */
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(c){
+    var f=cyl(.5,.5,.3,14,MAT.rubber);at(f,c[0]*(W/2-1.2),0.15,c[1]*(D/2-1.4));g.add(f);
+  });
+
+  gIface.add(g);PARTS.ifaceGroup=g;
+  P_IF_IN1=new THREE.Vector3().copy(IF_O).add(new THREE.Vector3(-3.9,H*0.52,D/2+0.4));
+  P_IF_IN2=new THREE.Vector3().copy(IF_O).add(new THREE.Vector3( 3.9,H*0.52,D/2+0.4));
+  P_IF_USB=new THREE.Vector3().copy(IF_O).add(new THREE.Vector3(-4.4,H*0.5,-D/2-0.6));
+})();
+
+/* ---------------------------------------------------------------
+   RASPBERRY PI 5 (8 GB)     85 × 56 × 1.4 mm board
+   Long edge +X carries USB ×4 and Ethernet; short edge −X carries
+   2× micro-HDMI and USB-C; GPIO header runs along +Z.
+   --------------------------------------------------------------- */
+var PI_O=new THREE.Vector3(17,0,2);
+var P_PI_USB,P_PI_PWR,P_PI_HDMI,P_SD;
+(function(){
+  var g=new THREE.Group();g.position.copy(PI_O);
+  var BW=8.5,BD=5.6,BT=0.14,Y=1.2;      // raised on standoffs
+
+  var pcb=box(BW,BT,BD,MAT.pcb);at(pcb,0,Y,0);pick(pcb,'pi');g.add(pcb);
+  /* standoffs */
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(c){
+    var s=cyl(.20,.20,Y,12,MAT.metalD);at(s,c[0]*(BW/2-0.35),Y/2,c[1]*(BD/2-0.35));g.add(s);
+  });
+
+  /* 40-pin GPIO header along +Z edge */
+  var hdr=box(5.1,.55,.50,MAT.black);at(hdr,-0.9,Y+BT/2+.27,BD/2-0.40);pick(hdr,'gpio');g.add(hdr);
+  for(var i=0;i<20;i++){
+    for(var r=0;r<2;r++){
+      var pinm=box(.07,.42,.07,MAT.gold);
+      at(pinm,-3.35+i*0.254,Y+BT/2+.72,BD/2-0.52+r*0.254);g.add(pinm);
+    }
+  }
+
+  /* USB stack ×2 (USB3 blue inside, USB2 black) + Ethernet, on +X edge */
+  function usbStack(z,blue){
+    var sh=box(1.45,1.55,1.70,MAT.metalD);at(sh,BW/2-0.55,Y+BT/2+.78,z);g.add(sh);
+    [0,1].forEach(function(k){
+      var ins=box(1.05,.34,1.20,blue?MAT.usb3:MAT.black);
+      at(ins,BW/2-0.30,Y+BT/2+.42+k*0.70,z);g.add(ins);
+    });
+    return sh;
+  }
+  var u1=usbStack(-1.35,true), u2=usbStack(0.75,false);
+  pick(u1,'piusb');pick(u2,'piusb');
+  var eth=box(1.60,1.40,2.10,MAT.metalD);at(eth,BW/2-0.60,Y+BT/2+.70,-3.0+0.0);
+  eth.position.z=2.05;pick(eth,'eth');g.add(eth);
+  var ethIns=box(1.10,.90,1.55,MAT.black);at(ethIns,BW/2-0.35,Y+BT/2+.64,2.05);g.add(ethIns);
+
+  /* short edge −X: 2× micro-HDMI, USB-C power */
+  var pwr=box(.70,.55,.95,MAT.metalD);at(pwr,-BW/2+0.30,Y+BT/2+.28,-1.55);
+  pick(pwr,'pipwr');g.add(pwr);
+  [[-0.10],[1.35]].forEach(function(c){
+    var h=box(.62,.50,.80,MAT.metalD);at(h,-BW/2+0.28,Y+BT/2+.26,c[0]);pick(h,'pihdmi');g.add(h);
+  });
+
+  /* BCM2712 SoC with metal lid, RP1 southbridge, LPDDR4X */
+  var soc=box(1.60,.22,1.60,MAT.black);at(soc,-0.25,Y+BT/2+.11,-0.35);g.add(soc);
+  var lid=box(1.30,.10,1.30,MAT.metal);at(lid,-0.25,Y+BT/2+.26,-0.35);pick(lid,'soc');g.add(lid);
+  var ram=box(1.00,.18,1.00,MAT.black);at(ram,1.35,Y+BT/2+.09,-0.35);pick(ram,'ram');g.add(ram);
+  var rp1=box(.95,.16,.95,MAT.black);at(rp1,1.20,Y+BT/2+.08,1.55);g.add(rp1);
+
+  /* PCIe FFC, camera/display FFC connectors */
+  var pcie=box(1.40,.22,.34,MAT.white);at(pcie,-2.6,Y+BT/2+.11,1.90);g.add(pcie);
+  [[-3.5,-0.5],[-3.5,0.9]].forEach(function(c){
+    var ffc=box(.24,.18,1.10,MAT.white);at(ffc,c[0],Y+BT/2+.09,c[1]);g.add(ffc);
+  });
+  /* fan header + RTC + power button */
+  var fanh=box(.34,.20,.44,MAT.white);at(fanh,-1.9,Y+BT/2+.10,-2.25);g.add(fanh);
+  var btn=cyl(.13,.13,.16,10,std(0xdddddd,.5,.2));at(btn,-3.9,Y+BT/2+.10,-2.30);g.add(btn);
+
+  /* microSD, underside, part-inserted */
+  var sd=box(1.50,.10,1.10,MAT.black);at(sd,-BW/2+0.55,Y-0.22,0.0);pick(sd,'sd');g.add(sd);
+  for(var c2=0;c2<6;c2++){
+    var pad=box(.13,.03,.55,MAT.gold);at(pad,-BW/2+0.15+c2*0.19,Y-0.28,0.15);g.add(pad);
+  }
+
+  /* ---------------- Official Active Cooler ---------------- */
+  var cool=new THREE.Group();
+  var hsBase=box(5.40,.22,3.10,MAT.metal);at(hsBase,-0.25,Y+BT/2+.42,-0.35);cool.add(hsBase);
+  for(var f=0;f<11;f++){
+    var fin=box(.10,1.05,3.00,MAT.metal);
+    at(fin,-2.75+f*0.50,Y+BT/2+1.05,-0.35);cool.add(fin);
+  }
+  var fanHouse=box(3.10,.72,3.10,MAT.plasticD);
+  at(fanHouse,-0.25,Y+BT/2+1.95,-0.35);pick(fanHouse,'cooler');cool.add(fanHouse);
+  var fanRing=cyl(1.40,1.40,.30,28,MAT.black);
+  at(fanRing,-0.25,Y+BT/2+2.20,-0.35);cool.add(fanRing);
+  var blades=new THREE.Group();
+  for(var b=0;b<7;b++){
+    var bl=box(1.15,.05,.34,MAT.plastic);
+    bl.position.set(Math.cos(b*Math.PI*2/7)*0.62,0,Math.sin(b*Math.PI*2/7)*0.62);
+    bl.rotation.y=b*Math.PI*2/7;bl.rotation.x=0.34;blades.add(bl);
+  }
+  blades.position.set(-0.25,Y+BT/2+2.24,-0.35);cool.add(blades);
+  var hub=cyl(.34,.34,.22,16,MAT.black);at(hub,-0.25,Y+BT/2+2.26,-0.35);cool.add(hub);
+  [-1,1].forEach(function(s){
+    var clip=box(.22,1.4,.30,MAT.metalD);at(clip,-0.25+s*2.85,Y+BT/2+1.0,-0.35);cool.add(clip);
+  });
+  cool.userData.home=cool.position.clone();
+  g.add(cool);PARTS.cooler=cool;PARTS.coolerFan=blades;PARTS.coolerBody=cool;
+
+  g.userData.home=g.position.clone();
+  gPi.add(g);PARTS.piGroup=g;
+
+  P_PI_USB =new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(BW/2+0.5,Y+1.0,-1.35));
+  P_PI_PWR =new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(-BW/2-0.5,Y+0.4,-1.55));
+  P_PI_HDMI=new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(-BW/2-0.5,Y+0.4,0.60));
+  P_SD     =new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(-BW/2+0.55,Y-0.4,0.0));
+})();
+
+/* ---------------- Official 27 W USB-C PSU ---------------- */
+var P_PSU=new THREE.Vector3(17,0,15);
+(function(){
+  var g=new THREE.Group();g.position.copy(P_PSU);
+  var b=box(5.70,3.00,3.00,MAT.white);at(b,0,1.5,0);pick(b,'psu');g.add(b);
+  var pins=box(1.6,.20,.9,MAT.metal);at(pins,0,3.1,0);g.add(pins);
+  var lbl=box(2.6,.02,1.4,std(0xdadade,.9,0));at(lbl,0,3.02,0);g.add(lbl);
+  gPi.add(g);PARTS.psuGroup=g;
+})();
+
+/* ---------------------------------------------------------------
+   COMMUNICATION UNIT — handheld tactical radio, ~200 x 65 x 40 mm
+   The deployed sink for Lane B. Replaces the bench display: the
+   problem statement asks for integration with headphones and
+   communication units, not with a development monitor.
+   --------------------------------------------------------------- */
+var P_RADIO=new THREE.Vector3(33,0,-4);
+var P_RAD_AUD;
+(function(){
+  var g=new THREE.Group();g.position.copy(P_RADIO);
+  var W=6.5,H=18,D=4.0;
+
+  var body=box(W,H,D,MAT.plasticD);at(body,0,H/2,0);pick(body,'radio');g.add(body);
+  var face=box(W*0.92,H*0.96,0.14,std(0x35353b,.72,.10));at(face,0,H/2,D/2+0.05);g.add(face);
+
+  /* display strip */
+  var disp=box(W*0.72,3.0,.10,MAT.screen);at(disp,0,H-3.6,D/2+0.13);g.add(disp);
+  for(var r=0;r<2;r++){
+    var lit=box(W*0.52,.22,.06,std(0x6f8f7a,.6,.05));
+    at(lit,-0.3,H-3.0-r*0.9,D/2+0.20);g.add(lit);
+  }
+  /* speaker grille */
+  for(var gr=0;gr<5;gr++){
+    var slot=box(W*0.56,.20,.06,std(0x1c1c20,.9,.05));
+    at(slot,0,H-7.4-gr*0.45,D/2+0.16);g.add(slot);
+  }
+  /* keypad */
+  for(var kr=0;kr<4;kr++){
+    for(var kc=0;kc<3;kc++){
+      var kb=box(1.05,.62,.16,std(0x2a2a30,.7,.08));
+      at(kb,-1.55+kc*1.55,H-11.0-kr*1.15,D/2+0.16);g.add(kb);
+    }
+  }
+  /* channel selector on top */
+  var sel=cyl(1.15,1.15,.85,22,MAT.knob);at(sel,-1.5,H+0.42,0);g.add(sel);
+  var vol=cyl(.80,.80,.70,20,MAT.knob);at(vol,1.4,H+0.35,0);g.add(vol);
+
+  /* antenna */
+  var ant=cyl(.30,.22,9.5,14,std(0x1e1e22,.86,.05));at(ant,2.3,H+4.9,0);g.add(ant);
+  var antBase=cyl(.52,.52,.9,16,MAT.metalD);at(antBase,2.3,H+0.45,0);g.add(antBase);
+
+  /* push-to-talk on the side */
+  var ptt=box(.55,3.2,1.6,std(0x2a2a30,.75,.08));at(ptt,-W/2-0.22,H*0.62,0);
+  pick(ptt,'ptt');g.add(ptt);
+
+  /* audio / headset connector, top edge */
+  var aud=cyl(.62,.62,.70,18,MAT.metal);at(aud,-2.6,H+0.36,0);pick(aud,'radioaud');g.add(aud);
+
+  /* battery pack at the base */
+  var bat=box(W*1.02,4.2,D*1.05,std(0x33333a,.8,.10));at(bat,0,2.1,0);g.add(bat);
+
+  gPi.add(g);PARTS.radioGroup=g;
+  P_RAD_AUD=new THREE.Vector3().copy(P_RADIO).add(new THREE.Vector3(-2.6,H+0.9,0));
+})();
+
+/* ---------------------------------------------------------------
+   CABLING
+   --------------------------------------------------------------- */
+function cable(pts,mat,r){
+  var cv=new THREE.CatmullRomCurve3(pts);
+  var m=new THREE.Mesh(new THREE.TubeGeometry(cv,80,r||.20,10,false),mat||MAT.rubber);
+  m.userData.curve=cv;gCable.add(m);return m;
+}
+var CB={};
+CB.mic1=cable([P_MIC1,new THREE.Vector3(-30,-4,14),new THREE.Vector3(-20,1,12),P_IF_IN1],
+  std(0x24242a,.94,.02),.22);
+CB.mic2=cable([P_MIC2,new THREE.Vector3(-18,-2,10),new THREE.Vector3(-8,1,12),P_IF_IN2],
+  std(0x24242a,.94,.02),.22);
+CB.usb =cable([P_IF_USB,new THREE.Vector3(2,1.2,-9),new THREE.Vector3(11,1.2,-6),P_PI_USB],
+  std(0x2a2a30,.94,.02),.18);
+CB.pwr =cable([new THREE.Vector3(P_PSU.x,1.4,P_PSU.z-1.6),new THREE.Vector3(12,1.0,10),
+  new THREE.Vector3(7,1.0,2),P_PI_PWR],std(0xe8e8ea,.90,.02),.17);
+/* Lane B output: enhanced speech from the board to the radio */
+CB.radio=cable([P_PI_USB.clone().add(new THREE.Vector3(0,-0.4,1.6)),
+  new THREE.Vector3(24,1.0,-6),new THREE.Vector3(30,1.0,-5),P_RAD_AUD],
+  std(0x2a2a30,.94,.02),.17);
+/* Return path: received audio from the radio back to the earcups —
+   the "headphones / communication unit" integration the PS calls for */
+CB.phones=cable([P_RAD_AUD,new THREE.Vector3(20,10,10),new THREE.Vector3(-6,16,14),
+  new THREE.Vector3(-24,20,8),P_SPK.clone().add(new THREE.Vector3(1.2,2.0,0))],
+  std(0x24242a,.94,.02),.16);
+
+/* ---------------------------------------------------------------
+   FIELD — source, trajectory, wavefronts
+   Distances compressed 10:1 so a 30 m stand-off frames with an
+   85 mm board. Arrival timings are physical.
+   --------------------------------------------------------------- */
+var P_MUZ=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-212,-2,185)); // 30 m ÷ 10
+var P_CRK=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-21.2,-1,18.5)); // 3 m ÷ 10
+(function(){
+  var g=new THREE.Group();g.position.copy(P_MUZ);
+  var barrel=cyl(.75,.75,16,18,MAT.metalD);barrel.rotation.z=Math.PI/2;barrel.rotation.y=-.72;
+  g.add(barrel);
+  var stock=box(5,2.4,2.4,MAT.plasticD);at(stock,-4.6,-1.0,-4.0);stock.rotation.y=-.72;g.add(stock);
+  var flash=new THREE.Mesh(new THREE.SphereGeometry(1.7,20,14),
+    new THREE.MeshStandardMaterial({color:COL.src,emissive:COL.src,emissiveIntensity:.5,roughness:.3}));
+  at(flash,6.0,0,5.5);pick(flash,'src');g.add(flash);
+  g.userData={flash:flash};gField.add(g);PARTS.srcGroup=g;
+
+  var dir=new THREE.Vector3().subVectors(P_CRK,P_MUZ).normalize();
+  var tail=new THREE.Vector3().copy(P_CRK).addScaledVector(dir,70);
+  var traj=new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([P_MUZ.clone().add(new THREE.Vector3(6,0,5.5)),
+      P_CRK.clone(),tail]),
+    new THREE.LineDashedMaterial({color:COL.src,dashSize:3.2,gapSize:2.6,transparent:true,opacity:.55}));
+  traj.computeLineDistances();gField.add(traj);PARTS.traj=traj;
+
+  var cm=new THREE.Mesh(new THREE.SphereGeometry(1.15,20,14),
+    new THREE.MeshStandardMaterial({color:COL.src,emissive:COL.src,emissiveIntensity:.5,roughness:.3}));
+  cm.position.copy(P_CRK);pick(cm,'crack');gField.add(cm);PARTS.crackMark=cm;
+})();
+
+var gWaveHolder=new THREE.Group();gField.add(gWaveHolder);
+function frontOf(c){
+  var g=new THREE.Group();
+  var wire=new THREE.Mesh(new THREE.SphereGeometry(1,34,22),
+    new THREE.MeshBasicMaterial({color:c,wireframe:true,transparent:true,opacity:0,depthWrite:false}));
+  var shell=new THREE.Mesh(new THREE.SphereGeometry(1,40,26),
+    new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0,side:THREE.BackSide,depthWrite:false}));
+  var ring=new THREE.Mesh(new THREE.RingGeometry(.975,1.0,96),
+    new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
+  ring.rotation.x=-Math.PI/2;
+  g.add(wire,shell,ring);g.userData={wire:wire,shell:shell,ring:ring};
+  gWaveHolder.add(g);return g;
+}
+var W_BLAST=frontOf(COL.src), W_CRACK=frontOf(COL.text);
+W_BLAST.position.copy(P_MUZ).add(new THREE.Vector3(6,0,5.5));
+W_CRACK.position.copy(P_CRK);
+var D_BLAST=W_BLAST.position.distanceTo(HEAD_O);
+var D_CRACK=W_CRACK.position.distanceTo(HEAD_O);

@@ -1,0 +1,156 @@
+<!-- ============ 09 EVALUATION ============ -->
+<section id="eval">
+  <div class="sec-head"><span class="sec-num">09</span><h2>Evaluation</h2></div>
+  <p class="sec-sub">Which metrics, why each earns its place, and the single most important strategic decision in the project — what the three PS numbers actually mean.</p>
+
+  <div class="col">
+    <h3>The metrics</h3>
+  </div>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Metric</th><th>What it measures</th><th>Target</th><th>Why it is here</th></tr></thead>
+    <tbody>
+      <tr><td class="name">SNR / SI-SNR</td><td>Noise suppression</td><td class="num">&gt; 15 dB</td><td>PS requirement. Report SI-SNR, not raw SDR — see the callout below</td></tr>
+      <tr><td class="name">STOI</td><td>Intelligibility — can the words be understood</td><td class="num">&gt; 0.85</td><td>PS requirement. Speech can sound bad and still score well; that is the point of it</td></tr>
+      <tr><td class="name">PESQ</td><td>Perceptual quality</td><td class="num">&gt; 2.5</td><td>PS requirement</td></tr>
+      <tr><td class="name">NMSE</td><td>Residual noise energy</td><td>more negative</td><td>Deep ANC's own metric, so the Lane A comparison is like-for-like</td></tr>
+      <tr><td class="name">DNSMOS SIG</td><td>Speech quality alone</td><td class="num part">re-anchor</td><td><strong>Makes over-suppression visible</strong></td></tr>
+      <tr><td class="name">DNSMOS BAK</td><td>Background suppression alone</td><td class="num part">re-anchor</td><td>Together with SIG, separates "killed the noise" from "killed the voice"</td></tr>
+      <tr><td class="name part">IRT — ours</td><td>Impulse Recovery Time: ms until band-wise SNR returns to 90 % of its pre-impulse level</td><td>—</td><td>How fast the denoiser recovers, which averaged metrics hide completely</td></tr>
+      <tr><td class="name part">WLPS — ours</td><td>Words Lost Per Shot: ASR word errors inside the impulse window, per event</td><td>—</td><td>Directly operational — how many commands does a gunshot cost you</td></tr>
+      <tr><td class="name">Latency</td><td>Per-frame processing time on the real board</td><td>real-time</td><td>99th percentile, not the mean</td></tr>
+      <tr><td class="name">Power</td><td>Watts on the real board</td><td>—</td><td><strong>Nobody in the literature reports this</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <div class="callout warn">
+      <span class="lb">The single most important calibration in the project — audit F1</span>
+      <p>The design advocates working at <strong>−12.5 to −2.5 dB SNR</strong>, "the regime gunfire actually produces". That reasoning is sound. But at those SNRs, H-GTCRN — the paper this architecture is built on — reports <strong>PESQ 1.39 / 1.58 / 1.71 and STOI 0.72 / 0.79 / 0.82</strong>. The targets are 2.5 and 0.85. GTCRN on VCTK-DEMAND, at much friendlier SNRs, reaches PESQ 2.87 and STOI 0.940. The closest dual-mic system reaches STOI 0.876, PESQ 2.56 and <strong>SNR 8.61 dB</strong> on babble.</p>
+      <p><strong>Nothing in the sixteen papers reaches SNR &gt; 15 dB, and nothing reaches PESQ 2.5 below 0 dB input SNR.</strong> This is not a reason to abandon the low-SNR regime — it is a reason to stop treating the three numbers as a single pass/fail gate. Report them as <strong>curves against input SNR from −15 to +20 dB</strong>, state where you cross each target, and say plainly that below that point no published lightweight system meets them either. Then settle whether "SNR &gt; 15 dB" means output SNR or improvement, state your reading in one line, and report both — improvement from −10 dB is a completely different claim from an absolute 15 dB output.</p>
+    </div>
+
+    <div class="callout">
+      <span class="lb">Why SI-SDR and not SDR — the citation the argument was missing</span>
+      <p>Le Roux et al. showed that as a growing proportion of frequency bins are deleted from a signal, <strong>SDR stays between 10 and 15 dB and actually <em>increases</em> at 40 % masking</strong>, while SI-SDR decreases monotonically. Deleting frequency bins is exactly what a mask-based denoiser does, and what BMRI's interpolation does in the time domain. That paper is sitting unused in <code>docs/research/</code>, and it gives three things the evaluation currently lacks: a published reason that a single SNR number hides over-suppression, a reason to report SI-SDR rather than SDR, and a principled way to resolve the PS's ambiguous "SNR &gt; 15 dB".</p>
+    </div>
+
+    <h4>Why DNSMOS earns its place — and why its targets need moving</h4>
+    <p>DNSMOS P.835 splits <strong>SIG</strong> (speech quality alone) from <strong>BAK</strong> (background quality alone) on a 1–5 scale, without needing a clean reference. That split is what makes over-suppression visible: if the filter kills the gunshot (high BAK) but drops SIG, the metric flags that the device is degrading command clarity. A single SNR number hides that completely, and over-suppression is the exact failure the PS's intelligibility requirement exists to prevent.</p>
+    <p>The current targets of SIG 4.1 and BAK 4.2 come from a handwritten note, not a paper, and they are not achievable:</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>System</th><th>Condition</th><th>SIG</th><th>BAK</th><th>OVRL</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Noisy input</td><td>DNS3 blind</td><td class="num">3.20</td><td class="num">2.65</td><td class="num">2.33</td></tr>
+      <tr><td class="name">GTCRN</td><td>DNS3 blind</td><td class="num no">3.00</td><td class="num">3.90</td><td class="num">2.70</td></tr>
+      <tr><td class="name">H-GTCRN</td><td>−2.5 dB</td><td class="num">2.74</td><td class="num">3.87</td><td class="num">2.44</td></tr>
+      <tr><td class="name">H-GTCRN</td><td>−12.5 dB</td><td class="num">2.36</td><td class="num">3.76</td><td class="num">2.09</td></tr>
+      <tr><td class="name">Current target</td><td>—</td><td class="num no">4.10</td><td class="num no">4.20</td><td class="num">—</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>Read the first two rows carefully. <strong>GTCRN reduces SIG from 3.20 to 3.00</strong> — the chosen neural core degrades speech quality on its own paper's blind test set while improving background suppression. That is the over-suppression failure this project worries about, already measured, already published, sitting in the folder. It is evidence <em>for</em> the argument; use it rather than setting an unreachable target beside it. "Beat GTCRN's SIG 3.00 without giving up its BAK 3.90" is a claim that can be defended and might actually be achieved.</p>
+    <p>Two caveats to state rather than be caught by: DNSMOS is trained on English DNS-challenge material, so Hindi speech mixed with muzzle blast is out of its distribution; and it is served from Azure, which is an awkward dependency in a DRDO deliverable. Acknowledge both and keep an offline fallback.</p>
+
+    <h4>Why our own two metrics are worth the fifty lines</h4>
+    <p>PESQ and STOI average over an utterance. A gunshot destroys about 200 ms; in a ten-second clip the average barely moves. <strong>The standard metrics hide exactly the damage this problem statement is about.</strong> IRT measures how fast intelligibility comes back; WLPS measures how many words a shot costs. The narrative — <em>"we showed the standard metrics under-report impulsive damage, so we propose two that don't"</em> — is a genuine measurement contribution of exactly the kind DRDO respects, and it needs no hardware, no range data and no trained model.</p>
+
+    <h3>The evaluation grid — the core experiment</h3>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Method</th><th>Stationary</th><th>Non-stationary</th><th>Impulsive</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Deep ANC / CRN baseline</td><td class="ok">published</td><td>—</td><td class="no"><strong>the collapse</strong></td></tr>
+      <tr><td class="name">Dual-mic DC-CRN</td><td>—</td><td>—</td><td class="no">unknown, never tested</td></tr>
+      <tr><td class="name">GTCRN / H-GTCRN</td><td class="ok">published</td><td>—</td><td class="part">?</td></tr>
+      <tr><td class="name">BMRI, classical</td><td class="no">weak, admitted by its authors</td><td>—</td><td class="ok">strong, validated on Cauchy noise</td></tr>
+      <tr><td class="name">Ours</td><td class="part">?</td><td class="part">?</td><td class="part">?</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>Filling that grid honestly <em>is</em> the contribution. A published method failing on a noise class it was never tested on is a real negative result, not a failed demo.</p>
+
+    <h4>The latency chart</h4>
+    <p>NMSE against prediction horizon <em>M</em>, with stationary and impulsive noise on the same axes. Deep ANC's own numbers on engine noise: no prediction −11.07 dB, one frame ahead −9.60 dB, two frames −7.93 dB — roughly <strong>1.5–1.7 dB of cancellation lost per 10 ms bought back</strong>, on periodic noise. If the impulsive curve falls off a cliff while the stationary one declines gently, that single chart carries the whole argument and motivates the two-path architecture directly.</p>
+
+    <h4>The four-way cross-training chart</h4>
+    <p>Train four models, test all four on the held-out real recordings:</p>
+  </div>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Training data</th><th>Expected</th><th>What it proves</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Civilian noise only</td><td>Worst</td><td>The domain gap is real</td></tr>
+      <tr><td class="name">Synthetic only</td><td class="ok">Near ceiling</td><td><strong>Synthetic data has standalone value</strong></td></tr>
+      <tr><td class="name">Synthetic + public real</td><td class="ok">Best practical</td><td>The recommended production configuration</td></tr>
+      <tr><td class="name">Real only</td><td>Ceiling</td><td>The upper bound</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p>If "synthetic only" lands within 1–2 dB of "real only" and 5 dB or more above "civilian only", the dataset argument is closed.</p>
+
+    <h4>Four levels of generator validation</h4>
+    <ol>
+      <li><strong>Physical</strong> — fit the Friedlander parameters to real and synthetic, compare distributions. Target: peak within ±2 dB, duration within ±15 %.</li>
+      <li><strong>Spectral</strong> — ⅓-octave band SEL from 63 Hz to 8 kHz, band-wise error curve. Target: ±3 dB per band.</li>
+      <li><strong>Statistical</strong> — kurtosis, crest factor, distribution overlap, KS test, <span class="term" data-t="FAD">FAD</span>. <strong>This one requires a floor:</strong> split the real recordings into two random halves and compute FAD(real, real) first. Two genuine sets never match perfectly, and a FAD number without that floor is meaningless.</li>
+      <li><strong>Task-level</strong> — the cross-training chart above. Target: within 1–2 dB of real-trained.</li>
+    </ol>
+
+    <h4>The energy-scaling chart</h4>
+    <p>Peak SPL on the x-axis from about 95 to 140 dB, model prediction error on the y-axis, one point per source type — balloon, air rifle, firecracker sizes, starter pistol. If all points sit inside a ±2 dB band, draw a dotted extrapolation to firearm range. <strong>This turns a legal access constraint into a rigorous methodology</strong>, and it is the strongest single visual available.</p>
+    <p>It also supports the honest reframing of the dataset claim. Not <em>"our synthetic gunshots match real gunshots"</em>, which an air rifle cannot support, but: <em>"we built a physics-based blast synthesis pipeline and validated it against N measured impulsive sources spanning ~45 dB of peak level; prediction error stayed within ±X dB across that range; because the underlying model is energy-scaled, this supports extrapolation to firearm-scale sources, which we validated separately in shape and spectrum against published real-firearm recordings."</em></p>
+
+    <div class="callout amber">
+      <span class="lb">Anti-fraud discipline</span>
+      <p>The range holdout is never trained on. Generator parameters come only from the fit set. Freeze the generator with a git tag before touching the holdout. And <strong>report the mismatches you find</strong> — "our generator overestimates by 4 dB above 2 kHz" reads as honest science; "everything matched perfectly" reads as untested.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10 PAPERS ============ -->
+<section id="papers">
+  <div class="sec-head"><span class="sec-num">10</span><h2>The sixteen papers</h2></div>
+  <p class="sec-sub">What each one contributes, and — crucially — which five actually put code on the device.</p>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Source</th><th>Year</th><th>Its job in our system</th><th>Ships?</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Widrow et al. — Adaptive Noise Cancelling</td><td class="num">1975</td><td>The two-input architecture — a primary input carrying signal plus noise, a reference input carrying correlated noise, adaptively filtered and subtracted. LMS adjusts weights sample by sample with no prior knowledge of the noise. Gives us mic placement, the isolation constraint, and the residual stage</td><td class="ok">Yes — block 10, and the whole L1 layout</td></tr>
+      <tr><td class="name">Varga &amp; Steeneken — NOISEX-92</td><td class="num">1993</td><td>A benchmark and a controlled SNR framework, not an architecture. Its noise set — engine, factory, babble, speech-shaped noise — is what nearly every later paper inherits, <strong>and none of it is impulsive</strong></td><td>No — framing</td></tr>
+      <tr><td class="name">Shao &amp; Nikias — FLOM</td><td class="num">1993</td><td>Fractional lower-order moments: the statistic that replaces RMS in block 3. <em>Cited second-hand through Yuan et al.; the paper is not in the folder and should be, since this ships</em></td><td class="ok">Yes — block 3</td></tr>
+      <tr><td class="name">Ruhland et al. — BMRI</td><td class="num">2015</td><td>Two-stage classical pipeline: adaptive threshold splits target from residual, AR detection flags the worst γ %, interpolation fills them, spectral correction removes the rumble. Gives us the impulsive path, the voice guard, and the γ our classifier makes live</td><td class="ok">Yes — blocks 5, 6, 9</td></tr>
+      <tr><td class="name">Wang &amp; Chen — Supervised Speech Separation</td><td class="num">2018</td><td>Enhancement as supervised learning on noisy/clean pairs. Time-frequency masking, IBM and IRM as targets. Establishes that training-data quality and diversity decide generalisation</td><td>No — method</td></tr>
+      <tr><td class="name part">Le Roux et al. — SDR: half-baked or well done?</td><td class="num">2019</td><td><strong>Currently uncited.</strong> Proves SDR stays flat or rises while a signal is destroyed by masking, and that SI-SDR does not. The citation our over-suppression argument is missing</td><td>No — evaluation</td></tr>
+      <tr><td class="name">DCCRN</td><td class="num">2020</td><td>Complex-domain processing — magnitude and phase together, via complex convolutions plus a recurrent stage</td><td>No — concept</td></tr>
+      <tr><td class="name">Zhang &amp; Wang — Deep ANC</td><td class="num">2021</td><td><strong>Baseline to attack.</strong> Reframes active noise control as supervised learning; a CRN predicts the anti-noise via complex spectral mapping; delay-compensated training predicts M frames ahead to claw back latency. Models loudspeaker saturation with a scaled error function at four nonlinearity levels</td><td>No — baseline</td></tr>
+      <tr><td class="name">Tan, Zhang &amp; Wang — dual-mic DC-CRN</td><td class="num">2021</td><td><strong>Baseline to attack</strong>, and the pruning method we adopt. Densely-connected CRN, dual-channel complex spectral mapping, structured pruning 290.44 K → 103.07 K. Measured 125.6 MMAC/s and 2.78 ms per 20 ms frame on an i7 laptop</td><td>No — baseline + method</td></tr>
+      <tr><td class="name">FullSubNet</td><td class="num">2021</td><td>Full-band branch for global spectral structure, sub-band branch for local frequency behaviour, fused. Designed for real-time single-channel use</td><td>No — concept</td></tr>
+      <tr><td class="name">DeepFilterNet2</td><td class="num">2022</td><td>Two stages: 32 ERB bands predicting real gains, then complex deep filtering below 5 kHz rebuilding harmonic detail. <strong>Real-time on a Raspberry Pi 4</strong>, real-time factor 0.04 on a laptop CPU — the proof that embedded is achievable</td><td>Concept + existence proof</td></tr>
+      <tr><td class="name part">Reddy et al. — DNSMOS P.835</td><td class="num">2022</td><td>Non-intrusive prediction of SIG, BAK and OVRL from human ratings, correlation 0.94 for SIG and 0.98 for BAK. <strong>Present in the folder but still cited as a screenshot</strong></td><td>No — evaluation</td></tr>
+      <tr><td class="name">Yuan, Li &amp; Kuruoğlu — α-stable training noise</td><td class="num">2023</td><td>Replace Gaussian augmentation with α-stable, justified by the Generalized CLT. Beats Gaussian most clearly when test data is impulsive; recommends α ≈ 1; several separate α values beat a blend. Gives us the augmentation and the clipping constraint we invert</td><td>No — training</td></tr>
+      <tr><td class="name">Rong et al. — GTCRN</td><td class="num">2024</td><td><strong>The neural core.</strong> 23.7 K parameters, 39.6 MMAC/s, PESQ 2.87 on VCTK-DEMAND</td><td class="ok">Yes — block 7</td></tr>
+      <tr><td class="name">H-GTCRN</td><td class="num">—</td><td>Hybrid dual-channel: Aux-IVA as a cheap blind first pass, a modified GTCRN refining it, conditioned on both the raw noisy input and IVA's output. ~24 K parameters, ~43 M ops/s, and three ablation findings we adopt directly</td><td class="ok">Yes — blocks 2, 7</td></tr>
+      <tr><td class="name">IS³</td><td class="num">2025</td><td>Impulsive–stationary separation by deep filtering, adapting DeepFilterNet2. <strong>2.2 M parameters</strong> — a data-pipeline template, not a deployable model. Its curation and generation procedure is the major contribution, and our template</td><td>No — data method</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="col">
+    <p><strong>Only five sources put code on the device:</strong> Widrow, Shao &amp; Nikias, BMRI, GTCRN and H-GTCRN. Everything else is method, baseline or evidence. That is worth knowing before a judge asks "you listed sixteen papers — which ones are actually in the product?"</p>
+  </div>
+</section>
