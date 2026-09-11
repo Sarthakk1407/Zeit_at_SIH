@@ -20,17 +20,31 @@ Reproduce Deep ANC, GTCRN, H-GTCRN, BMRI numbers on their own published data.
 Needs no hardware, no range data.
 → **Unblocks:** Phase 2 (you cannot show a collapse without a baseline)
 
-### 0c. Public noise corpora ⬜
-Download per `DATASET_SPEC.md` §2. Gunshots come from **our** range trip;
-everything else comes from here.
+### 0c. Public noise corpora ✅
+**11 datasets, ~229,000 audio files, ~100 GB downloaded** (12 Sep 2026).
+
+| Dataset | Files | Dataset | Files |
+|---|---|---|---|
+| LibriSpeech | 137,876 | MUSAN | 2,016 |
+| RIRs (OpenSLR28) | 61,260 | ESC-50 | 2,000 |
+| UrbanSound8K | 8,732 | DEMAND | 128 (16-ch) |
+| MAD (military) | 7,466 | NOISEX-92 | 14 |
+| Lombard GRID | 5,390 | | |
+| Cadre gunshots | 2,241 | | |
+| Zenodo gunshots | 2,148 | | |
+
+Still worth adding: **FSD50K** (CC BY/CC0, commercial-safe, has gunshot/explosion/siren).
+Optional: DroneAudioSet, TAU Urban, DREGON. Pending access: SPRING-INX.
 → **Unblocks:** Phase 2 grid, Phase 4 mixtures
 
-### 0d. Clean speech corpus 🔴 **BLOCKED — decision needed**
+### 0d. Clean speech corpus 🟡 **bulk done, Hindi outstanding**
 `order.md` calls this *the largest open item in the dataset plan*. It sets
 training-set size; nothing downstream can be sized until it is made.
 Recommendation in `DATASET_SPEC.md` §3 — LibriSpeech + VCTK + EARS +
 Common Voice Hindi + **Lombard GRID (≥20 %)**.
-→ **Blocks:** Phase 4 entirely
+LibriSpeech (137,876 files) and **Lombard GRID (5,390 files, paired plain/Lombard)** are
+both on disk. Hindi (SPRING-INX, ~2000 h) is still an access request.
+→ **No longer blocks Phase 4** for English. Hindi coverage remains open.
 
 ---
 
@@ -68,7 +82,7 @@ The two findings the whole story rests on. No hardware, no range data needed.
 
 | Step | What | Effort |
 |---|---|---|
-| 2.1 | Robust normalisation — percentile / FLOM vs RMS | half a day |
+| 2.1 ✅ | Robust normalisation — percentile / FLOM vs RMS — **DONE 9 Sep** | `experiments/p1_normalisation.py` |
 | 2.2 | The impulsive evaluation grid | days |
 | 2.3 | Latency vs prediction horizon (NMSE vs M, stationary **and** impulsive on one chart) | days |
 
@@ -128,10 +142,14 @@ real board. Power is a free differentiator: nobody in the literature reports it.
 
 ---
 
-## Phase 7 — The extra experiment ⬜
+## Phase 7 — The extra experiment ✅ (both metrics built)
 
-IRT (Impulse Recovery Time) and WLPS (Words Lost Per Shot) — ~50 lines each,
-no hardware, no trained model. PESQ and STOI average over an utterance, so a
+**Both built and IRT already run on the real 44 events** (`metrics/irt.py`, `metrics/wlps.py`).
+
+Measured IRT per band: 125–250 Hz 223 ms · 250–500 Hz 289 ms · 500–1k 405 ms ·
+**1–2 kHz 464 ms (slowest)** · 2–4 kHz 370 ms · 4–8 kHz 232 ms.
+
+The band that recovers slowest is the band that carries speech intelligibility. PESQ and STOI average over an utterance, so a
 200 ms gunshot barely moves them; these two metrics measure exactly the damage
 this PS is about. Cheapest original contribution available.
 
@@ -140,10 +158,12 @@ this PS is about. Cheapest original contribution available.
 ## Critical path
 
 ```
-0a ✅ ─→ 1 ✅ ─┐
-0b ⬜ ─→ 2 ⬜ ─┴─→ 3 ⬜ ─→ 4 🔴 ─→ 5 ⬜ ─→ 6 ⬜
-0c ⬜ ────────────────────↑
-0d 🔴 ────────────────────┘
+0a ✅ ─→ 1 ✅ ──┐
+0b ⬜ ─→ 2.1 ✅ ┼─→ 3 ⬜ ─→ 4 ⬜ ─→ 5 ⬜ ─→ 6 ⬜
+0c ✅ ─────────┤
+0d 🟡 ─────────┘            7 ✅ (independent)
 ```
 
-**The one decision that unblocks the most: 0d.** It is a choice, not work.
+**Next: Phase 3 — the synthetic generator.** Everything it needs is now in place:
+the 44-event reference, the statistics to match, the range acoustics, and 100 GB
+of corpora to mix against.

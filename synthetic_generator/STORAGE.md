@@ -1,6 +1,49 @@
 # How much is downloaded, how much is generated
 
-Sizes are approximate — treat them as planning numbers, not guarantees.
+**Updated 12 Sep 2026 — these are now measured, not estimated.**
+
+---
+
+## Part 0 — What is actually on the drive
+
+`/Volumes/ZEIT V.1.0/zeit-data/` — **11 datasets, ~229,000 audio files, ~100 GB**
+
+| Dataset | Files | Size | What it gives |
+|---|---|---|---|
+| LibriSpeech_OpenSLR | 137,876 | 57 GB | clean English speech (FLAC) |
+| OpenSLR28_RIRs | 61,260 | 5 GB | room impulse responses |
+| UrbanSound8K_NYU | 8,732 | 3.4 GB | siren, engine, drilling, **gun_shot** |
+| MAD_Kaggle | 7,466 | 1 GB | gunshot, shelling, vehicle, helicopter, fighter |
+| LombardGRID_Sheffield | 5,390 | 814 MB | **paired plain / Lombard speech** |
+| Cadre_GunshotForensics | 2,241 | 2 GB | 20 firearms x 20 positions |
+| ZenodoGuns_Zenodo | 2,148 | 3 GB | real gunshots, multi-orientation |
+| MUSAN_OpenSLR | 2,016 | 22 GB | noise + speech + music |
+| ESC50_GitHub | 2,000 | 1 GB | helicopter, train, wind, rain, siren |
+| DEMAND_Zenodo | 128 | 4 GB | **16-channel** environments |
+| NOISEX92_SPIB | 14 | 254 MB | **tank, F-16, machine gun** |
+
+Plus our own measured data: **44 impulsive events**, 213 detections, 15 raw takes.
+
+### Real gunshot recordings held
+
+```
+Zenodo gunshots        2,148
+Cadre                  2,241
+MAD (gunshot class)    1,714
+Ours (measured)           44   <- the reference; uncalibrated
+------------------------------
+                       6,147
+```
+
+### Still worth adding
+
+| Dataset | Why | Priority |
+|---|---|---|
+| **FSD50K** | gunshot, explosion, siren — and **CC BY / CC0, commercial-safe** | ⭐ do this |
+| DroneAudioSet | 23.5 h drone, MIT | if the drone class matters |
+| TAU Urban | metro/tram/bus — but DEMAND covers this and is 16-channel | optional |
+| DREGON | 8-ch array on a quadrotor | optional |
+| SPRING-INX | ~2000 h Hindi, MeitY-funded | access request pending |
 
 ---
 

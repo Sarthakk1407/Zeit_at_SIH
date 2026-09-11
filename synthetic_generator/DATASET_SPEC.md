@@ -9,7 +9,32 @@ effectively unlimited — the limit is compute, not recordings.
 
 ---
 
-## 0. What we already own
+## 0. What is on the drive right now (12 Sep 2026)
+
+**11 datasets · ~229,000 audio files · ~100 GB** at `/Volumes/ZEIT V.1.0/zeit-data/`.
+
+| ✅ downloaded | files | ⬜ not yet |
+|---|---|---|
+| LibriSpeech | 137,876 | **FSD50K** ← do this next (CC BY/CC0) |
+| RIRs (OpenSLR28) | 61,260 | DroneAudioSet |
+| UrbanSound8K | 8,732 | TAU Urban (optional) |
+| MAD | 7,466 | DREGON (optional) |
+| Lombard GRID | 5,390 | SPRING-INX (access pending) |
+| Cadre | 2,241 | |
+| Zenodo gunshots | 2,148 | |
+| MUSAN | 2,016 | |
+| ESC-50 | 2,000 | |
+| DEMAND | 128 (16-ch) | |
+| NOISEX-92 | 14 | |
+
+**6,147 real gunshot recordings** across Zenodo, Cadre, MAD and our own 44.
+
+Live inventory with sources and licences: **`DATA_SOURCES.md`** (regenerate with
+`make_manifest.py`).
+
+---
+
+## 0.1 What we measured ourselves
 
 | | |
 |---|---|
@@ -182,8 +207,12 @@ DCASE2018 Task 1 · CochlScene · Arte · CAS2023 · LITIS Rouen
 
 ## 3. Clean speech — `order.md` calls this **the largest open item**
 
-Stage 0d is marked **BLOCKED, undecided** and it blocks Stage 4 entirely.
-Recommended decision:
+**Update 12 Sep 2026:** no longer blocking. LibriSpeech (137,876 files) and
+**Lombard GRID (5,390 files, paired plain/Lombard)** are both on disk, so Phase 4
+can proceed in English. What remains open is **Hindi** — SPRING-INX is an access
+request, with Common Voice Hindi as the smaller fallback.
+
+The corpora, and where each now stands:
 
 | Corpus | Size | Why |
 |---|---|---|
@@ -194,15 +223,21 @@ Recommended decision:
 | **IndicTTS / SPRING-INX** | multi Indian language | evaluators' own languages |
 | **Lombard GRID** | 54 speakers, neutral **+ Lombard** pairs | ⚠️ see below |
 
-### ⚠️ Lombard speech — the gap nobody has closed
+### ✅ Lombard speech — the gap, now closed on disk
 
 People shouting in gunfire do not speak like people reading sentences. Under
 noise, speakers raise pitch, raise level, shift spectral tilt. Systems trained
 on neutral speech lose roughly **5 dB** on Lombard speech, and the gap survives
 level normalisation.
 
-**The word "Lombard" appears zero times in the current `docs/01-system/` files,
-and Lombard speech is the entire use case.** Target ≥ 20 % Lombard content.
+**Lombard GRID is downloaded** — 5,390 files, 54 talkers, 50 Lombard + 50 plain
+each, paired. Target ≥ 20 % Lombard content in every training mix.
+
+Two things still to do:
+- The word "Lombard" still appears **zero times** in `docs/01-system/`. The data
+  arrived before the documents did.
+- The corpus ships **alignment files with word-level timings**, which means WLPS
+  can be run on it **without any ASR**.
 
 ---
 

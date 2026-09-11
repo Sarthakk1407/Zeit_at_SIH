@@ -1,6 +1,10 @@
 # Download links — every dataset, every URL
 
-Target drive: **`/Volumes/ZEIT V.1.0/zeit-data/`** (APFS — quotes needed, the name has a space)
+Target drive: **`/Volumes/ZEIT V.1.0/zeit-data/`** — folders are named `Dataset_Source` (e.g. `MUSAN_OpenSLR`), so the origin is visible from the folder name.
+
+**Status: 11 of 16 datasets downloaded, ~229,000 audio files, ~100 GB.** The one still worth doing is **FSD50K**.
+
+Original target drive note (APFS — quotes needed, the name has a space)
 
 ```bash
 cd /Users/dushyant/ANC/V_1
@@ -9,18 +13,22 @@ python3 synthetic_generator/download.py "/Volumes/ZEIT V.1.0"
 
 ---
 
-## AUTO — the script handles these (5 datasets, 8 archives, ~46 GB)
+## AUTO — ✅ ALL 8 ARCHIVES COMPLETE (11 Sep 2026)
+
+The script finished every automatic download. Nothing left to do here.
+
+
 
 | Folder | Dataset | Direct URL | Size | Licence |
 |---|---|---|---|---|
-| `LibriSpeech/` | train-clean-100 | `https://www.openslr.org/resources/12/train-clean-100.tar.gz` | 6.3 GB | CC BY 4.0 |
-| `LibriSpeech/` | train-clean-360 | `https://www.openslr.org/resources/12/train-clean-360.tar.gz` | 23 GB | CC BY 4.0 |
-| `LibriSpeech/` | dev-clean | `https://www.openslr.org/resources/12/dev-clean.tar.gz` | 337 MB | CC BY 4.0 |
-| `LibriSpeech/` | test-clean | `https://www.openslr.org/resources/12/test-clean.tar.gz` | 346 MB | CC BY 4.0 |
-| `MUSAN/` | MUSAN | `https://www.openslr.org/resources/17/musan.tar.gz` | 11 GB | CC BY 4.0 |
-| `ESC50/` | ESC-50 | `https://github.com/karolpiczak/ESC-50/archive/master.zip` | 600 MB | CC BY-NC 3.0 |
-| `OpenSLR28/` | RIRs and Noises | `https://www.openslr.org/resources/28/rirs_noises.zip` | 4 GB | Apache 2.0 |
-| `ZenodoGuns/` | Gunshot/Gunfire | `https://zenodo.org/records/7004819/files/edge-collected-gunshot-audio.zip?download=1` | 1.5 GB | CC BY 4.0 |
+| `LibriSpeech_OpenSLR/` | train-clean-100 | `https://www.openslr.org/resources/12/train-clean-100.tar.gz` | 6.3 GB | CC BY 4.0 |
+| `LibriSpeech_OpenSLR/` | train-clean-360 | `https://www.openslr.org/resources/12/train-clean-360.tar.gz` | 23 GB | CC BY 4.0 |
+| `LibriSpeech_OpenSLR/` | dev-clean | `https://www.openslr.org/resources/12/dev-clean.tar.gz` | 337 MB | CC BY 4.0 |
+| `LibriSpeech_OpenSLR/` | test-clean | `https://www.openslr.org/resources/12/test-clean.tar.gz` | 346 MB | CC BY 4.0 |
+| `MUSAN_OpenSLR/` | MUSAN | `https://www.openslr.org/resources/17/musan.tar.gz` | 11 GB | CC BY 4.0 |
+| `ESC50_GitHub/` | ESC-50 | `https://github.com/karolpiczak/ESC-50/archive/master.zip` | 600 MB | CC BY-NC 3.0 |
+| `OpenSLR28_RIRs/` | RIRs and Noises | `https://www.openslr.org/resources/28/rirs_noises.zip` | 4 GB | Apache 2.0 |
+| `ZenodoGuns_Zenodo/` | Gunshot/Gunfire | `https://zenodo.org/records/7004819/files/edge-collected-gunshot-audio.zip?download=1` | 1.5 GB | CC BY 4.0 |
 
 If ZenodoGuns shows **HTTP 504**, that is Zenodo's server timing out, not a fault on our side.
 Just rerun the script later; everything already complete is skipped.
@@ -31,7 +39,7 @@ Just rerun the script later; everything already complete is skipped.
 
 Each folder already exists with a `SOURCE.txt` inside. Download the file, drop it in that folder.
 
-### ⭐ 1. NOISEX-92 → `NOISEX92/`
+### ✅ 1. NOISEX-92 → `NOISEX92_SPIB/` — **DONE**, 14 files
 
 **https://spib.linse.ufsc.br/noise.html**
 
@@ -42,7 +50,7 @@ Grab these files: `leopard` (tank), `m109` (tank), `f16` (jet cockpit), `machine
 
 Licence: research use. 19.98 kHz, 235 s each.
 
-### ⭐ 2. MAD — Military Audio Dataset → `MAD/`
+### ✅ 2. MAD — Military Audio Dataset → `MAD_Kaggle/` — **DONE**, 7,466 files
 
 **Get the audio from Kaggle** (the authors' own README says so, and says the YouTube
 downloader is no longer needed):
@@ -71,7 +79,7 @@ title, video number, file id, start/end time, label, YouTube URL).
 YouTube's compression. Good for class coverage and training, but it is not calibrated
 measurement — our own 44 range events stay the reference.
 
-### ⭐ 3. Lombard GRID → `LombardGRID/`
+### ✅ 3. Lombard GRID → `LombardGRID_Sheffield/` — **DONE**, 5,390 files
 
 **https://spandh.dcs.shef.ac.uk/avlombard/**
 
@@ -80,7 +88,7 @@ video views can be skipped. Free for research, a short form.
 
 This closes the single biggest gap in the plan — see `DATASET_SPEC.md` §0.6.
 
-### 4. Cadre Gunshot Audio Forensics → `Cadre/`
+### ✅ 4. Cadre Gunshot Audio Forensics → `Cadre_GunshotForensics/` — **DONE**, 2,241 files
 
 **https://cadreforensics.com/audio/**
 
@@ -89,21 +97,21 @@ This closes the single biggest gap in the plan — see `DATASET_SPEC.md` §0.6.
 
 The 20 positions per firearm are exactly the azimuth/distance grid our own field checklist asks for.
 
-### 5. DEMAND → `DEMAND/`
+### ✅ 5. DEMAND → `DEMAND_Zenodo/` — **DONE**, 8 environments
 
 **https://zenodo.org/records/1227121**
 
 18 environments × 16 channels, WAV at both 48 kHz and 16 kHz, one zip per environment.
 CC BY-SA 3.0. Kitchen, office, cafe, town square, car, metro, park, station, traffic.
 
-### 6. UrbanSound8K → `UrbanSound8K/`
+### ✅ 6. UrbanSound8K → `UrbanSound8K_NYU/` — **DONE**, 8,732 files
 
 **https://urbansounddataset.weebly.com/urbansound8k.html**
 
 8,732 clips ≤ 4 s across 10 classes — siren, engine idling, jackhammer, drilling, dog bark.
 Short form. **CC BY-NC 3.0 — non-commercial.** Fine for the competition, flag it for a product.
 
-### 7. TAU Urban Acoustic Scenes 2020 → `TAUUrban/`
+### ⬜ 7. TAU Urban Acoustic Scenes 2020 → `TAUUrban_Zenodo/` — optional
 
 Development set: **https://zenodo.org/records/3670167**
 Evaluation set: **https://zenodo.org/records/3685828**
@@ -112,14 +120,14 @@ Evaluation set: **https://zenodo.org/records/3685828**
 10 s segments from 10 scenes: airport, shopping mall, metro station, pedestrian street,
 public square, street traffic, urban park, bus, tram, metro. CC BY-NC.
 
-### 8. FSD50K → `FSD50K/`
+### ⭐ 8. FSD50K → `FSD50K_Zenodo/` — **DO THIS ONE NEXT**
 
 **https://zenodo.org/records/4060432**
 
 51,197 Freesound clips, 200 classes from the AudioSet ontology — gunshot, explosion, siren,
 engine. Mixed CC BY / CC0. Split across several zip parts; take them all.
 
-### 9. DroneAudioSet → `DroneAudioSet/`
+### ⬜ 9. DroneAudioSet → `DroneAudioSet_HF/`
 
 **https://huggingface.co/datasets/ahlab-drone-project/DroneAudioSet/**
 
@@ -131,14 +139,14 @@ huggingface-cli download ahlab-drone-project/DroneAudioSet \
   --repo-type dataset --local-dir "/Volumes/ZEIT V.1.0/zeit-data/DroneAudioSet"
 ```
 
-### 10. DREGON → `DREGON/`
+### ⬜ 10. DREGON → `DREGON_Inria/` — optional
 
 **https://dregon.inria.fr/datasets/dregon/**
 
 8-channel microphone array mounted **on** a quadrotor, 44.1 kHz, with per-rotor rps logs.
 In-flight and static recordings, with and without a source. Research use.
 
-### 11. SPRING-INX → `SPRINGINX/`
+### ⏳ 11. SPRING-INX → `SPRINGINX_IITM/` — access request pending
 
 Paper with the access link: **https://arxiv.org/abs/2310.14654**
 

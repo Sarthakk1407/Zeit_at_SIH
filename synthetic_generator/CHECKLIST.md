@@ -3,7 +3,7 @@
 Mark `[x]` when done and add the date. Anything marked ⚠️ is a claim risk: it
 will be challenged by a technical judge.
 
-**Last updated: 8 Sep 2026**
+**Last updated: 12 Sep 2026**
 
 ---
 
@@ -22,35 +22,39 @@ will be challenged by a technical judge.
 - [ ] H-GTCRN — reproduce the −12.5 / −7.5 / −2.5 dB table
 - [ ] BMRI — reproduce SNR improvement on white Cauchy
 
-### 0c. Public noise corpora
-- [x] Internet research done — real sources verified with URLs and licences — *8 Sep 2026* (see `DATASET_SPEC.md` §0.5)
-- [ ] ⭐ **MAD — Military Audio Dataset** — 8,075 clips, 12 h, CC BY 4.0. gunshot / shelling / vehicle / helicopter / fighter / footsteps / communication. `figshare` c.7001919.v1
-- [ ] ⭐ **Cadre Gunshot Audio Forensics** — ~10,000 recordings, 20 firearms × 20 positions × 4 devices. `cadreforensics.com/audio/`
-- [ ] **Zenodo Gunshot/Gunfire** — 2,148 files, 1.6 GB, CC BY 4.0. `zenodo.org/records/7004819`
-- [ ] **Free Firearm Sound Library** (CC0)
-- [ ] **DREGON** — 8-ch array on a quadrotor. `dregon.inria.fr/datasets/dregon/`
-- [ ] **DroneAudioSet** — 23.5 h, MIT. `huggingface.co/datasets/ahlab-drone-project/DroneAudioSet/`
-- [ ] NOISEX-92 — **tank, F-16, machine gun, babble** (highest value)
-- [ ] MUSAN (~109 h)
-- [ ] DEMAND (18 environments)
-- [ ] UrbanSound8K (siren, engine)
-- [ ] ESC-50 (helicopter, train, wind)
-- [ ] TAU Urban Acoustic Scenes (metro, tram, bus, street)
-- [ ] FSD50K
-- [ ] AudioSet subset — `Machine gun`, `Cannon`, `Explosion`, `Military vehicle`
-- [ ] Drone audio (DREGON / DroneAudioDataset)
-- [ ] Record licence of every corpus in one table
+### 0c. Public noise corpora ✅ DONE
+- [x] Internet research — real sources verified with URLs and licences — *8 Sep 2026*
+- [x] **MAD — Military Audio Dataset** — 7,466 files, via Kaggle — *10 Sep 2026*
+- [x] **NOISEX-92** — 14 noises incl. leopard/m109 tanks, F-16, machine gun. Shipped as `.mat`, converted with `mat_to_wav.py` — *10 Sep 2026*
+- [x] **Cadre Gunshot Forensics** — 2,241 files — *10 Sep 2026*
+- [x] **Zenodo Gunshot/Gunfire** — 2,148 files — *11 Sep 2026*
+- [x] **LibriSpeech** — 137,876 FLAC (train-clean-100 + 360, dev, test) — *11 Sep 2026*
+- [x] **MUSAN** — 2,016 files — *11 Sep 2026*
+- [x] **ESC-50** — 2,000 files — *10 Sep 2026*
+- [x] **RIRs and Noises (OpenSLR28)** — 61,260 files — *10 Sep 2026*
+- [x] **DEMAND** — 8 environments, 16-channel — *10 Sep 2026*
+- [x] **UrbanSound8K** — 8,732 files — *12 Sep 2026*
+- [ ] **FSD50K** ← the one still worth doing: 51k clips, gunshot/explosion/siren, **CC BY / CC0 (commercial-safe)**
+- [ ] DroneAudioSet (MIT) — only if the drone class matters
+- [ ] TAU Urban — optional, DEMAND already covers metro/bus/traffic and is 16-channel
+- [ ] DREGON — optional
+- [x] Licence tracked per corpus in `DATA_SOURCES.md`
 
-### 0d. Clean speech 🟡 recommendation ready, decision outstanding
+**On disk: 11 datasets, ~229,000 audio files, ~100 GB.**
+**Real gunshot recordings held: 6,147** (Zenodo 2,148 + Cadre 2,241 + MAD gunshot class 1,714 + our own 44).
+
+### 0d. Clean speech 🟡 bulk downloaded, Hindi still open
 - [x] Candidates researched with sizes, licences and URLs — *8 Sep 2026* (`DATASET_SPEC.md` §0.6)
 - [ ] **DECIDE the corpus** ← blocks Phase 4 entirely
 - [ ] ⭐ **SPRING-INX** — ~2,000 h, 10 Indian languages incl. Hindi, IIT Madras, **MeitY / Govt of India funded**
 - [ ] **IndicVoices-R** — 1,704 h, 10,496 speakers, 22 languages
-- [ ] LibriSpeech
+- [x] **LibriSpeech** — 137,876 FLAC on disk
 - [ ] VCTK
 - [ ] EARS
 - [ ] Common Voice Hindi / IndicTTS / SPRING-INX
-- [ ] ⚠️ **Lombard GRID — target ≥20 %.** Source found: `spandh.dcs.shef.ac.uk/avlombard/` — 54 talkers, 100 utterances each, **50 Lombard + 50 plain, paired**. "Lombard" still appears zero times in `docs/01-system/` and it is the entire use case
+- [x] ✅ **Lombard GRID — DOWNLOADED**, 5,390 files (audio + alignment + metadata), *10 Sep 2026*. 54 talkers x (50 Lombard + 50 plain), paired.
+- [ ] ⚠️ "Lombard" still appears **zero times** in `docs/01-system/` — the data is here, the docs have not caught up
+- [ ] Use the alignment files: they carry word-level timings, so **WLPS needs no ASR on this corpus**
 
 ---
 
@@ -144,7 +148,7 @@ not survive.
 
 - [x] **IRT — Impulse Recovery Time** — `synthetic_generator/metrics/irt.py`, run on the 44 real events — *8 Sep 2026*
 - [x] **WLPS — Words Lost Per Shot** — `synthetic_generator/metrics/wlps.py` — *8 Sep 2026*
-- [ ] Run WLPS end-to-end (needs a word-level ASR: Whisper timestamps / Vosk / wav2vec2+CTC — same model for every system compared)
+- [ ] Run WLPS end-to-end. **Shortcut:** Lombard GRID's alignment files already carry word timings, so no ASR is needed on that corpus. For other corpora use one ASR (Whisper timestamps / Vosk / wav2vec2+CTC) and the SAME model for every system compared
 
 ---
 
