@@ -3,8 +3,85 @@
   <div class="sec-head"><span class="sec-num">08</span><h2>The offline pipeline</h2></div>
   <p class="sec-sub">What plays the role of a backend. There is no server and no API — there is a workstation pipeline that produces one file, and that file is the only thing that ships.</p>
 
+<figure>
+  <span class="fignum">Figure 8 &middot; The offline pipeline &mdash; five stages, one shipped file</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 330" role="img"
+       aria-label="Five offline stages run on a workstation: data acquisition, the synthetic generator, mixing and augmentation, training, and compression and export. Only the exported model file reaches the device.">
+
+    <rect class="band" x="20" y="34" width="770" height="184" rx="12"/>
+    <text class="hd" x="38" y="58">RUNS ON A WORKSTATION &middot; NONE OF THIS SHIPS &middot; BUDGET UNLIMITED</text>
+
+    <rect class="box" x="40" y="82" width="132" height="112" rx="8"/>
+    <text class="n" x="54" y="104">STAGE 1</text>
+    <text class="t sm" x="54" y="124">Acquisition</text>
+    <text class="s" x="54" y="142">one range trip</text>
+    <text class="s" x="54" y="158">96 kHz / 24-bit</text>
+    <text class="s" x="54" y="174">absolute Pascals</text>
+
+    <line class="e" x1="172" y1="138" x2="196" y2="138" marker-end="url(#ar)"/>
+
+    <rect class="box" x="200" y="82" width="132" height="112" rx="8"/>
+    <text class="n" x="214" y="104">STAGE 2</text>
+    <text class="t sm" x="214" y="124">Generator</text>
+    <text class="s" x="214" y="142">Friedlander wave</text>
+    <text class="s" x="214" y="158">directivity, ground</text>
+    <text class="s" x="214" y="174">device chain</text>
+
+    <line class="e" x1="332" y1="138" x2="356" y2="138" marker-end="url(#ar)"/>
+
+    <rect class="box" x="360" y="82" width="132" height="112" rx="8"/>
+    <text class="n" x="374" y="104">STAGE 3</text>
+    <text class="t sm" x="374" y="124">Mixing</text>
+    <text class="s" x="374" y="142">controlled SNR</text>
+    <text class="s" x="374" y="158">room responses</text>
+    <text class="s" x="374" y="174">&alpha;-stable augment</text>
+
+    <line class="e" x1="492" y1="138" x2="516" y2="138" marker-end="url(#ar)"/>
+
+    <rect class="box hi" x="520" y="82" width="132" height="112" rx="8"/>
+    <text class="n" x="534" y="104">STAGE 4</text>
+    <text class="t sm" x="534" y="124">Training</text>
+    <text class="s" x="534" y="142">GTCRN</text>
+    <text class="s" x="534" y="158">PyTorch</text>
+    <text class="s" x="534" y="174">GPU, hours</text>
+
+    <line class="e" x1="652" y1="138" x2="676" y2="138" marker-end="url(#ar)"/>
+
+    <rect class="box" x="680" y="82" width="92" height="112" rx="8"/>
+    <text class="n" x="692" y="104">STAGE 5</text>
+    <text class="t sm" x="692" y="124">Compress</text>
+    <text class="s" x="692" y="142">prune</text>
+    <text class="s" x="692" y="158">quantise</text>
+    <text class="s" x="692" y="174">export</text>
+
+    <!-- the boundary -->
+    <line class="e thick" x1="810" y1="20" x2="810" y2="310" stroke-dasharray="6 5"/>
+    <text class="hd" x="820" y="34" fill="var(--text)">THE ONLY THING</text>
+    <text class="hd" x="820" y="49" fill="var(--text)">THAT CROSSES</text>
+
+    <line class="e thick" x1="772" y1="138" x2="866" y2="138" marker-end="url(#arT)"/>
+
+    <rect class="box hi" x="870" y="82" width="110" height="112" rx="8"/>
+    <text class="t sm" x="884" y="124">model</text>
+    <text class="t sm" x="884" y="142">.onnx</text>
+    <text class="s" x="884" y="166">&lt; 1 MB</text>
+
+    <line class="e thick" x1="925" y1="194" x2="925" y2="240" marker-end="url(#arT)"/>
+    <rect class="box b" x="838" y="242" width="142" height="62" rx="8"/>
+    <text class="t sm" x="852" y="268">The device</text>
+    <text class="s" x="852" y="286">C++ &middot; ONNX Runtime</text>
+
+    <text class="el" x="20" y="248">&ldquo;Where is your backend?&rdquo; &mdash; this is the backend. There is no server and no API.</text>
+    <text class="el" x="20" y="270">&alpha;-stable augmentation, the generator, pruning and every metric run <tspan font-weight="700">once, on a workstation, months before</tspan></text>
+    <text class="el" x="20" y="292">the device is switched on. A judge asking whether &alpha;-stable generation is too heavy for embedded has</text>
+    <text class="el" x="20" y="314">misunderstood the question, and you should be able to say why in one sentence.</text>
+  </svg>
+  </div>
+  <figcaption>The pipeline shapes the weights; the weights ship. Everything to the left of the dashed line is free to be as expensive as it needs to be, which is exactly why the expensive ideas &mdash; heavy-tailed augmentation, a full physical generator, the vocoder in the evaluation chain &mdash; cost the deployed system nothing.</figcaption>
+</figure>
+
   <div class="col">
-    <p>"Where is your backend?" is a question that will be asked, and the answer is worth having ready: <strong>the backend is the offline pipeline, and its output is <code>model.onnx</code></strong>. Everything from data generation to quantisation lives here. None of it runs on the device.</p>
 
     <h3>Stage 1 — Real data acquisition</h3>
     <p>Covered in full in section 06. One trip, 96 kHz / 24-bit, calibrated to absolute Pascals, with the range impulse response captured before anything else that can be shortened.</p>

@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>ZEIT Prototype Bench</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
@@ -12,6 +13,7 @@
   --radius:12px;
   --scene:#ececed; --grid:#c9c9ce; --bench:#dcdce0;
   --m1:#0071e3; --m2:#b25000; --m3:#6a3fa0; --spk:#1d7a3e; --src:#b3261e;
+  --laneA:#1d7a3e; --laneB:#0071e3;
   --sig:#1d1d1f;
 }
 @media (prefers-color-scheme: dark){
@@ -23,6 +25,7 @@
     --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.4);
     --scene:#0b0b0c; --grid:#2a2a2d; --bench:#141416;
     --m1:#4aa8ff; --m2:#e3a34a; --m3:#a98bd8; --spk:#4cc76a; --src:#ff6b5e;
+    --laneA:#4cc76a; --laneB:#4aa8ff;
     --sig:#f5f5f7;
   }
 }
@@ -34,6 +37,7 @@
   --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.4);
   --scene:#0b0b0c; --grid:#2a2a2d; --bench:#141416;
   --m1:#4aa8ff; --m2:#e3a34a; --m3:#a98bd8; --spk:#4cc76a; --src:#ff6b5e;
+  --laneA:#4cc76a; --laneB:#4aa8ff;
   --sig:#f5f5f7;
 }
 
@@ -54,8 +58,8 @@ body{background:var(--bg);color:var(--text);
   letter-spacing:-.008em}
 
 .shell{max-width:1720px;margin:0 auto;padding:0 34px 90px}
-.stage{display:grid;grid-template-columns:216px minmax(0,1fr) 352px;gap:16px;align-items:start}
-@media(max-width:1400px){.stage{grid-template-columns:200px minmax(0,1fr)}
+.stage{display:grid;grid-template-columns:222px minmax(0,1fr) 352px;gap:16px;align-items:start}
+@media(max-width:1400px){.stage{grid-template-columns:206px minmax(0,1fr)}
   .side{grid-column:1 / -1}}
 @media(max-width:900px){.stage{grid-template-columns:1fr}}
 
@@ -76,11 +80,18 @@ body{background:var(--bg);color:var(--text);
 .lbl:hover{border-color:var(--text-3)}
 .lbl.dim{opacity:.3}
 .lbl .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.zlbl{position:absolute;transform:translate(-50%,-50%);font-size:9.5px;font-weight:600;
+  letter-spacing:.14em;color:var(--text-3);pointer-events:none;white-space:nowrap}
 #hint{position:absolute;left:14px;bottom:14px;font-size:11px;color:var(--text-3);
   background:var(--bg);border-radius:8px;padding:6px 10px;box-shadow:var(--shadow)}
 #stagelab{position:absolute;left:14px;top:14px;font-size:11px;color:var(--text-3);
   background:var(--bg);border-radius:8px;padding:7px 11px;box-shadow:var(--shadow);font-weight:600;
   letter-spacing:.05em;text-transform:uppercase}
+#lanelab{position:absolute;right:14px;top:14px;font-size:11px;background:var(--bg);
+  border-radius:8px;padding:7px 11px;box-shadow:var(--shadow);font-weight:600;
+  letter-spacing:.04em}
+#lanelab i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;
+  vertical-align:0}
 #loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--scene);
   font-size:12.5px;color:var(--text-3);z-index:5}
 #loading[hidden]{display:none}
@@ -99,6 +110,8 @@ body{background:var(--bg);color:var(--text);
 .btn .sub{display:block;font-size:10.5px;font-weight:400;color:var(--text-3);margin-top:2px;
   font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
 .btn.on .sub{color:inherit;opacity:.7}
+.btn .sw{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;
+  vertical-align:1px}
 .btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .grp{margin-bottom:18px}
 .grp:last-child{margin-bottom:0}
@@ -118,10 +131,16 @@ body{background:var(--bg);color:var(--text);
   font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
 .scope-k i{display:inline-block;width:18px;height:2px;vertical-align:3px;margin-right:7px}
 
-/* ---------- chain strip ---------- */
+/* ---------- chain strips ---------- */
 .chainbar{margin-top:16px;background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 18px}
+.chainbar + .chainbar{margin-top:10px}
+.chainbar .ch{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;margin:0 0 13px}
 .chainbar h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text-3);margin:0 0 13px}
+  color:var(--text-3);margin:0}
+.chainbar h3 i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.chainbar .bud{font-size:11px;color:var(--text-3);
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
 .cflow{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px}
 .cb{flex:1 0 78px;background:var(--bg);border-radius:7px;padding:9px 5px;text-align:center;
   transition:background .18s,color .18s}
@@ -132,6 +151,7 @@ body{background:var(--bg);color:var(--text);
 .cb.lit .n{color:inherit;opacity:.6}
 .cb.done{background:var(--rule-soft)}
 .cb.ai{box-shadow:inset 0 0 0 2px var(--text)}
+.chainbar.a .cb.lit{background:var(--laneA);color:#fff}
 
 /* ---------- side column ---------- */
 .side{display:flex;flex-direction:column;gap:16px}
@@ -169,9 +189,9 @@ body{background:var(--bg);color:var(--text);
 .le.trig .k{color:var(--src)}
 .le.rx .k{color:var(--m2)}
 .le.cls .k{color:var(--warn)}
-.le.dsp .k{color:var(--text)}
+.le.dsp .k{color:var(--laneB)}
 .le.out .k{color:var(--ok)}
-.le.a .k{color:var(--spk)}
+.le.a .k{color:var(--laneA)}
 .le.warn .k{color:var(--crit)}
 .le.hw .k{color:var(--text-3)}
 .logempty{color:var(--text-3);padding:14px 0;font-family:inherit;font-size:13px}
@@ -182,6 +202,7 @@ body{background:var(--bg);color:var(--text);
   color:var(--text-3);margin:0 0 12px}
 #info .tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.05em;
   text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+#info .tag i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
 #info h4{margin:0 0 9px;font-size:19px;font-weight:600;letter-spacing:-.018em;line-height:1.18}
 #info p{margin:0 0 11px;font-size:14px;color:var(--text-2);line-height:1.5}
 #info p:last-child{margin-bottom:0}
@@ -214,6 +235,8 @@ tr:last-child td{border-bottom:none}
 td.name{font-weight:600;color:var(--text)}
 td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;
   font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:13px}
+.lane-a{color:var(--laneA);font-weight:600}
+.lane-b{color:var(--laneB);font-weight:600}
 
 footer{max-width:1720px;margin:70px auto 0;padding:30px 34px 0;border-top:1px solid var(--rule);
   font-size:13px;color:var(--text-3);line-height:1.65}
@@ -228,7 +251,7 @@ footer p{margin:0 0 12px;max-width:82ch}
 <header class="hdr">
   <p class="eb">Prototype bench · Smart India Hackathon 2026 · Problem Statement 26052 · DRDO</p>
   <h1>ZEIT Prototype Bench</h1>
-  <p>The complete prototype in three dimensions — the three-microphone headset, the audio interface, the Raspberry&nbsp;Pi&nbsp;5 that runs the engine, and the communication unit the result is delivered to. No development computer sits in the signal path. Fire a shot and the signal is traced through every stage: the wavefronts propagate, the microphones respond, the eleven blocks execute, and every event is written to a timestamped log that stays on screen.</p>
+  <p>The complete prototype in three dimensions, laid out as it is actually built: the three-microphone headset, the audio interface, the Raspberry&nbsp;Pi&nbsp;5 running the engine, and the communication unit the result is delivered to. <strong>Both lanes are modelled.</strong> Lane&nbsp;A — the sub-millisecond hearing-protection loop — runs inside the earcup, which is drawn cut away so the driver, the error microphone and the filter module are all visible. Lane&nbsp;B — the 25.3&nbsp;ms speech engine — runs across the bench. Fire a shot and the signal is traced through both.</p>
 </header>
 
 <div class="shell">
@@ -241,14 +264,22 @@ footer p{margin:0 0 12px;max-width:82ch}
       <div class="grp">
         <p class="gl">Run</p>
         <button class="btn run" id="fire">Fire a shot</button>
-        <button class="btn" id="speed">Rate — 100× slow<span class="sub">13 s for 130 ms</span></button>
+        <button class="btn" id="speed">Rate — 100× slow<span class="sub">20 s for 200 ms</span></button>
+      </div>
+      <div class="grp">
+        <p class="gl">Show which lane</p>
+        <button class="btn on" data-lane="both">Both lanes</button>
+        <button class="btn" data-lane="a"><span class="sw" style="background:var(--laneA)"></span>Lane A only<span class="sub">hearing protection · &lt; 1 ms</span></button>
+        <button class="btn" data-lane="b"><span class="sw" style="background:var(--laneB)"></span>Lane B only<span class="sub">speech to radio · 25.3 ms</span></button>
       </div>
       <div class="grp">
         <p class="gl">Camera</p>
         <button class="btn on" data-view="system">System overview</button>
-        <button class="btn" data-view="headset">Headset<span class="sub">3 microphones · driver</span></button>
+        <button class="btn" data-view="headset">Headset<span class="sub">3 microphones</span></button>
+        <button class="btn" data-view="earcup">Earcup cutaway<span class="sub">Lane A loop</span></button>
         <button class="btn" data-view="iface">Audio interface<span class="sub">UMC202HD</span></button>
-        <button class="btn" data-view="pi">Raspberry Pi 5<span class="sub">engine · cooler · PSU</span></button>
+        <button class="btn" data-view="pi">Raspberry Pi 5<span class="sub">Lane B engine</span></button>
+        <button class="btn" data-view="radio">Communication unit<span class="sub">Lane B sink</span></button>
         <button class="btn" data-view="field">Field<span class="sub">source at 30 m</span></button>
       </div>
       <div class="grp">
@@ -257,6 +288,7 @@ footer p{margin:0 0 12px;max-width:82ch}
         <button class="btn on" data-tog="flow">Signal flow</button>
         <button class="btn on" data-tog="cables">Cabling</button>
         <button class="btn on" data-tog="labels">Labels</button>
+        <button class="btn on" data-tog="zones">Bench zones</button>
         <button class="btn" data-tog="explode">Exploded view</button>
         <button class="btn on" data-tog="spin">Slow orbit</button>
       </div>
@@ -269,6 +301,7 @@ footer p{margin:0 0 12px;max-width:82ch}
       <div id="loading">building geometry…</div>
       <div id="labels"></div>
       <div id="stagelab">System overview</div>
+      <div id="lanelab"><i style="background:var(--laneA)"></i>A<i style="background:var(--laneB);margin-left:10px"></i>B</div>
       <div id="hint">drag to orbit · scroll to zoom · right-drag to pan · click a part</div>
     </div>
 
@@ -281,13 +314,32 @@ footer p{margin:0 0 12px;max-width:82ch}
       <div class="scope-k">
         <span><i style="background:var(--m1)"></i>MIC 1 — voice + noise</span>
         <span><i style="background:var(--m2)"></i>MIC 2 — reference</span>
-        <span><i style="background:var(--ok)"></i>ENGINE OUT — transmitted</span>
+        <span><i style="background:var(--m3)"></i>MIC 3 — in-ear residual (lane A)</span>
+        <span><i style="background:var(--ok)"></i>ENGINE OUT — transmitted (lane B)</span>
         <span id="irtnote"></span>
       </div>
     </div>
 
+    <div class="chainbar a">
+      <div class="ch">
+        <h3><i style="background:var(--laneA)"></i>Lane A — hearing protection</h3>
+        <span class="bud">budget &lt; 1 ms · FxLMS · never touches the transmitted voice</span>
+      </div>
+      <div class="cflow" id="cflowA">
+        <div class="cb" data-a="1"><span class="n">A1</span><span class="t">Mic 2 ref</span></div>
+        <div class="cb" data-a="2"><span class="n">A2</span><span class="t">Filtered-x</span></div>
+        <div class="cb" data-a="3"><span class="n">A3</span><span class="t">FxLMS W(z)</span></div>
+        <div class="cb" data-a="4"><span class="n">A4</span><span class="t">Anti-noise</span></div>
+        <div class="cb" data-a="5"><span class="n">A5</span><span class="t">Driver</span></div>
+        <div class="cb" data-a="6"><span class="n">A6</span><span class="t">Mic 3 error</span></div>
+      </div>
+    </div>
+
     <div class="chainbar">
-      <h3>Lane B signal chain — 25.3 ms budget</h3>
+      <div class="ch">
+        <h3><i style="background:var(--laneB)"></i>Lane B — speech enhancement</h3>
+        <span class="bud">budget 25.3 ms algorithmic · 10 ms compute per hop</span>
+      </div>
       <div class="cflow" id="cflow">
         <div class="cb" data-b="1"><span class="n">01</span><span class="t">Audio in</span></div>
         <div class="cb" data-b="2"><span class="n">02</span><span class="t">Aux-IVA</span></div>
@@ -317,8 +369,9 @@ footer p{margin:0 0 12px;max-width:82ch}
       <div class="rrow"><span>look-ahead won</span><b>42.3 ms</b></div>
       <hr>
       <div class="rrow"><span>Δ mic 2 → mic 1</span><b id="r-d">— ms</b></div>
-      <div class="rrow"><span>lane B elapsed</span><b id="r-lb">— / 25.3 ms</b></div>
       <div class="rrow"><span>lane A elapsed</span><b id="r-la">— / 1.0 ms</b></div>
+      <div class="rrow"><span>lane A residual</span><b id="r-res">— dB</b></div>
+      <div class="rrow"><span>lane B elapsed</span><b id="r-lb">— / 25.3 ms</b></div>
       <div id="bar"><div id="barfill"></div></div>
     </div>
 
@@ -338,28 +391,55 @@ footer p{margin:0 0 12px;max-width:82ch}
   <p>This is the prototype as it is specified to be built — not an illustration of a concept. The headset, the audio interface and the single-board computer are modelled to their published dimensions, connected by the cabling they actually require, and the signal is traced through them in the order it physically travels.</p>
   <p>The geometry is constructed procedurally in code rather than loaded from downloaded assets. That is partly a constraint — this page is served under a policy that blocks external 3D files — and partly a decision: every dimension comes from a datasheet or from <code>docs/01-system/architecture.md</code>, so what is on screen is the specification rather than an artist's approximation, and there is no third-party asset licence to carry into a defence deliverable.</p>
 
+  <h3>Why the bench is laid out this way</h3>
+  <p>Everything sits on <strong>one plane</strong>. The communication unit is laid flat rather than stood upright, the power supply is set back behind the board, and the headset stand is cut to the height of the head it carries. A bench where one component towers over the others reads as a pile of parts; a bench where nothing is taller than it needs to be reads as a system.</p>
+  <p>The surface is divided into <strong>three marked zones</strong> that correspond exactly to the three stages of Lane B — <strong>capture</strong>, <strong>compute</strong>, <strong>sink</strong>. Lane A appears in none of them, because Lane A never leaves the earcup.</p>
+
+  <h3>The two lanes, shown separately</h3>
+  <p>The most common mistake on this problem statement is treating "noise cancellation" as one thing. It is two systems, with different physics, different budgets and different metrics, sharing three microphones. The <strong>lane filter</strong> in the controls removes one so the other can be read on its own.</p>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>&nbsp;</th><th>Lane A — hearing protection</th><th>Lane B — speech enhancement</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Where it runs</td><td class="lane-a">Inside the earcup, on its own module</td><td class="lane-b">Across the bench, on the Raspberry Pi 5</td></tr>
+      <tr><td class="name">Goal</td><td>The wearer hears less noise</td><td>The <em>transmitted</em> voice stays intelligible</td></tr>
+      <tr><td class="name">Sensors</td><td>Mic 2 reference, Mic 3 error</td><td>Mic 1 primary, Mic 2 reference</td></tr>
+      <tr><td class="name">Output</td><td>The earcup driver — anti-noise into the air</td><td>The communication unit, through a vocoder</td></tr>
+      <tr><td class="name">Budget</td><td class="num">&lt; 1 ms</td><td class="num">25.3 ms algorithmic</td></tr>
+      <tr><td class="name">Algorithm</td><td>FxLMS, classical. No neural network fits</td><td>GTCRN neural core plus a classical transient path</td></tr>
+      <tr><td class="name">Metric</td><td>NMSE, or measured in-ear attenuation</td><td>PESQ, STOI, SI-SNR, DNSMOS</td></tr>
+      <tr><td class="name">Strong on</td><td>Low-frequency continuous noise</td><td>Broadband, non-stationary and impulsive content</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Sound crosses from the outer earcup shell to the eardrum in roughly <strong>0.3–0.6 ms</strong>. A feedforward canceller has to get its anti-noise there first. Lane B's budget is forty to eighty times too slow for that, which is why the two cannot be fused into one chain no matter how good the model is — and why the Lane A module is separate hardware that keeps protecting hearing even when the speech engine is not running.</p>
+
+  <h3>The earcup is drawn cut away</h3>
+  <p>The right earcup's outer shell is modelled as an arc rather than a closed cylinder, so the <strong>driver</strong>, the <strong>error microphone</strong> and the <strong>Lane A module</strong> are visible without switching to the exploded view. The four green legs are the complete loop: reference in from Mic 2, anti-noise out to the driver, the acoustic leg to the ear, and the error return from Mic 3.</p>
+  <p>One correction is worth stating in place, because an earlier revision of the architecture had it wrong: <strong>Mic 3 does not feed the transmit chain.</strong> It measures what the wearer <em>hears</em>, and the transmitted voice never passes through the wearer's ear. Select the Lane B filter and Mic 3 disappears from the scene, which is exactly right. Lane B's optional residual stage is driven by <strong>Mic 2</strong> — Widrow's original two-input canceller.</p>
+
   <h3>The hardware on the bench</h3>
   <div class="tblwrap">
   <table>
-    <thead><tr><th>Item</th><th>Qty</th><th>Indicative cost (₹)</th><th>Why this specific part</th></tr></thead>
+    <thead><tr><th>Item</th><th>Lane</th><th>Qty</th><th>Indicative cost (₹)</th><th>Why this specific part</th></tr></thead>
     <tbody>
-      <tr><td class="name">Raspberry Pi 5, 8 GB</td><td class="num">1</td><td class="num">—</td><td>Runs the Lane B engine. 8 GB is for headroom during development, not because inference needs it — the model itself is roughly 24,000 parameters</td></tr>
-      <tr><td class="name">Official 27 W USB-C PSU</td><td class="num">1</td><td class="num">1,800–2,200</td><td><strong>Not optional.</strong> Third-party supplies cause undervoltage throttling that presents exactly like a model bug — intermittent latency spikes with no code change behind them</td></tr>
-      <tr><td class="name">Official Active Cooler</td><td class="num">1</td><td class="num">600–900</td><td><strong>Not optional.</strong> The Pi 5 thermally throttles under sustained inference. Latency figures drift upward over a long run without it, which invalidates the measurement</td></tr>
-      <tr><td class="name">microSD 128 GB A2<br><span style="color:var(--text-3);font-weight:400">SanDisk Extreme or Samsung Evo Plus</span></td><td class="num">2</td><td class="num">1,200 each</td><td>Two identical images. One is the demonstration card and is never experimented on — a corrupted card on the morning of a demo is an unrecoverable failure, and cloning one takes ten minutes</td></tr>
-      <tr><td class="name">Micro-HDMI → HDMI cable<br><span style="color:var(--text-3);font-weight:400">bring-up only</span></td><td class="num">1</td><td class="num">300–500</td><td>For configuring the board and reading logs. The Pi 5 takes micro-HDMI rather than full size, which is a discovery best made at the bench than at the venue. <strong>Not part of the deployed chain</strong> — the demonstrated system runs headless</td></tr>
-      <tr><td class="name">Communication unit</td><td class="num">1</td><td class="num">—</td><td>Where the enhanced speech actually goes. The problem statement asks for integration with headphones or communication units, so the demonstrated chain terminates at a radio rather than at a screen — and the return path carries received audio back to the earcups</td></tr>
-      <tr><td class="name">Behringer UMC202HD</td><td class="num">1</td><td class="num">—</td><td>Two-channel USB audio interface with Midas preamplifiers, 48 V phantom power and 24-bit / 192 kHz conversion. Two channels is exactly what a primary-plus-reference pair needs</td></tr>
-      <tr><td class="name">Behringer microphones</td><td class="num">2+</td><td class="num">—</td><td>Primary at the mouth and reference on the earcup. A dynamic capsule is preferred for close blast work because it has no active electronics to overload</td></tr>
-      <tr><td class="name">Behringer headset / monitoring</td><td class="num">1</td><td class="num">—</td><td>The return path and the platform the three microphones are mounted to</td></tr>
+      <tr><td class="name">Raspberry Pi 5, 8 GB</td><td class="lane-b">B</td><td class="num">1</td><td class="num">—</td><td>Runs the Lane B engine. 8 GB is for headroom during development, not because inference needs it — the model itself is roughly 24,000 parameters</td></tr>
+      <tr><td class="name">Official 27 W USB-C PSU</td><td class="lane-b">B</td><td class="num">1</td><td class="num">1,800–2,200</td><td><strong>Not optional.</strong> Third-party supplies cause undervoltage throttling that presents exactly like a model bug — intermittent latency spikes with no code change behind them</td></tr>
+      <tr><td class="name">Official Active Cooler</td><td class="lane-b">B</td><td class="num">1</td><td class="num">600–900</td><td><strong>Not optional.</strong> The Pi 5 thermally throttles under sustained inference. Latency figures drift upward over a long run without it, which invalidates the measurement</td></tr>
+      <tr><td class="name">microSD 128 GB A2</td><td class="lane-b">B</td><td class="num">2</td><td class="num">1,200 each</td><td>Two identical images. One is the demonstration card and is never experimented on — a corrupted card on the morning of a demo is an unrecoverable failure, and cloning one takes ten minutes</td></tr>
+      <tr><td class="name">Behringer UMC202HD</td><td class="lane-b">B</td><td class="num">1</td><td class="num">—</td><td>Two-channel USB interface with Midas preamps, 48 V phantom and 24-bit / 192 kHz conversion. Two channels is exactly what a primary-plus-reference pair needs, and the Pi has no analogue input at all</td></tr>
+      <tr><td class="name">Communication unit</td><td class="lane-b">B</td><td class="num">1</td><td class="num">—</td><td>Where the enhanced speech actually goes. The PS asks for integration with headphones or communication units, so the chain terminates at a radio rather than a screen — and the return path carries received audio back to the earcups</td></tr>
+      <tr><td class="name">Lane A module<br><span style="color:var(--text-3);font-weight:400">DSP or microcontroller</span></td><td class="lane-a">A</td><td class="num">1</td><td class="num">—</td><td><strong>Not yet chosen.</strong> It must close a feedforward loop in under a millisecond, so it cannot wait behind a general-purpose scheduler. Clipped to the earcup, independent of the Pi</td></tr>
+      <tr><td class="name">Microphones</td><td>A + B</td><td class="num">3</td><td class="num">—</td><td>Primary at the mouth, reference on the earcup shell, error inside the cup. A dynamic capsule is preferred for close blast work because it has no active electronics to overload</td></tr>
+      <tr><td class="name">Micro-HDMI → HDMI cable<br><span style="color:var(--text-3);font-weight:400">bring-up only</span></td><td>—</td><td class="num">1</td><td class="num">300–500</td><td>For configuring the board and reading logs. <strong>Not part of the deployed chain</strong> — the demonstrated system runs headless, which is why it is not cabled on the bench</td></tr>
     </tbody>
   </table>
   </div>
 
   <div class="callout" style="background:var(--bg-alt);border-radius:var(--radius);padding:22px 26px;margin:26px 0">
     <p style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);font-weight:600;margin:0 0 10px">No development computer in the signal path</p>
-    <p style="margin:0 0 12px">The deployed chain is <strong>microphones → audio interface → single-board computer → communication unit</strong>, with a return path to the earcups. The board boots from its own card, runs the engine headlessly and never needs a host.</p>
-    <p style="margin:0">The micro-HDMI cable is retained on the parts list because the board has to be configured at some point, but it is bring-up equipment and is deliberately not drawn on the bench. The problem statement calls for a prototype integrated with microphones and headphones or communication units, and that is what is modelled.</p>
+    <p style="margin:0 0 12px">The deployed chain is <strong>microphones → audio interface → single-board computer → communication unit</strong>, with a return path to the earcups and Lane A closing its own loop inside the cup. The board boots from its own card, runs the engine headlessly and never needs a host.</p>
+    <p style="margin:0">The micro-HDMI cable is retained on the parts list because the board has to be configured at some point, but it is bring-up equipment and is deliberately not drawn on the bench.</p>
   </div>
 
   <h3>The scenario the run plays</h3>
@@ -372,31 +452,34 @@ footer p{margin:0 0 12px;max-width:82ch}
       <tr><td class="num">36.5 ms</td><td class="name">Bullet passes</td><td>At roughly Mach 2.4 the round reaches its closest approach and the shockwave is generated there — about 3 m away, not 30</td></tr>
       <tr><td class="num">45.2 ms</td><td class="name">Crack arrives</td><td>36.5 ms of bullet flight plus 8.7 ms of sound over the remaining 3 m</td></tr>
       <tr><td class="num">87.5 ms</td><td class="name">Blast arrives</td><td>30 m ÷ 343 m/s. The <strong>42.3 ms</strong> gap between crack and blast is the only genuine look-ahead a headset has, and it exists because the two sounds originate in different places — not because one travels faster</td></tr>
+      <tr><td class="num">+0.42 ms</td><td class="name"><span class="lane-a">Lane A</span> emits anti-noise</td><td>The driver is already moving while the blast is still arriving. By +0.55 ms the in-ear residual is 18.4 dB below the reference and the loop has converged</td></tr>
       <tr><td class="num">+0.58 ms</td><td class="name">Mic 1 after Mic 2</td><td>The two microphones are about 20 cm apart on one head. Far too small to use as prediction, which is why the architecture detects and reacts rather than forecasting</td></tr>
-      <tr><td class="num">+25.3 ms</td><td class="name">Lane B completes</td><td>Eleven blocks on one 20 ms frame with a 10 ms hop. Lane A has already responded within a millisecond, because anti-noise must beat sound across the earcup</td></tr>
+      <tr><td class="num">+25.3 ms</td><td class="name"><span class="lane-b">Lane B</span> completes</td><td>Eleven blocks on one 20 ms frame with a 10 ms hop, then out through the vocoder to the radio</td></tr>
     </tbody>
   </table>
   </div>
 
   <h3>Reading the signal monitor</h3>
-  <p>The three traces are the heart of the demonstration. <strong>MIC 1</strong> carries the voice with the crack and blast on top of it. <strong>MIC 2</strong> carries the same impulsive events with no voice — that separation is what Widrow's two-input architecture depends on, and it is a mechanical requirement rather than a software one. <strong>ENGINE OUT</strong> is what reaches the radio.</p>
-  <p>Watch the moment the blast lands. On MIC 1 the waveform saturates and the voice is buried. On ENGINE OUT the impulse is suppressed and the speech envelope resumes — and the interval before it fully recovers is marked as <strong>IRT</strong>, the impulse recovery time. That interval is the number that matters operationally and the one PESQ and STOI average away: a gunshot destroys roughly 200 ms, and across a ten-second clip the average barely moves.</p>
+  <p>Four traces, one per lane role. <strong>MIC 1</strong> carries the voice with the crack and blast on top of it. <strong>MIC 2</strong> carries the same impulsive events with no voice — that separation is what Widrow's two-input architecture depends on, and it is a mechanical requirement rather than a software one. <strong>MIC 3</strong> is Lane A's result: what is left at the ear after the cup's passive attenuation and the anti-noise together. <strong>OUT</strong> is Lane B's result, what reaches the radio.</p>
+  <p>Watch the moment the blast lands. On MIC 1 the waveform saturates and the voice is buried. On MIC 3 the residual collapses within a millisecond — that is the whole of Lane A. On OUT the impulse is suppressed and the speech envelope resumes over tens of milliseconds, and that interval is marked as <strong>IRT</strong>, the impulse recovery time. IRT is the number that matters operationally and the one PESQ and STOI average away: a gunshot destroys roughly 200 ms, and across a ten-second clip the average barely moves.</p>
   <p class="mono" style="font-size:13px;color:var(--text-3);border-top:1px solid var(--rule-soft);padding-top:14px">
-  The monitor traces are generated from the physical model described above and are <strong>illustrative of the intended behaviour</strong>. The engine has not been built, so no trace here is a measured result. Every figure that is measured — and every figure that is not — is identified in the System Handbook.</p>
+  The monitor traces are generated from the physical model described above and are <strong>illustrative of the intended behaviour</strong>. Neither lane has been built, so no trace here is a measured result, and the −18.4 dB residual is a design target rather than an observation. Every figure that is measured — and every figure that is not — is identified in the System Handbook.</p>
 
   <h3>Controls</h3>
   <ul>
+    <li><strong>Lane filter</strong> — show both systems, or isolate Lane A or Lane B. Isolating a lane removes the other lane's hardware, cabling and monitor traces from the frame entirely.</li>
     <li><strong>Drag</strong> to orbit, <strong>scroll</strong> or pinch to zoom, <strong>right-drag</strong> to pan.</li>
-    <li><strong>Click any part</strong>, in the scene or on a label, for its specification.</li>
-    <li><strong>Camera presets</strong> move between the field, the headset, the interface and the board.</li>
-    <li><strong>Exploded view</strong> separates each assembly along its own axis — the cooler lifts off the Pi, the earcups separate from the head.</li>
+    <li><strong>Click any part</strong>, in the scene or on a label, for its specification and which lane it belongs to.</li>
+    <li><strong>Camera presets</strong> move between the field, the headset, the earcup cutaway, the interface, the board and the radio.</li>
+    <li><strong>Exploded view</strong> lifts the cup shells off the head and the cooler off the board. The Lane A loop wiring is a schematic, so it hides while exploded.</li>
+    <li>Secondary labels appear only once the camera is close enough to be looking at that assembly, so the overview stays readable.</li>
     <li>The <strong>event log</strong> keeps every entry after the run ends. Fire repeatedly and the runs accumulate.</li>
   </ul>
 </div>
 </div>
 
 <footer>
-  <p>Companion to the ZEIT System Handbook and the ZEIT Architecture Audit. Geometry follows published component dimensions and the internal architecture specification; it is not a manufacturing drawing. Processing latencies are the design budget rather than measured values, and the signal monitor is a physical simulation rather than a recording — no engine has been built yet.</p>
+  <p>Companion to the ZEIT System Handbook and the ZEIT Architecture Audit. Geometry follows published component dimensions and the internal architecture specification; it is not a manufacturing drawing. Processing latencies are the design budget rather than measured values, and the signal monitor is a physical simulation rather than a recording — neither lane has been built yet.</p>
   <p>ZEIT · Smart India Hackathon 2026 · Problem Statement 26052 · DRDO / Department of Defence Production · Rendered with three.js r128</p>
 </footer>
 <script>
@@ -408,6 +491,10 @@ if(!window.THREE){L.textContent='three.js failed to load — check the network c
 /* =====================================================================
    ZEIT prototype bench
    World scale: 1 unit = 10 mm. Component dimensions follow datasheets.
+
+   Layout rule: every device lies flat on one bench plane so nothing
+   towers over anything else, and the three functional zones — CAPTURE,
+   COMPUTE, SINK — are spaced apart and marked on the bench surface.
    ===================================================================== */
 
 function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
@@ -424,19 +511,19 @@ renderer.toneMappingExposure=1.0;
 vp.insertBefore(renderer.domElement,vp.firstChild);
 
 /* ---------------- lighting: soft studio ---------------- */
-var hemi=new THREE.HemisphereLight(0xffffff,0x9aa0a6,0.75);scene.add(hemi);
-var keyL=new THREE.DirectionalLight(0xffffff,0.62);keyL.position.set(40,70,50);scene.add(keyL);
+var hemi=new THREE.HemisphereLight(0xffffff,0x9aa0a6,0.78);scene.add(hemi);
+var keyL=new THREE.DirectionalLight(0xffffff,0.60);keyL.position.set(40,70,50);scene.add(keyL);
 var fillL=new THREE.DirectionalLight(0xffffff,0.26);fillL.position.set(-60,30,-30);scene.add(fillL);
 var rimL=new THREE.DirectionalLight(0xffffff,0.20);rimL.position.set(0,20,-70);scene.add(rimL);
 
-var grid=new THREE.GridHelper(600,60);grid.position.y=-0.55;scene.add(grid);
-grid.material.transparent=true;grid.material.opacity=.32;
+var grid=new THREE.GridHelper(600,60);grid.position.y=-1.4;scene.add(grid);
+grid.material.transparent=true;grid.material.opacity=.24;
 
 var COL={};
 function readColours(){
   COL.m1=hexOf('--m1');COL.m2=hexOf('--m2');COL.m3=hexOf('--m3');
   COL.spk=hexOf('--spk');COL.src=hexOf('--src');COL.text=hexOf('--text');
-  COL.ok=hexOf('--ok');
+  COL.ok=hexOf('--ok');COL.laneA=hexOf('--laneA');COL.laneB=hexOf('--laneB');
 }
 readColours();
 
@@ -447,8 +534,9 @@ function std(c,r,m,o){
   return new THREE.MeshStandardMaterial(p);
 }
 var MAT={
-  bench    : std(0xdcdce0,.92,.02),
-  skin     : std(0xd6d6da,.95,.00,.60),
+  bench    : std(0xdcdce0,.94,.02),
+  benchTop : std(0xe6e6ea,.96,.01),
+  skin     : std(0xd6d6da,.95,.00,.52),
   plastic  : std(0xb4b4ba,.55,.10),
   plasticD : std(0x4a4a50,.60,.10),
   foam     : std(0x5c5c62,.97,.00),
@@ -456,9 +544,8 @@ var MAT={
   metalD   : std(0x8c8f94,.42,.68),
   gold     : std(0xc9a227,.34,.85),
   pcb      : std(0x0f7a46,.72,.06),   // Raspberry Pi green
-  pcbDark  : std(0x0a5a34,.75,.06),
+  pcbBlue  : std(0x14406e,.70,.06),   // Lane A DSP module
   black    : std(0x16161a,.62,.14),
-  blackGl  : std(0x0d0d10,.36,.20),
   white    : std(0xf2f2f4,.62,.02),
   usb3     : std(0x1f4fa8,.60,.10),
   behringer: std(0x9d1b1b,.46,.22),   // UMC202HD body
@@ -472,44 +559,73 @@ function applyTheme(){
   readColours();
   var bg=new THREE.Color(css('--scene')||'#ececed');
   scene.background=bg;
-  scene.fog=new THREE.Fog(bg.getHex(),260,760);
+  scene.fog=new THREE.Fog(bg.getHex(),280,820);
   grid.material.color=new THREE.Color(css('--grid')||'#c9c9ce');
   var dark=bg.r<0.4;
-  hemi.intensity=dark?0.42:0.75;
-  keyL.intensity=dark?0.52:0.62;
+  hemi.intensity=dark?0.44:0.78;
+  keyL.intensity=dark?0.52:0.60;
   MAT.bench.color.setHex(dark?0x141416:0xdcdce0);
+  MAT.benchTop.color.setHex(dark?0x1b1b1e:0xe6e6ea);
   MAT.skin.color.setHex(dark?0x6a6a74:0xd6d6da);
   MAT.plastic.color.setHex(dark?0x53535a:0xb4b4ba);
   MAT.metal.color.setHex(dark?0x8b8e93:0xb9bcc0);
   MAT.white.color.setHex(dark?0xcfcfd4:0xf2f2f4);
 }
 
-/* ---------------- scene graph ---------------- */
+/* ---------------- scene graph ----------------
+   Groups are tagged by lane so the lane filter can isolate either
+   system without the other's hardware in the frame.                */
 var root=new THREE.Group();scene.add(root);
-var gHead =new THREE.Group();   // head + headset + stand
-var gIface=new THREE.Group();   // UMC202HD
-var gPi   =new THREE.Group();   // Pi 5 + cooler + PSU + SD
+var gBench=new THREE.Group();   // slab + zone outlines
+var gHead =new THREE.Group();   // head + headset + stand   (both lanes)
+var gLaneA=new THREE.Group();   // FxLMS module + the anti-noise loop
+var gIface=new THREE.Group();   // UMC202HD                 (lane B)
+var gPi   =new THREE.Group();   // Pi 5 + cooler + PSU      (lane B)
+var gRadio=new THREE.Group();   // communication unit       (lane B)
 var gField=new THREE.Group();   // source, trajectory, wavefronts
-var gCable=new THREE.Group();   // cabling
+var gCabA =new THREE.Group();   // lane A cabling
+var gCabB =new THREE.Group();   // lane B cabling
 var gFlow =new THREE.Group();   // signal-flow markers
-root.add(gHead,gIface,gPi,gField,gCable,gFlow);
+root.add(gBench,gHead,gLaneA,gIface,gPi,gRadio,gField,gCabA,gCabB,gFlow);
 
-/* bench slab */
+/* ---------------- bench slab, sized to its contents ---------------- */
+var BENCH={x0:-56,x1:44,z0:-20,z1:20};
 (function(){
-  var slab=new THREE.Mesh(new THREE.BoxGeometry(150,1.1,64),MAT.bench);
-  slab.position.set(4,-0.55,0);root.add(slab);
+  var w=BENCH.x1-BENCH.x0, d=BENCH.z1-BENCH.z0, cx=(BENCH.x0+BENCH.x1)/2, cz=(BENCH.z0+BENCH.z1)/2;
+  var slab=new THREE.Mesh(new THREE.BoxGeometry(w,1.2,d),MAT.bench);
+  slab.position.set(cx,-0.6,cz);gBench.add(slab);
+  var top=new THREE.Mesh(new THREE.BoxGeometry(w-0.6,0.06,d-0.6),MAT.benchTop);
+  top.position.set(cx,0.02,cz);gBench.add(top);
+})();
+
+/* zone outlines drawn on the bench surface, like a layout drawing */
+var ZONES=[
+  {x0:-52,x1:-24,z0:-13,z1:13,t:'CAPTURE'},
+  {x0:-19,x1: 22,z0:-13,z1:13,t:'COMPUTE'},
+  {x0: 26,x1: 41,z0:-13,z1:13,t:'SINK'}
+];
+(function(){
+  var lm=new THREE.LineBasicMaterial({color:COL.text,transparent:true,opacity:.17});
+  ZONES.forEach(function(z){
+    var p=[new THREE.Vector3(z.x0,0.08,z.z0),new THREE.Vector3(z.x1,0.08,z.z0),
+           new THREE.Vector3(z.x1,0.08,z.z1),new THREE.Vector3(z.x0,0.08,z.z1),
+           new THREE.Vector3(z.x0,0.08,z.z0)];
+    var l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),lm);
+    gBench.add(l);
+    z.anchor=new THREE.Vector3((z.x0+z.x1)/2,0.4,z.z1+1.2);
+  });
 })();
 
 /* ---------------- damped orbit camera ---------------- */
-var tgt   ={x:-4,y:12,z:0};      // current look-at
-var tgtTo ={x:-4,y:12,z:0};      // desired look-at
-var cam   ={r:150,th:0.62,ph:1.14};
-var camTo ={r:150,th:0.62,ph:1.14};
+var tgt   ={x:-6,y:9,z:0};
+var tgtTo ={x:-6,y:9,z:0};
+var cam   ={r:126,th:0.60,ph:1.10};
+var camTo ={r:126,th:0.60,ph:1.10};
 var drag=null,lx=0,ly=0,pointers={},pinch0=0,userMoved=0;
 
 function clampCam(o){
   o.ph=Math.max(0.10,Math.min(Math.PI-0.10,o.ph));
-  o.r =Math.max(9,Math.min(520,o.r));
+  o.r =Math.max(7,Math.min(520,o.r));
 }
 function placeCamera(){
   camera.position.set(
@@ -519,7 +635,7 @@ function placeCamera(){
   camera.lookAt(tgt.x,tgt.y,tgt.z);
 }
 function dampCamera(dt){
-  var k=1-Math.pow(0.0016,dt/1000);         // frame-rate independent smoothing
+  var k=1-Math.pow(0.0016,dt/1000);
   clampCam(camTo);
   cam.r  += (camTo.r  - cam.r )*k;
   cam.th += (camTo.th - cam.th)*k;
@@ -575,11 +691,13 @@ vp.addEventListener('wheel',function(e){
 
 /* ---------------- camera presets ---------------- */
 var VIEWS={
-  system :{r:150,th:.62,ph:1.14,t:[  -4,12,  0],lab:'System overview'},
-  headset:{r:34 ,th:.75,ph:1.20,t:[ -34,22,  0],lab:'Headset — three microphones'},
-  iface  :{r:30 ,th:.55,ph:1.06,t:[  -6, 3,  0],lab:'Audio interface — UMC202HD'},
-  pi     :{r:26 ,th:.70,ph:0.98,t:[  17, 2,  2],lab:'Raspberry Pi 5 — the engine'},
-  field  :{r:420,th:.86,ph:1.16,t:[-120,14,100],lab:'Field — source at 30 m'}
+  system :{r:126,th:.60,ph:1.10,t:[  -6, 9,  0],lab:'System overview'},
+  headset:{r:32 ,th:.78,ph:1.18,t:[ -40,17,  0],lab:'Headset — three microphones'},
+  earcup :{r:20 ,th:.40,ph:1.02,t:[-29.8,16.6,0.8],lab:'Earcup cutaway — Lane A loop'},
+  iface  :{r:26 ,th:.55,ph:1.04,t:[ -10, 3,  0],lab:'Audio interface — UMC202HD'},
+  pi     :{r:23 ,th:.70,ph:0.96,t:[  12, 3,  0],lab:'Raspberry Pi 5 — the Lane B engine'},
+  radio  :{r:24 ,th:.62,ph:0.94,t:[  33, 2,  0],lab:'Communication unit — Lane B sink'},
+  field  :{r:400,th:.86,ph:1.14,t:[-130,12, 96],lab:'Field — source at 30 m'}
 };
 function goView(k){
   var v=VIEWS[k];if(!v)return;
@@ -590,56 +708,118 @@ function goView(k){
 /* =====================================================================
    Geometry. World scale 1 unit = 10 mm.
    Component dimensions follow published datasheets.
+
+   Layout: one bench plane, three zones, nothing standing tall.
+     CAPTURE  x -52 .. -24   headset on its stand
+     COMPUTE  x -19 ..  22   UMC202HD, Raspberry Pi 5, PSU
+     SINK     x  26 ..  41   communication unit, lying flat
    ===================================================================== */
 var PARTS={};
 function pick(mesh,key){mesh.userData.pick=key;return mesh;}
 function box(w,h,d,m){return new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);}
 function cyl(rt,rb,h,s,m){return new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,s||20),m);}
 function at(o,x,y,z){o.position.set(x,y,z);return o;}
+function arc(rt,rb,h,s,t0,tl,m){
+  return new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,s||36,1,true,t0,tl),m);
+}
 
 /* ---------------------------------------------------------------
-   HEAD + HEADSET + STAND       centred at (-34, 22, 0)
-   Head 190 mm wide → radius 9.5 units.
+   HEAD + HEADSET + STAND       centred at (-40, 17, 0)
+   Head 190 mm wide -> radius 9.5 units. The right earcup is built
+   as a cutaway so the driver, Mic 3 and the Lane A module are
+   visible without an exploded view.
    --------------------------------------------------------------- */
-var HEAD_O=new THREE.Vector3(-34,22,0);
-var P_MIC1,P_MIC2,P_MIC3,P_SPK;
+var HEAD_O=new THREE.Vector3(-40,17,0);
+var P_MIC1,P_MIC2,P_MIC3,P_SPK,P_DSPA,P_EAR;
 (function(){
   var g=new THREE.Group();g.position.copy(HEAD_O);
 
-  var skull=new THREE.Mesh(new THREE.SphereGeometry(9.5,48,34),MAT.skin);
+  var skull=new THREE.Mesh(new THREE.SphereGeometry(9.5,44,32),MAT.skin);
   skull.scale.set(.90,1.04,1.00);skull.position.y=1.0;g.add(skull);
-  var jaw=new THREE.Mesh(new THREE.SphereGeometry(6.9,34,26),MAT.skin);
+  var jaw=new THREE.Mesh(new THREE.SphereGeometry(6.9,32,24),MAT.skin);
   jaw.scale.set(.94,.80,1.00);jaw.position.set(0,-6.0,1.5);g.add(jaw);
-  var nose=new THREE.Mesh(new THREE.ConeGeometry(1.2,2.9,18),MAT.skin);
+  var nose=new THREE.Mesh(new THREE.ConeGeometry(1.2,2.9,16),MAT.skin);
   nose.rotation.x=Math.PI/2;nose.position.set(0,-1.0,9.6);g.add(nose);
   var mouth=box(3.6,1.3,1.2,std(0x55555c,.9,0,.55));
   at(mouth,0,-5.0,8.3);pick(mouth,'mouth');g.add(mouth);
   [-1,1].forEach(function(s){
-    var ear=new THREE.Mesh(new THREE.SphereGeometry(1.9,22,16),MAT.skin);
+    var ear=new THREE.Mesh(new THREE.SphereGeometry(1.9,20,14),MAT.skin);
     ear.scale.set(.34,1.05,.72);ear.position.set(s*8.6,-0.6,0.4);g.add(ear);
   });
 
   /* headband */
-  var band=new THREE.Mesh(new THREE.TorusGeometry(11.2,.55,16,80,Math.PI),MAT.plasticD);
+  var band=new THREE.Mesh(new THREE.TorusGeometry(11.2,.55,14,64,Math.PI),MAT.plasticD);
   band.position.y=1.1;pick(band,'band');g.add(band);
-  var bpad=new THREE.Mesh(new THREE.TorusGeometry(11.2,.86,14,30,Math.PI*.40,Math.PI*.20),MAT.foam);
+  var bpad=new THREE.Mesh(new THREE.TorusGeometry(11.2,.86,12,24,Math.PI*.40,Math.PI*.20),MAT.foam);
   bpad.position.y=1.1;g.add(bpad);
 
-  /* earcups */
+  /* -------- earcups. s=-1 carries the boom, s=+1 is the cutaway -------- */
   var cups=[];
   [-1,1].forEach(function(s){
     var cup=new THREE.Group();cup.position.set(s*10.2,-0.2,0.4);
-    var shell=cyl(4.3,4.3,2.0,44,MAT.plasticD);shell.rotation.z=Math.PI/2;cup.add(shell);
-    var outer=cyl(4.3,3.9,1.0,44,MAT.plastic);outer.rotation.z=Math.PI/2;
-    outer.position.x=s*1.4;pick(outer,'cup');cup.add(outer);
-    var cush=new THREE.Mesh(new THREE.TorusGeometry(3.5,1.0,14,36),MAT.foam);
-    cush.rotation.y=Math.PI/2;cush.position.x=-s*1.1;cup.add(cush);
-    var yoke=new THREE.Mesh(new THREE.TorusGeometry(4.9,.34,12,32,Math.PI*.7),MAT.plasticD);
+    var open=(s===1);
+
+    if(open){
+      /* Outer shell drawn as an arc so the interior reads without an
+         exploded view. After rotation.z the circumference maps to
+         world (Y = r·sinθ, Z = r·cosθ), so leaving θ = 0.02π..0.58π
+         open puts the cut at the upper-front quadrant — where the
+         earcup camera preset looks in from. */
+      var shell=arc(4.3,4.3,2.0,40,Math.PI*0.58,Math.PI*1.44,MAT.plasticD);
+      shell.rotation.z=Math.PI/2;cup.add(shell);
+      /* The outer face carrying Mic 2 is sectioned through the same
+         quadrant. A CircleGeometry rotated to face +X maps its angle
+         to world (Y = r·sin, Z = -r·cos), so the matching solid arc
+         starts at 0.98pi — otherwise the face would close the window
+         the shell just opened. */
+      var face=new THREE.Mesh(
+        new THREE.CircleGeometry(4.3,40,Math.PI*0.98,Math.PI*1.44),MAT.plastic);
+      face.rotation.y=Math.PI/2;face.material.side=THREE.DoubleSide;
+      face.position.x=s*1.5;pick(face,'cup');cup.add(face);
+      /* baffle the driver is mounted in, sectioned to match */
+      var baffle=new THREE.Mesh(
+        new THREE.CircleGeometry(3.6,32,Math.PI*0.98,Math.PI*1.44),MAT.plastic);
+      baffle.rotation.y=Math.PI/2;baffle.material.side=THREE.DoubleSide;
+      baffle.position.x=s*0.2;cup.add(baffle);
+      /* driver: cone, surround, magnet — facing the ear (-x on this side) */
+      var drv=new THREE.Group();drv.position.set(s*0.2,0,0);
+      var cone=new THREE.Mesh(new THREE.ConeGeometry(2.5,1.5,28,1,true),
+        std(0x33333a,.86,.04));
+      cone.rotation.z=Math.PI/2;cone.position.x=-s*0.6;drv.add(cone);
+      var dust=new THREE.Mesh(new THREE.SphereGeometry(.75,16,12),std(0x2a2a30,.8,.06));
+      dust.position.x=-s*1.2;drv.add(dust);
+      var surr=new THREE.Mesh(new THREE.TorusGeometry(2.5,.30,10,30),std(0x3c3c44,.95,.02));
+      surr.rotation.y=Math.PI/2;surr.position.x=-s*0.1;drv.add(surr);
+      var mag=cyl(1.5,1.5,.9,22,MAT.metalD);mag.rotation.z=Math.PI/2;
+      mag.position.x=s*0.9;drv.add(mag);
+      pick(cone,'driver');pick(mag,'driver');
+      cup.add(drv);PARTS.driverMesh=drv;
+      /* cushion stays whole — it sits on the ear side and does not
+         block the line of sight into the cavity */
+      var cush=new THREE.Mesh(new THREE.TorusGeometry(3.5,1.0,12,30),MAT.foam);
+      cush.rotation.y=Math.PI/2;cush.position.x=-s*1.1;cup.add(cush);
+    }else{
+      var shellC=cyl(4.3,4.3,2.0,40,MAT.plasticD);shellC.rotation.z=Math.PI/2;cup.add(shellC);
+      var outer=cyl(4.3,3.9,1.0,40,MAT.plastic);outer.rotation.z=Math.PI/2;
+      outer.position.x=s*1.4;pick(outer,'cup');cup.add(outer);
+      var cushC=new THREE.Mesh(new THREE.TorusGeometry(3.5,1.0,12,30),MAT.foam);
+      cushC.rotation.y=Math.PI/2;cushC.position.x=-s*1.1;cup.add(cushC);
+    }
+
+    var yoke=new THREE.Mesh(new THREE.TorusGeometry(4.9,.34,10,26,Math.PI*.7),MAT.plasticD);
     yoke.rotation.y=Math.PI/2;yoke.rotation.z=Math.PI*.15;yoke.position.x=s*0.9;cup.add(yoke);
     cup.userData.side=s;cup.userData.home=cup.position.clone();
     g.add(cup);cups.push(cup);
   });
   PARTS.cups=cups;
+
+  /* -------- Lane A module, clipped to the outside of the right cup -------- */
+  var dsp=new THREE.Group();dsp.position.set(11.6,-3.6,-1.8);
+  var dpcb=box(2.6,.14,2.0,MAT.pcbBlue);pick(dpcb,'dspa');dsp.add(dpcb);
+  var dchip=box(1.1,.28,1.1,MAT.black);at(dchip,0,.21,0);pick(dchip,'dspa');dsp.add(dchip);
+  var dcan=cyl(.34,.34,.26,12,MAT.metal);at(dcan,-0.85,.20,0.62);dsp.add(dcan);
+  var dclip=box(.30,1.1,1.6,MAT.plasticD);at(dclip,1.35,-.48,0);dsp.add(dclip);
+  g.add(dsp);PARTS.dspA=dsp;
 
   /* boom arm on the left cup */
   var boom=new THREE.Group();
@@ -647,51 +827,78 @@ var P_MIC1,P_MIC2,P_MIC3,P_SPK;
     new THREE.Vector3(-10.8,-2.0,2.0),new THREE.Vector3(-10.0,-5.2,6.2),
     new THREE.Vector3(-7.0 ,-6.8,10.2),new THREE.Vector3(-3.3,-6.2,11.6),
     new THREE.Vector3(-1.6 ,-5.6,11.2)]);
-  var tube=new THREE.Mesh(new THREE.TubeGeometry(cv,64,.33,12,false),MAT.plasticD);
+  var tube=new THREE.Mesh(new THREE.TubeGeometry(cv,48,.33,10,false),MAT.plasticD);
   pick(tube,'boom');boom.add(tube);
-  var caps=cyl(.78,.78,1.5,22,MAT.plasticD);
+  var caps=cyl(.78,.78,1.5,18,MAT.plasticD);
   at(caps,-1.6,-5.6,11.2);caps.rotation.z=Math.PI/2;caps.rotation.y=-.45;
   pick(caps,'mic1');boom.add(caps);
-  var grille=cyl(.62,.62,.30,22,MAT.metalD);
+  var grille=cyl(.62,.62,.30,18,MAT.metalD);
   at(grille,-2.2,-5.6,11.3);grille.rotation.z=Math.PI/2;grille.rotation.y=-.45;boom.add(grille);
   boom.userData.home=boom.position.clone();
   g.add(boom);PARTS.boom=boom;
 
-  /* stand */
-  var pole=cyl(.55,.55,22,20,MAT.metalD);at(pole,0,-11-11,0);
-  var base=cyl(5.5,6.2,.9,32,MAT.metalD);at(base,0,-21.6,0);
-  var yokeArm=cyl(.45,.45,7,16,MAT.metalD);at(yokeArm,0,-11.4,0);
-  g.add(pole,base,yokeArm);
+  /* slim stand — pole to the bench, small base */
+  var pole=cyl(.45,.45,16,16,MAT.metalD);at(pole,0,-9.0,0);
+  var base=cyl(4.4,5.0,.7,28,MAT.metalD);at(base,0,-16.6,0);
+  var collar=cyl(.80,.80,1.2,14,MAT.metalD);at(collar,0,-1.4,0);
+  g.add(pole,base,collar);
 
   gHead.add(g);PARTS.headGroup=g;
 
   P_MIC1=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-1.6,-5.6,11.2));
-  P_MIC2=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(12.0,-0.2,0.4));
-  P_MIC3=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3( 8.7,-0.2,0.9));
-  P_SPK =new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(10.0,-0.2,-0.5));
+  P_MIC2=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(12.1,-0.2,0.4));
+  P_MIC3=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3( 8.8, 1.0,2.0));
+  P_SPK =new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3( 9.8,-0.2, 0.6));
+  P_DSPA=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(11.6,-3.4,-1.8));
+  P_EAR =new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3( 8.6,-0.6,0.4));
 })();
 
-/* sensor markers */
-function sensor(k,pos,c,r){
+/* sensor markers — a capsule body plus a pulsing core */
+function sensor(k,pos,c,r,body){
   var g=new THREE.Group();g.position.copy(pos);
-  var core=new THREE.Mesh(new THREE.SphereGeometry(r,24,18),
+  if(body){
+    var cap=cyl(r*1.05,r*1.05,r*1.5,14,MAT.metalD);
+    cap.rotation.z=Math.PI/2;g.add(cap);
+  }
+  var core=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),
     new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.55,roughness:.3}));
   pick(core,k);g.add(core);
-  var halo=new THREE.Mesh(new THREE.SphereGeometry(r*1.8,20,14),
+  var halo=new THREE.Mesh(new THREE.SphereGeometry(r*1.8,16,12),
     new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.14,depthWrite:false}));
   g.add(halo);
   g.userData={core:core,halo:halo,flash:0,home:pos.clone()};
-  root.add(g);PARTS[k]=g;return g;
+  return g;
 }
-sensor('mic1',P_MIC1,COL.m1,.72);
-sensor('mic2',P_MIC2,COL.m2,.72);
-sensor('mic3',P_MIC3,COL.m3,.58);
-sensor('spk' ,P_SPK ,COL.spk,.82);
+PARTS.mic1=sensor('mic1',P_MIC1,COL.m1,.62,false);gHead.add(PARTS.mic1);
+PARTS.mic2=sensor('mic2',P_MIC2,COL.m2,.62,true );gHead.add(PARTS.mic2);
+PARTS.mic3=sensor('mic3',P_MIC3,COL.m3,.50,true );gLaneA.add(PARTS.mic3);
+PARTS.spk =sensor('spk' ,P_SPK ,COL.spk,.62,false);gLaneA.add(PARTS.spk);
 
 /* ---------------------------------------------------------------
-   BEHRINGER UMC202HD        128 × 130 × 47 mm, front faces +Z
+   LANE A — the closed loop, drawn where it physically runs.
+   Mic 2 (outside) -> module -> driver -> the ear, with Mic 3
+   feeding the error back. Nothing here touches the radio.
    --------------------------------------------------------------- */
-var IF_O=new THREE.Vector3(-6,0,0);
+var LANEA_PATH={};
+var gLaneLoop=new THREE.Group();gLaneA.add(gLaneLoop);
+(function(){
+  var m=new THREE.MeshBasicMaterial({color:COL.laneA,transparent:true,opacity:.55});
+  function leg(a,b,bow,name){
+    var mid=new THREE.Vector3().addVectors(a,b).multiplyScalar(.5).add(bow);
+    var cv=new THREE.CatmullRomCurve3([a.clone(),mid,b.clone()]);
+    var t=new THREE.Mesh(new THREE.TubeGeometry(cv,40,.11,8,false),m);
+    t.userData.curve=cv;gLaneLoop.add(t);LANEA_PATH[name]=cv;return t;
+  }
+  leg(P_MIC2,P_DSPA,new THREE.Vector3(1.2,0,0.4),'ref');      // reference in
+  leg(P_DSPA,P_SPK ,new THREE.Vector3(0.6,1.2,-1.4),'anti');  // anti-noise out
+  leg(P_MIC3,P_DSPA,new THREE.Vector3(2.2,-1.6,1.6),'err');   // error return
+  leg(P_SPK ,P_EAR ,new THREE.Vector3(0,0.9,0.6),'air');      // acoustic leg
+})();
+
+/* ---------------------------------------------------------------
+   BEHRINGER UMC202HD        128 x 130 x 47 mm, front faces +Z
+   --------------------------------------------------------------- */
+var IF_O=new THREE.Vector3(-10,0,0);
 var P_IF_IN1,P_IF_IN2,P_IF_USB;
 (function(){
   var g=new THREE.Group();g.position.copy(IF_O);
@@ -702,45 +909,35 @@ var P_IF_IN1,P_IF_IN2,P_IF_USB;
   var frontPlate=box(W*0.995,H*0.9,0.14,MAT.behrDark);at(frontPlate,0,H/2,D/2+0.02);g.add(frontPlate);
 
   /* two XLR / TRS combo jacks */
-  [-1,1].forEach(function(s,i){
-    var ring=cyl(1.28,1.28,.42,28,MAT.metal);
+  [-1,1].forEach(function(s){
+    var ring=cyl(1.28,1.28,.42,24,MAT.metal);
     at(ring,s*3.9,H*0.52,D/2+0.20);ring.rotation.x=Math.PI/2;g.add(ring);
-    var bore=cyl(0.95,0.95,.30,24,MAT.black);
+    var bore=cyl(0.95,0.95,.30,20,MAT.black);
     at(bore,s*3.9,H*0.52,D/2+0.30);bore.rotation.x=Math.PI/2;pick(bore,'ifin');g.add(bore);
-    for(var p=0;p<3;p++){
-      var ang=p*(Math.PI*2/3)-Math.PI/2;
-      var pin=cyl(.15,.15,.22,10,MAT.metalD);
-      at(pin,s*3.9+Math.cos(ang)*.42,H*0.52+Math.sin(ang)*.42,D/2+0.36);
-      pin.rotation.x=Math.PI/2;g.add(pin);
-    }
   });
 
-  /* gain knobs, monitor knob, phones knob */
-  var knobX=[-1.4,0.2,1.8,3.4];
-  knobX.forEach(function(x,i){
-    var k=cyl(.72,.62,.62,24,MAT.knob);
-    at(k,x*1.0+(i>1?1.6:0),H*0.52,D/2+0.34);k.rotation.x=Math.PI/2;g.add(k);
-    var cap=cyl(.30,.30,.10,16,MAT.white);
-    at(cap,x*1.0+(i>1?1.6:0),H*0.52+0.42,D/2+0.46);cap.rotation.x=Math.PI/2;g.add(cap);
+  /* gain, monitor and phones knobs */
+  [-1.4,0.2,3.4,5.0].forEach(function(x){
+    var k=cyl(.70,.60,.60,18,MAT.knob);
+    at(k,x,H*0.52,D/2+0.34);k.rotation.x=Math.PI/2;g.add(k);
+    var cap=cyl(.28,.28,.10,12,MAT.white);
+    at(cap,x,H*0.52+0.40,D/2+0.46);cap.rotation.x=Math.PI/2;g.add(cap);
   });
-  /* phantom + pad buttons with indicator */
+  /* phantom + pad buttons */
   [[-5.6,0xcc2222],[-4.4,0x333338]].forEach(function(b){
     var bt=box(.72,.42,.22,std(b[1],.5,.1));
     at(bt,b[0],H*0.80,D/2+0.16);g.add(bt);
   });
-  /* headphone jack */
-  var hp=cyl(.52,.52,.30,20,MAT.metal);
-  at(hp,5.6,H*0.30,D/2+0.20);hp.rotation.x=Math.PI/2;g.add(hp);
 
   /* rear: USB-B and two TRS outputs */
   var usbb=box(1.2,1.0,.7,MAT.metalD);at(usbb,-4.4,H*0.5,-D/2-0.3);pick(usbb,'ifusb');g.add(usbb);
   [-1,1].forEach(function(s){
-    var trs=cyl(.52,.52,.5,18,MAT.metal);
+    var trs=cyl(.50,.50,.5,14,MAT.metal);
     at(trs,s*2.2+3.0,H*0.5,-D/2-0.22);trs.rotation.x=Math.PI/2;g.add(trs);
   });
-  /* rubber feet */
+  /* feet */
   [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(c){
-    var f=cyl(.5,.5,.3,14,MAT.rubber);at(f,c[0]*(W/2-1.2),0.15,c[1]*(D/2-1.4));g.add(f);
+    var f=cyl(.5,.5,.3,10,MAT.rubber);at(f,c[0]*(W/2-1.2),0.15,c[1]*(D/2-1.4));g.add(f);
   });
 
   gIface.add(g);PARTS.ifaceGroup=g;
@@ -750,32 +947,24 @@ var P_IF_IN1,P_IF_IN2,P_IF_USB;
 })();
 
 /* ---------------------------------------------------------------
-   RASPBERRY PI 5 (8 GB)     85 × 56 × 1.4 mm board
-   Long edge +X carries USB ×4 and Ethernet; short edge −X carries
-   2× micro-HDMI and USB-C; GPIO header runs along +Z.
+   RASPBERRY PI 5 (8 GB)     85 x 56 x 1.4 mm board
    --------------------------------------------------------------- */
-var PI_O=new THREE.Vector3(17,0,2);
-var P_PI_USB,P_PI_PWR,P_PI_HDMI,P_SD;
+var PI_O=new THREE.Vector3(12,0,0);
+var P_PI_USB,P_PI_PWR,P_PI_OUT,P_SD;
 (function(){
   var g=new THREE.Group();g.position.copy(PI_O);
-  var BW=8.5,BD=5.6,BT=0.14,Y=1.2;      // raised on standoffs
+  var BW=8.5,BD=5.6,BT=0.14,Y=1.0;
 
   var pcb=box(BW,BT,BD,MAT.pcb);at(pcb,0,Y,0);pick(pcb,'pi');g.add(pcb);
-  /* standoffs */
   [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(c){
-    var s=cyl(.20,.20,Y,12,MAT.metalD);at(s,c[0]*(BW/2-0.35),Y/2,c[1]*(BD/2-0.35));g.add(s);
+    var s=cyl(.20,.20,Y,10,MAT.metalD);at(s,c[0]*(BW/2-0.35),Y/2,c[1]*(BD/2-0.35));g.add(s);
   });
 
-  /* 40-pin GPIO header along +Z edge */
+  /* 40-pin GPIO header — one body and one gold band, not forty pins */
   var hdr=box(5.1,.55,.50,MAT.black);at(hdr,-0.9,Y+BT/2+.27,BD/2-0.40);pick(hdr,'gpio');g.add(hdr);
-  for(var i=0;i<20;i++){
-    for(var r=0;r<2;r++){
-      var pinm=box(.07,.42,.07,MAT.gold);
-      at(pinm,-3.35+i*0.254,Y+BT/2+.72,BD/2-0.52+r*0.254);g.add(pinm);
-    }
-  }
+  var hdrPins=box(5.0,.36,.36,MAT.gold);at(hdrPins,-0.9,Y+BT/2+.70,BD/2-0.40);g.add(hdrPins);
 
-  /* USB stack ×2 (USB3 blue inside, USB2 black) + Ethernet, on +X edge */
+  /* USB stacks + Ethernet on the +X edge */
   function usbStack(z,blue){
     var sh=box(1.45,1.55,1.70,MAT.metalD);at(sh,BW/2-0.55,Y+BT/2+.78,z);g.add(sh);
     [0,1].forEach(function(k){
@@ -784,179 +973,150 @@ var P_PI_USB,P_PI_PWR,P_PI_HDMI,P_SD;
     });
     return sh;
   }
-  var u1=usbStack(-1.35,true), u2=usbStack(0.75,false);
-  pick(u1,'piusb');pick(u2,'piusb');
-  var eth=box(1.60,1.40,2.10,MAT.metalD);at(eth,BW/2-0.60,Y+BT/2+.70,-3.0+0.0);
-  eth.position.z=2.05;pick(eth,'eth');g.add(eth);
+  pick(usbStack(-1.35,true),'piusb');pick(usbStack(0.75,false),'piusb');
+  var eth=box(1.60,1.40,2.10,MAT.metalD);at(eth,BW/2-0.60,Y+BT/2+.70,2.05);pick(eth,'eth');g.add(eth);
   var ethIns=box(1.10,.90,1.55,MAT.black);at(ethIns,BW/2-0.35,Y+BT/2+.64,2.05);g.add(ethIns);
 
-  /* short edge −X: 2× micro-HDMI, USB-C power */
+  /* short edge -X: USB-C power, 2x micro-HDMI */
   var pwr=box(.70,.55,.95,MAT.metalD);at(pwr,-BW/2+0.30,Y+BT/2+.28,-1.55);
   pick(pwr,'pipwr');g.add(pwr);
-  [[-0.10],[1.35]].forEach(function(c){
-    var h=box(.62,.50,.80,MAT.metalD);at(h,-BW/2+0.28,Y+BT/2+.26,c[0]);pick(h,'pihdmi');g.add(h);
+  [-0.10,1.35].forEach(function(z){
+    var h=box(.62,.50,.80,MAT.metalD);at(h,-BW/2+0.28,Y+BT/2+.26,z);pick(h,'pihdmi');g.add(h);
   });
 
-  /* BCM2712 SoC with metal lid, RP1 southbridge, LPDDR4X */
+  /* BCM2712 with its lid, LPDDR4X, RP1 */
   var soc=box(1.60,.22,1.60,MAT.black);at(soc,-0.25,Y+BT/2+.11,-0.35);g.add(soc);
   var lid=box(1.30,.10,1.30,MAT.metal);at(lid,-0.25,Y+BT/2+.26,-0.35);pick(lid,'soc');g.add(lid);
   var ram=box(1.00,.18,1.00,MAT.black);at(ram,1.35,Y+BT/2+.09,-0.35);pick(ram,'ram');g.add(ram);
   var rp1=box(.95,.16,.95,MAT.black);at(rp1,1.20,Y+BT/2+.08,1.55);g.add(rp1);
-
-  /* PCIe FFC, camera/display FFC connectors */
   var pcie=box(1.40,.22,.34,MAT.white);at(pcie,-2.6,Y+BT/2+.11,1.90);g.add(pcie);
-  [[-3.5,-0.5],[-3.5,0.9]].forEach(function(c){
-    var ffc=box(.24,.18,1.10,MAT.white);at(ffc,c[0],Y+BT/2+.09,c[1]);g.add(ffc);
-  });
-  /* fan header + RTC + power button */
-  var fanh=box(.34,.20,.44,MAT.white);at(fanh,-1.9,Y+BT/2+.10,-2.25);g.add(fanh);
-  var btn=cyl(.13,.13,.16,10,std(0xdddddd,.5,.2));at(btn,-3.9,Y+BT/2+.10,-2.30);g.add(btn);
 
-  /* microSD, underside, part-inserted */
+  /* microSD, underside */
   var sd=box(1.50,.10,1.10,MAT.black);at(sd,-BW/2+0.55,Y-0.22,0.0);pick(sd,'sd');g.add(sd);
-  for(var c2=0;c2<6;c2++){
-    var pad=box(.13,.03,.55,MAT.gold);at(pad,-BW/2+0.15+c2*0.19,Y-0.28,0.15);g.add(pad);
-  }
 
   /* ---------------- Official Active Cooler ---------------- */
   var cool=new THREE.Group();
   var hsBase=box(5.40,.22,3.10,MAT.metal);at(hsBase,-0.25,Y+BT/2+.42,-0.35);cool.add(hsBase);
-  for(var f=0;f<11;f++){
-    var fin=box(.10,1.05,3.00,MAT.metal);
-    at(fin,-2.75+f*0.50,Y+BT/2+1.05,-0.35);cool.add(fin);
+  for(var f=0;f<9;f++){
+    var fin=box(.12,1.00,3.00,MAT.metal);
+    at(fin,-2.65+f*0.60,Y+BT/2+1.03,-0.35);cool.add(fin);
   }
-  var fanHouse=box(3.10,.72,3.10,MAT.plasticD);
-  at(fanHouse,-0.25,Y+BT/2+1.95,-0.35);pick(fanHouse,'cooler');cool.add(fanHouse);
-  var fanRing=cyl(1.40,1.40,.30,28,MAT.black);
-  at(fanRing,-0.25,Y+BT/2+2.20,-0.35);cool.add(fanRing);
+  var fanHouse=box(3.10,.66,3.10,MAT.plasticD);
+  at(fanHouse,-0.25,Y+BT/2+1.88,-0.35);pick(fanHouse,'cooler');cool.add(fanHouse);
+  var fanRing=cyl(1.40,1.40,.26,22,MAT.black);
+  at(fanRing,-0.25,Y+BT/2+2.10,-0.35);cool.add(fanRing);
   var blades=new THREE.Group();
   for(var b=0;b<7;b++){
     var bl=box(1.15,.05,.34,MAT.plastic);
     bl.position.set(Math.cos(b*Math.PI*2/7)*0.62,0,Math.sin(b*Math.PI*2/7)*0.62);
     bl.rotation.y=b*Math.PI*2/7;bl.rotation.x=0.34;blades.add(bl);
   }
-  blades.position.set(-0.25,Y+BT/2+2.24,-0.35);cool.add(blades);
-  var hub=cyl(.34,.34,.22,16,MAT.black);at(hub,-0.25,Y+BT/2+2.26,-0.35);cool.add(hub);
-  [-1,1].forEach(function(s){
-    var clip=box(.22,1.4,.30,MAT.metalD);at(clip,-0.25+s*2.85,Y+BT/2+1.0,-0.35);cool.add(clip);
-  });
+  blades.position.set(-0.25,Y+BT/2+2.14,-0.35);cool.add(blades);
   cool.userData.home=cool.position.clone();
-  g.add(cool);PARTS.cooler=cool;PARTS.coolerFan=blades;PARTS.coolerBody=cool;
+  g.add(cool);PARTS.cooler=cool;PARTS.coolerFan=blades;
 
-  g.userData.home=g.position.clone();
   gPi.add(g);PARTS.piGroup=g;
 
   P_PI_USB =new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(BW/2+0.5,Y+1.0,-1.35));
+  P_PI_OUT =new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(BW/2+0.5,Y+1.0, 0.75));
   P_PI_PWR =new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(-BW/2-0.5,Y+0.4,-1.55));
-  P_PI_HDMI=new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(-BW/2-0.5,Y+0.4,0.60));
   P_SD     =new THREE.Vector3().copy(PI_O).add(new THREE.Vector3(-BW/2+0.55,Y-0.4,0.0));
 })();
 
-/* ---------------- Official 27 W USB-C PSU ---------------- */
-var P_PSU=new THREE.Vector3(17,0,15);
+/* ---------------- Official 27 W USB-C PSU, set back ---------------- */
+var P_PSU=new THREE.Vector3(11,0,10);
 (function(){
   var g=new THREE.Group();g.position.copy(P_PSU);
-  var b=box(5.70,3.00,3.00,MAT.white);at(b,0,1.5,0);pick(b,'psu');g.add(b);
-  var pins=box(1.6,.20,.9,MAT.metal);at(pins,0,3.1,0);g.add(pins);
-  var lbl=box(2.6,.02,1.4,std(0xdadade,.9,0));at(lbl,0,3.02,0);g.add(lbl);
+  var b=box(5.00,2.60,2.60,MAT.white);at(b,0,1.3,0);pick(b,'psu');g.add(b);
+  var lbl=box(2.4,.02,1.2,std(0xdadade,.9,0));at(lbl,0,2.62,0);g.add(lbl);
   gPi.add(g);PARTS.psuGroup=g;
 })();
 
 /* ---------------------------------------------------------------
-   COMMUNICATION UNIT — handheld tactical radio, ~200 x 65 x 40 mm
-   The deployed sink for Lane B. Replaces the bench display: the
-   problem statement asks for integration with headphones and
-   communication units, not with a development monitor.
+   COMMUNICATION UNIT — handheld tactical radio, ~200 x 65 x 40 mm.
+   Laid flat on the bench, face up, so the bench keeps one height.
+   Long axis runs along +Z; the antenna lies flat beside it.
    --------------------------------------------------------------- */
-var P_RADIO=new THREE.Vector3(33,0,-4);
+var P_RADIO=new THREE.Vector3(33,0,0);
 var P_RAD_AUD;
 (function(){
   var g=new THREE.Group();g.position.copy(P_RADIO);
-  var W=6.5,H=18,D=4.0;
+  var W=6.5,T=4.0,Lz=18, z0=-11;          // body spans z0 .. z0+Lz
+  var cz=z0+Lz/2;
 
-  var body=box(W,H,D,MAT.plasticD);at(body,0,H/2,0);pick(body,'radio');g.add(body);
-  var face=box(W*0.92,H*0.96,0.14,std(0x35353b,.72,.10));at(face,0,H/2,D/2+0.05);g.add(face);
+  var body=box(W,T,Lz,MAT.plasticD);at(body,0,T/2,cz);pick(body,'radio');g.add(body);
+  var face=box(W*0.92,0.14,Lz*0.96,std(0x35353b,.72,.10));at(face,0,T+0.02,cz);g.add(face);
 
-  /* display strip */
-  var disp=box(W*0.72,3.0,.10,MAT.screen);at(disp,0,H-3.6,D/2+0.13);g.add(disp);
-  for(var r=0;r<2;r++){
-    var lit=box(W*0.52,.22,.06,std(0x6f8f7a,.6,.05));
-    at(lit,-0.3,H-3.0-r*0.9,D/2+0.20);g.add(lit);
+  /* display, speaker slots, keypad — all read from above */
+  var disp=box(W*0.70,.10,3.0,MAT.screen);at(disp,0,T+0.12,z0+Lz-2.0);g.add(disp);
+  var lit=box(W*0.50,.06,.22,std(0x6f8f7a,.6,.05));at(lit,-0.3,T+0.19,z0+Lz-1.6);g.add(lit);
+  for(var gr=0;gr<4;gr++){
+    var slot=box(W*0.54,.06,.20,std(0x1c1c20,.9,.05));
+    at(slot,0,T+0.15,z0+Lz-4.6-gr*0.5);g.add(slot);
   }
-  /* speaker grille */
-  for(var gr=0;gr<5;gr++){
-    var slot=box(W*0.56,.20,.06,std(0x1c1c20,.9,.05));
-    at(slot,0,H-7.4-gr*0.45,D/2+0.16);g.add(slot);
-  }
-  /* keypad */
   for(var kr=0;kr<4;kr++){
-    for(var kc=0;kc<3;kc++){
-      var kb=box(1.05,.62,.16,std(0x2a2a30,.7,.08));
-      at(kb,-1.55+kc*1.55,H-11.0-kr*1.15,D/2+0.16);g.add(kb);
-    }
+    var krow=box(W*0.62,.16,.55,std(0x2a2a30,.7,.08));
+    at(krow,0,T+0.16,z0+Lz-8.0-kr*1.15);g.add(krow);
   }
-  /* channel selector on top */
-  var sel=cyl(1.15,1.15,.85,22,MAT.knob);at(sel,-1.5,H+0.42,0);g.add(sel);
-  var vol=cyl(.80,.80,.70,20,MAT.knob);at(vol,1.4,H+0.35,0);g.add(vol);
-
-  /* antenna */
-  var ant=cyl(.30,.22,9.5,14,std(0x1e1e22,.86,.05));at(ant,2.3,H+4.9,0);g.add(ant);
-  var antBase=cyl(.52,.52,.9,16,MAT.metalD);at(antBase,2.3,H+0.45,0);g.add(antBase);
-
+  /* channel and volume selectors on what is now the upper face */
+  var sel=cyl(1.05,1.05,.75,18,MAT.knob);at(sel,-1.5,T+0.40,z0+1.6);g.add(sel);
+  var vol=cyl(.75,.75,.62,16,MAT.knob);at(vol,1.4,T+0.34,z0+1.6);g.add(vol);
+  /* antenna, folded flat */
+  var ant=cyl(.28,.20,6.0,12,std(0x1e1e22,.86,.05));
+  at(ant,2.3,T*0.5,z0+Lz+3.2);ant.rotation.x=Math.PI/2;g.add(ant);
+  var antBase=cyl(.48,.48,.8,12,MAT.metalD);
+  at(antBase,2.3,T*0.5,z0+Lz+0.3);antBase.rotation.x=Math.PI/2;g.add(antBase);
   /* push-to-talk on the side */
-  var ptt=box(.55,3.2,1.6,std(0x2a2a30,.75,.08));at(ptt,-W/2-0.22,H*0.62,0);
+  var ptt=box(.50,1.6,3.2,std(0x2a2a30,.75,.08));at(ptt,-W/2-0.20,T*0.55,cz+2.0);
   pick(ptt,'ptt');g.add(ptt);
+  /* headset connector on the end face */
+  var aud=cyl(.58,.58,.70,14,MAT.metal);
+  at(aud,-2.2,T*0.55,z0+Lz+0.3);aud.rotation.x=Math.PI/2;pick(aud,'radioaud');g.add(aud);
+  /* battery pack underneath */
+  var bat=box(W*1.02,1.1,5.0,std(0x33333a,.8,.10));at(bat,0,0.55,z0+2.4);g.add(bat);
 
-  /* audio / headset connector, top edge */
-  var aud=cyl(.62,.62,.70,18,MAT.metal);at(aud,-2.6,H+0.36,0);pick(aud,'radioaud');g.add(aud);
-
-  /* battery pack at the base */
-  var bat=box(W*1.02,4.2,D*1.05,std(0x33333a,.8,.10));at(bat,0,2.1,0);g.add(bat);
-
-  gPi.add(g);PARTS.radioGroup=g;
-  P_RAD_AUD=new THREE.Vector3().copy(P_RADIO).add(new THREE.Vector3(-2.6,H+0.9,0));
+  gRadio.add(g);PARTS.radioGroup=g;
+  P_RAD_AUD=new THREE.Vector3().copy(P_RADIO).add(new THREE.Vector3(-2.2,T*0.55,z0+Lz+1.0));
 })();
 
 /* ---------------------------------------------------------------
-   CABLING
+   CABLING — lane B on the bench, lane A inside the earcup
    --------------------------------------------------------------- */
-function cable(pts,mat,r){
+function cable(parent,pts,mat,r){
   var cv=new THREE.CatmullRomCurve3(pts);
-  var m=new THREE.Mesh(new THREE.TubeGeometry(cv,80,r||.20,10,false),mat||MAT.rubber);
-  m.userData.curve=cv;gCable.add(m);return m;
+  var m=new THREE.Mesh(new THREE.TubeGeometry(cv,64,r||.20,8,false),mat||MAT.rubber);
+  m.userData.curve=cv;parent.add(m);return m;
 }
 var CB={};
-CB.mic1=cable([P_MIC1,new THREE.Vector3(-30,-4,14),new THREE.Vector3(-20,1,12),P_IF_IN1],
-  std(0x24242a,.94,.02),.22);
-CB.mic2=cable([P_MIC2,new THREE.Vector3(-18,-2,10),new THREE.Vector3(-8,1,12),P_IF_IN2],
-  std(0x24242a,.94,.02),.22);
-CB.usb =cable([P_IF_USB,new THREE.Vector3(2,1.2,-9),new THREE.Vector3(11,1.2,-6),P_PI_USB],
-  std(0x2a2a30,.94,.02),.18);
-CB.pwr =cable([new THREE.Vector3(P_PSU.x,1.4,P_PSU.z-1.6),new THREE.Vector3(12,1.0,10),
-  new THREE.Vector3(7,1.0,2),P_PI_PWR],std(0xe8e8ea,.90,.02),.17);
+var sheath=std(0x24242a,.94,.02);
+CB.mic1=cable(gCabB,[P_MIC1,new THREE.Vector3(-36,2.0,13),new THREE.Vector3(-24,1.4,11),P_IF_IN1],
+  sheath,.22);
+CB.mic2=cable(gCabB,[P_MIC2,new THREE.Vector3(-24,3.0,9),new THREE.Vector3(-14,1.4,11),P_IF_IN2],
+  sheath,.22);
+CB.usb =cable(gCabB,[P_IF_USB,new THREE.Vector3(-4,1.0,-9),new THREE.Vector3(6,1.0,-6),P_PI_USB],
+  sheath,.18);
+CB.pwr =cable(gCabB,[new THREE.Vector3(P_PSU.x,1.2,P_PSU.z-1.4),new THREE.Vector3(6,0.9,7),
+  new THREE.Vector3(4,0.9,-1),P_PI_PWR],std(0xe8e8ea,.90,.02),.17);
 /* Lane B output: enhanced speech from the board to the radio */
-CB.radio=cable([P_PI_USB.clone().add(new THREE.Vector3(0,-0.4,1.6)),
-  new THREE.Vector3(24,1.0,-6),new THREE.Vector3(30,1.0,-5),P_RAD_AUD],
-  std(0x2a2a30,.94,.02),.17);
-/* Return path: received audio from the radio back to the earcups —
-   the "headphones / communication unit" integration the PS calls for */
-CB.phones=cable([P_RAD_AUD,new THREE.Vector3(20,10,10),new THREE.Vector3(-6,16,14),
-  new THREE.Vector3(-24,20,8),P_SPK.clone().add(new THREE.Vector3(1.2,2.0,0))],
-  std(0x24242a,.94,.02),.16);
+CB.radio=cable(gCabB,[P_PI_OUT,new THREE.Vector3(24,1.0,-6),new THREE.Vector3(30,1.0,-9),P_RAD_AUD],
+  sheath,.17);
+/* Return path: received audio from the radio back to the earcups */
+CB.phones=cable(gCabB,[P_RAD_AUD,new THREE.Vector3(24,12,10),new THREE.Vector3(-4,16,12),
+  new THREE.Vector3(-26,17,7),P_SPK.clone().add(new THREE.Vector3(1.4,2.4,0))],sheath,.16);
 
 /* ---------------------------------------------------------------
    FIELD — source, trajectory, wavefronts
    Distances compressed 10:1 so a 30 m stand-off frames with an
    85 mm board. Arrival timings are physical.
    --------------------------------------------------------------- */
-var P_MUZ=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-212,-2,185)); // 30 m ÷ 10
-var P_CRK=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-21.2,-1,18.5)); // 3 m ÷ 10
+var P_MUZ=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-212,-2,185)); // 30 m / 10
+var P_CRK=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-21.2,-1,18.5)); // 3 m / 10
 (function(){
   var g=new THREE.Group();g.position.copy(P_MUZ);
-  var barrel=cyl(.75,.75,16,18,MAT.metalD);barrel.rotation.z=Math.PI/2;barrel.rotation.y=-.72;
+  var barrel=cyl(.75,.75,16,14,MAT.metalD);barrel.rotation.z=Math.PI/2;barrel.rotation.y=-.72;
   g.add(barrel);
   var stock=box(5,2.4,2.4,MAT.plasticD);at(stock,-4.6,-1.0,-4.0);stock.rotation.y=-.72;g.add(stock);
-  var flash=new THREE.Mesh(new THREE.SphereGeometry(1.7,20,14),
+  var flash=new THREE.Mesh(new THREE.SphereGeometry(1.7,18,12),
     new THREE.MeshStandardMaterial({color:COL.src,emissive:COL.src,emissiveIntensity:.5,roughness:.3}));
   at(flash,6.0,0,5.5);pick(flash,'src');g.add(flash);
   g.userData={flash:flash};gField.add(g);PARTS.srcGroup=g;
@@ -969,7 +1129,7 @@ var P_CRK=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-21.2,-1,18.5))
     new THREE.LineDashedMaterial({color:COL.src,dashSize:3.2,gapSize:2.6,transparent:true,opacity:.55}));
   traj.computeLineDistances();gField.add(traj);PARTS.traj=traj;
 
-  var cm=new THREE.Mesh(new THREE.SphereGeometry(1.15,20,14),
+  var cm=new THREE.Mesh(new THREE.SphereGeometry(1.15,18,12),
     new THREE.MeshStandardMaterial({color:COL.src,emissive:COL.src,emissiveIntensity:.5,roughness:.3}));
   cm.position.copy(P_CRK);pick(cm,'crack');gField.add(cm);PARTS.crackMark=cm;
 })();
@@ -977,11 +1137,11 @@ var P_CRK=new THREE.Vector3().copy(HEAD_O).add(new THREE.Vector3(-21.2,-1,18.5))
 var gWaveHolder=new THREE.Group();gField.add(gWaveHolder);
 function frontOf(c){
   var g=new THREE.Group();
-  var wire=new THREE.Mesh(new THREE.SphereGeometry(1,34,22),
+  var wire=new THREE.Mesh(new THREE.SphereGeometry(1,30,20),
     new THREE.MeshBasicMaterial({color:c,wireframe:true,transparent:true,opacity:0,depthWrite:false}));
-  var shell=new THREE.Mesh(new THREE.SphereGeometry(1,40,26),
+  var shell=new THREE.Mesh(new THREE.SphereGeometry(1,36,24),
     new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0,side:THREE.BackSide,depthWrite:false}));
-  var ring=new THREE.Mesh(new THREE.RingGeometry(.975,1.0,96),
+  var ring=new THREE.Mesh(new THREE.RingGeometry(.975,1.0,88),
     new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
   ring.rotation.x=-Math.PI/2;
   g.add(wire,shell,ring);g.userData={wire:wire,shell:shell,ring:ring};
@@ -993,23 +1153,26 @@ W_CRACK.position.copy(P_CRK);
 var D_BLAST=W_BLAST.position.distanceTo(HEAD_O);
 var D_CRACK=W_CRACK.position.distanceTo(HEAD_O);
 /* =====================================================================
-   Labels, part data, simulation, event log, signal monitor, loop
+   Labels, part data, lane filter, simulation, event log, signal monitor
    ===================================================================== */
 
-/* ---------------- labels ---------------- */
+/* ---------------- labels ----------------
+   lane : 'a' | 'b' | '*'   which lane filter shows it
+   pri  : 1 shown always, 2 shown only when the camera is close in    */
 var LBL=[
-  {k:'mic1'  ,t:'Mic 1 — voice'        ,p:P_MIC1.clone().add(new THREE.Vector3(0,-2.6,0)),c:'--m1'},
-  {k:'mic2'  ,t:'Mic 2 — reference'    ,p:P_MIC2.clone().add(new THREE.Vector3(0, 3.0,0)),c:'--m2'},
-  {k:'mic3'  ,t:'Mic 3 — error'        ,p:P_MIC3.clone().add(new THREE.Vector3(0,-3.4,0)),c:'--m3'},
-  {k:'spk'   ,t:'Anti-noise driver'    ,p:P_SPK.clone().add(new THREE.Vector3(0, 1.2,-4.0)),c:'--spk'},
-  {k:'iface' ,t:'Behringer UMC202HD'   ,p:IF_O.clone().add(new THREE.Vector3(0, 7.6,0)),c:'--text-3'},
-  {k:'pi'    ,t:'Raspberry Pi 5 · 8 GB',p:PI_O.clone().add(new THREE.Vector3(0, 6.6,-3.2)),c:'--text-3'},
-  {k:'cooler',t:'Active Cooler'        ,p:PI_O.clone().add(new THREE.Vector3(-0.25,5.2,2.6)),c:'--text-3'},
-  {k:'psu'   ,t:'27 W USB-C PSU'       ,p:P_PSU.clone().add(new THREE.Vector3(0, 4.4,0)),c:'--text-3'},
-  {k:'sd'    ,t:'microSD 128 GB A2'    ,p:P_SD.clone().add(new THREE.Vector3(-2.4,-1.4,0)),c:'--text-3'},
-  {k:'radio' ,t:'Communication unit'   ,p:P_RADIO.clone().add(new THREE.Vector3(0,24.0,0)),c:'--text-3'},
-  {k:'src'   ,t:'Noise source — 30 m'  ,p:P_MUZ.clone().add(new THREE.Vector3(6,7,5.5)),c:'--src'},
-  {k:'crack' ,t:'Crack origin — 3 m'   ,p:P_CRK.clone().add(new THREE.Vector3(0,5,0)),c:'--src'}
+  {k:'mic1'  ,t:'Mic 1 — voice'          ,lane:'b',pri:1,p:P_MIC1.clone().add(new THREE.Vector3(0,-2.4,0)),c:'--m1'},
+  {k:'mic2'  ,t:'Mic 2 — reference'      ,lane:'*',pri:1,p:P_MIC2.clone().add(new THREE.Vector3(0, 3.2,0)),c:'--m2'},
+  {k:'mic3'  ,t:'Mic 3 — in-ear error'   ,lane:'a',pri:1,p:P_MIC3.clone().add(new THREE.Vector3(0,-2.6,3.0)),c:'--m3'},
+  {k:'spk'   ,t:'Anti-noise driver'      ,lane:'a',pri:1,p:P_SPK.clone().add(new THREE.Vector3(0, 3.0,-3.4)),c:'--spk'},
+  {k:'dspa'  ,t:'Lane A module — FxLMS'  ,lane:'a',pri:1,p:P_DSPA.clone().add(new THREE.Vector3(2.6,-1.8,-1.6)),c:'--laneA'},
+  {k:'iface' ,t:'Behringer UMC202HD'     ,lane:'b',pri:1,p:IF_O.clone().add(new THREE.Vector3(0, 7.4,0)),c:'--laneB'},
+  {k:'pi'    ,t:'Raspberry Pi 5 · 8 GB'  ,lane:'b',pri:1,p:PI_O.clone().add(new THREE.Vector3(0, 6.4,-3.4)),c:'--laneB'},
+  {k:'cooler',t:'Active Cooler'          ,lane:'b',pri:2,p:PI_O.clone().add(new THREE.Vector3(-0.25,5.0,2.8)),c:'--text-3'},
+  {k:'psu'   ,t:'27 W USB-C PSU'         ,lane:'b',pri:2,p:P_PSU.clone().add(new THREE.Vector3(0, 4.0,0)),c:'--text-3'},
+  {k:'sd'    ,t:'microSD 128 GB A2'      ,lane:'b',pri:2,p:P_SD.clone().add(new THREE.Vector3(-2.6,-1.2,0)),c:'--text-3'},
+  {k:'radio' ,t:'Communication unit'     ,lane:'b',pri:1,p:P_RADIO.clone().add(new THREE.Vector3(0, 6.6,-2.0)),c:'--laneB'},
+  {k:'src'   ,t:'Noise source — 30 m'    ,lane:'*',pri:1,p:P_MUZ.clone().add(new THREE.Vector3(6,7,5.5)),c:'--src'},
+  {k:'crack' ,t:'Crack origin — 3 m'     ,lane:'*',pri:1,p:P_CRK.clone().add(new THREE.Vector3(0,5,0)),c:'--src'}
 ];
 var lblBox=document.getElementById('labels');
 LBL.forEach(function(o){
@@ -1018,105 +1181,125 @@ LBL.forEach(function(o){
   d.addEventListener('click',function(e){e.stopPropagation();select(o.k);});
   lblBox.appendChild(d);o.el=d;
 });
+/* bench zone captions */
+ZONES.forEach(function(z){
+  var d=document.createElement('div');d.className='zlbl';d.textContent=z.t;
+  lblBox.appendChild(d);z.el=d;
+});
 
 /* ---------------- part data ---------------- */
 var INFO={
-mic1:{tag:'Lane B · primary',h:'Mic 1 — the voice microphone',b:[
+mic1:{lane:'b',tag:'Lane B · primary',h:'Mic 1 — the voice microphone',b:[
  'On the boom arm, 2 to 5 cm from the mouth. It hears the voice loudly and the gunshot more quietly, which is why it is the channel we try to keep.',
  'Feeds channel 1 of the UMC202HD through a balanced XLR line. Being this close boosts low frequencies through the proximity effect, so training material must be reshaped to match a boom microphone or the model learns the wrong voice.'],
- d:[['Distance','2–5 cm from the mouth'],['Carries','Voice 80–90 dB plus the impulsive event'],['Routes to','UMC202HD input 1'],['Then','Blocks 1–11, then the radio']]},
-mic2:{tag:'Lane A and B · reference',h:'Mic 2 — the noise reference',b:[
+ d:[['Distance','2–5 cm from the mouth'],['Carries','Voice 80–90 dB plus the impulsive event'],['Routes to','UMC202HD input 1'],['Lane','B only']]},
+mic2:{lane:'*',tag:'Shared · both lanes',h:'Mic 2 — the noise reference',b:[
  'On the outer shell of the earcup opposite the boom, facing away from the head. Its job is to hear the environment and nothing else.',
- 'It serves both lanes at once — the reference input for the hearing-protection loop, and the noise channel that lets the neural core tell voice from environment.'],
- d:[['Position','Outer shell, opposite the boom'],['Carries','Environment only, blast at full level'],['Routes to','UMC202HD input 2, and the Lane A filter'],['Constraint','Capsules saturate at 110–120 dB SPL']],
+ 'It is the only sensor both lanes use. Lane A takes it as the reference its adaptive filter predicts from; Lane B takes it as the noise channel that lets the neural core tell voice from environment, and as the reference for the optional residual stage.'],
+ d:[['Position','Outer shell, opposite the boom'],['Carries','Environment only, blast at full level'],['Lane A use','Reference input to FxLMS'],['Lane B use','Noise channel, and residual-stage reference'],['Constraint','Capsules saturate at 110–120 dB SPL']],
  w:['The rule software cannot fix','Mic 2 must contain zero components of the wearer\'s own voice. An adaptive filter minimises total output power, so if the voice appears here the mathematically optimal action is to cancel the voice. That is why the boom and Mic 2 sit on opposite sides of the head with the earcup shell between them.']},
-mic3:{tag:'Lane A only · error',h:'Mic 3 — the error microphone',b:[
- 'Inside the earcup beside the ear, measuring what actually reaches the eardrum after the cup has blocked some of the sound.',
+mic3:{lane:'a',tag:'Lane A only · error',h:'Mic 3 — the error microphone',b:[
+ 'Inside the earcup beside the ear, measuring what actually reaches the eardrum after the cup has blocked some of the sound. The cutaway shell is what lets you see it.',
  'That residual is the error signal. If it is not quiet, something is still leaking, and the adaptive filter corrects itself from exactly that — sample by sample, far faster than any model could be retrained.'],
- d:[['Position','Inside the cup, at the ear'],['Measures','Residual noise after passive attenuation'],['Feeds','Lane A only'],['Tracks','Seal changes, head movement, a loosening cup']],
- w:['Wiring correction','An earlier revision of the architecture routed this error signal into the transmit chain. It cannot help there, because the transmitted voice never passes through the wearer\'s ear. Mic 3 belongs to Lane A alone.']},
-spk:{tag:'Lane A · output',h:'The anti-noise driver',b:[
+ d:[['Position','Inside the cup, at the ear'],['Measures','Residual after passive attenuation'],['Feeds','The Lane A module, and nothing else'],['Tracks','Seal changes, head movement, a loosening cup']],
+ w:['Wiring correction','An earlier revision routed this error signal into the transmit chain. It cannot help there, because the transmitted voice never passes through the wearer\'s ear. Mic 3 belongs to Lane A alone — which is why it disappears from the scene under the Lane B filter.']},
+spk:{lane:'a',tag:'Lane A · output',h:'The anti-noise driver',b:[
  'A small loudspeaker inside the earcup emitting an inverted copy of the incoming noise so the two cancel in the air before reaching the eardrum. This is destructive interference, and it is what active noise cancellation strictly means.',
  'Sound crosses from the outer shell to the eardrum in roughly 0.3 to 0.6 ms and the anti-noise has to be there first, which is why this lane runs classical FxLMS on a dedicated loop rather than a neural network.'],
  d:[['Budget','Under 1 ms end to end'],['Algorithm','FxLMS with secondary-path estimation'],['Metric','NMSE, or measured in-ear attenuation'],['Never touches','The transmitted voice']]},
-iface:{tag:'Capture',h:'Behringer UMC202HD',b:[
+driver:{lane:'a',tag:'Lane A · transducer',h:'Driver assembly',b:[
+ 'Cone, surround and magnet, mounted in the baffle facing the ear. The cutaway exists so this is visible without an exploded view.',
+ 'Everything between the module\'s digital output and this cone — converter, amplifier, the cone itself, and the centimetre of air to the ear — is the secondary path. FxLMS has to model it, because the anti-noise is delayed and coloured by it before the error microphone ever measures the result.'],
+ d:[['Mounted in','The earcup baffle, facing the ear'],['Driven by','The Lane A module'],['Secondary path','Measured once per headset design with a sweep']]},
+dspa:{lane:'a',tag:'Lane A · compute',h:'Lane A module — the FxLMS filter',b:[
+ 'A small DSP or microcontroller clipped to the outside of the earcup. It holds the whole of Lane A: the reference from Mic 2, the adaptive filter, the anti-noise output to the driver, and the error return from Mic 3.',
+ 'It is deliberately separate hardware. Lane A has to close its loop in under a millisecond, so it cannot wait behind an operating system scheduler on the Pi — and it must keep protecting hearing even if the speech engine is not running at all.'],
+ d:[['Algorithm','FxLMS with secondary-path estimate'],['Reference','Mic 2'],['Error','Mic 3'],['Output','Earcup driver'],['Budget','Under 1 ms, closed loop'],['Independent of','The Raspberry Pi and the whole of Lane B']],
+ w:['The part that gets skipped','The secondary-path estimate is measured once with a white-noise sweep and re-checked whenever the mechanical assembly changes. A wrong estimate does not degrade the loop gracefully — it makes it diverge.']},
+iface:{lane:'b',tag:'Lane B · capture',h:'Behringer UMC202HD',b:[
  'Two-channel USB audio interface with Midas-designed preamplifiers, switchable 48 V phantom power and 24-bit conversion at up to 192 kHz.',
- 'Two channels is exactly what this architecture needs: a primary at the mouth and a reference on the earcup. It presents to the Pi as a standard USB audio class device, so no driver work is required.'],
+ 'Two channels is exactly what Lane B needs: a primary at the mouth and a reference on the earcup. It presents to the Pi as a standard USB audio class device, so no driver work is required.'],
  d:[['Inputs','2 × XLR/TRS combo, Midas preamps'],['Conversion','24-bit, up to 192 kHz'],['Phantom','48 V, switchable'],['To the Pi','USB-B, bus-powered'],['Why not the Pi alone','The Pi has no analogue audio input at all']]},
-pi:{tag:'Compute',h:'Raspberry Pi 5, 8 GB',b:[
+pi:{lane:'b',tag:'Lane B · compute',h:'Raspberry Pi 5, 8 GB',b:[
  'Runs the Lane B engine — the eleven-block chain in C++, with the trained model executed through ONNX Runtime.',
  'The 8 GB variant is chosen for development headroom, not because inference needs it. The model is roughly 24,000 parameters at 39.6 MMAC per second, which is microcontroller-class work. Demonstrating it on a Pi rather than the Jetson AGX Orin the problem statement suggests is itself the size, weight and power argument.'],
- d:[['SoC','Broadcom BCM2712, quad Cortex-A76 at 2.4 GHz'],['Memory','8 GB LPDDR4X'],['Board','85 × 56 mm'],['Runs','Blocks 1–11, ONNX Runtime'],['Budget','10 ms of compute per 10 ms hop']],
+ d:[['SoC','Broadcom BCM2712, quad Cortex-A76 at 2.4 GHz'],['Memory','8 GB LPDDR4X'],['Board','85 × 56 mm'],['Runs','Blocks 1–11, ONNX Runtime'],['Budget','10 ms of compute per 10 ms hop'],['Does not run','Lane A — that is separate hardware']],
  w:['Measure, do not assume','No latency figure from this board has been recorded yet. Worst-case frame time and power draw in watts are both still to be measured, and the second is a number nobody in the literature reports.']},
-cooler:{tag:'Thermal · not optional',h:'Official Active Cooler',b:[
+cooler:{lane:'b',tag:'Thermal · not optional',h:'Official Active Cooler',b:[
  'An aluminium heatsink with a controlled fan, clipped to the board over the SoC.',
  'The Pi 5 thermally throttles under sustained inference. Without active cooling, latency figures drift upward across a long run and the measurement becomes worthless — the model appears to slow down when in fact the clock is being reduced.'],
  d:[['Cost','₹600–900'],['Why mandatory','Sustained inference throttles a passively cooled Pi 5'],['Symptom if omitted','Latency creeping over minutes with no code change'],['Control','PWM through the dedicated fan header']]},
-psu:{tag:'Power · not optional',h:'Official 27 W USB-C supply',b:[
+psu:{lane:'b',tag:'Power · not optional',h:'Official 27 W USB-C supply',b:[
  'The Raspberry Pi 5 negotiates 5 V at 5 A over USB Power Delivery. A generic charger will typically fall back to 3 A.',
  'Third-party supplies cause undervoltage throttling that presents exactly like a model bug: intermittent latency spikes with nothing in the code to explain them. This is one of the most common wasted debugging days in Pi projects, and the fix costs two thousand rupees.'],
  d:[['Output','5 V / 5 A, 27 W'],['Cost','₹1,800–2,200'],['Failure mode','Undervoltage throttling, indistinguishable from a software fault'],['Check','dmesg reports under-voltage events']]},
-sd:{tag:'Storage',h:'microSD 128 GB A2 — two of them',b:[
- 'A2-rated cards, SanDisk Extreme or Samsung Evo Plus. The A2 rating matters for random access, which is what loading a model and running an operating system actually does.',
+sd:{lane:'b',tag:'Storage',h:'microSD 128 GB A2 — two of them',b:[
+ 'A2-rated cards. The A2 rating matters for random access, which is what loading a model and running an operating system actually does.',
  'Two identical images, deliberately. One is the demonstration card and is never experimented on. A corrupted card on the morning of an evaluation is unrecoverable in the time available, and cloning one takes ten minutes.'],
  d:[['Capacity','128 GB, A2 rated'],['Quantity','2, identical images'],['Cost','₹1,200 each'],['Discipline','The demo card is never used for development']]},
-radio:{tag:'Lane B · deployed sink',h:'Communication unit',b:[
- 'Where the enhanced speech actually goes. The problem statement asks for integration with microphones and headphones or communication units, so the demonstrated chain terminates at a radio rather than at a screen.',
+radio:{lane:'b',tag:'Lane B · deployed sink',h:'Communication unit',b:[
+ 'Where the enhanced speech actually goes. The problem statement asks for integration with microphones and headphones or communication units, so the demonstrated chain terminates at a radio rather than at a screen. It is laid flat on the bench so nothing on the bench stands taller than anything else.',
  'This matters for what gets measured. A tactical radio does not transmit our waveform — it transmits MELPe, the NATO STANAG 4591 vocoder, at 2400, 1200 or 600 bits per second, re-synthesising speech at the far end from pitch, voicing and spectral envelope. Every metric should therefore be reported twice: before this stage and after it.'],
  d:[['Role','Deployed output of Lane B'],['Codec','MELPe · STANAG 4591'],['Bitrate','2400 / 1200 / 600 bps'],['From the board','Enhanced speech, 20 ms frames'],['Back to the headset','Received audio to the earcups']],
  w:['No development computer in the chain','A monitor or laptop belongs to bring-up, not to the demonstrated system. The board boots from its own card, runs the engine headlessly and talks to the radio. The micro-HDMI cable stays on the parts list for configuration, but it is not part of the signal path.']},
-ptt:{tag:'Control',h:'Push-to-talk',b:[
+ptt:{lane:'b',tag:'Control',h:'Push-to-talk',b:[
  'Keys the transmitter. It is also the natural place to switch operator modes, because the classifier already exposes γ as a single dial — a low-γ listening mode that preserves ambient awareness, and a high-γ combat mode that protects voice through gunfire.'],
  d:[['Wiring','GPIO header on the board'],['Also selects','Listening / combat preset']]},
-radioaud:{tag:'Integration',h:'Headset connector',b:[
+radioaud:{lane:'b',tag:'Integration',h:'Headset connector',b:[
  'Carries enhanced speech into the radio and received audio back out to the earcups. One connector, both directions.',
  'This is the physical point the problem statement means by "headphones / communication units", and it is where a bench demonstration becomes a system demonstration.']},
-src:{tag:'The problem',h:'The noise source',b:[
+src:{lane:'*',tag:'The problem',h:'The noise source',b:[
  'A muzzle blast reaches 140 to 155 dB SPL at close range with a rise time of 10 to 50 microseconds. A shouted voice is 80 to 90 dB. That is a ratio of ten thousand or more in pressure, arriving with no warning.',
  'At the 30 m stand-off used in this run, the blast takes 87.5 ms to arrive. The bullet gets there first.'],
  d:[['Stand-off','30 m'],['Peak','140–155 dB SPL'],['Blast travel','87.5 ms over 30 m'],['MIL-STD-1474','Limit at the ear is 140 dB peak']],
  w:['Clipping is decided here','If the blast exceeds the capsule\'s maximum SPL the waveform arrives at the converter already flat-topped, with information physically destroyed. No algorithm recovers it. Only distance helps, at 6 dB per doubling.']},
-crack:{tag:'The look-ahead',h:'Crack origin — the shockwave',b:[
+crack:{lane:'*',tag:'The look-ahead',h:'Crack origin — the shockwave',b:[
  'A supersonic round drags a cone-shaped shockwave behind it. The wave that reaches the listener is generated not at the muzzle but at the bullet\'s closest approach — here about 3 m away rather than 30.',
  'That is why the crack arrives 42.3 ms before the muzzle blast. Both travel at the same speed; one simply starts much closer. This is the only genuine look-ahead a headset has, and it is what counter-sniper acoustic systems are built on.'],
  d:[['Bullet flight','36.5 ms over 30 m at about Mach 2.4'],['Sound travel','8.7 ms over the final 3 m'],['Crack arrives','45.2 ms'],['Look-ahead won','42.3 ms']],
  w:['What this replaces','An earlier revision claimed 29 ms of look-ahead from the spacing between Mic 1 and Mic 2. That holds for the recording rig, where Mic 2 is placed at the gun — but in the product both microphones sit on one head, 20 cm apart, giving 0.58 ms. The crack is the version of that idea that survives the move from rig to product.']},
-soc:{tag:'Compute',h:'BCM2712 — where the model runs',b:[
+soc:{lane:'b',tag:'Lane B · compute',h:'BCM2712 — where the model runs',b:[
  'Quad-core Arm Cortex-A76 at 2.4 GHz. The eleven-block chain runs across three threads: a real-time audio callback that only copies samples, a high-priority processing thread, and a normal-priority control thread that never touches the signal path.',
  'The callback never allocates memory, takes a lock, logs or throws. Violating any of those produces a click that appears once every few minutes and is close to undebuggable afterwards.'],
  d:[['Cores','4 × Cortex-A76, 2.4 GHz'],['Deadline','10 ms per hop, worst case'],['Report','99th percentile, never the mean']]},
-gpio:{tag:'Expansion',h:'40-pin GPIO header',b:[
- 'Not used by the signal path — audio arrives over USB from the interface. It is present for the push-to-talk line, mode switching between listening and combat presets, and a status indicator on the prototype enclosure.']},
-piusb:{tag:'Data path',h:'USB 3.0 — interface to board',b:[
+gpio:{lane:'b',tag:'Expansion',h:'40-pin GPIO header',b:[
+ 'Not used by the audio path — that arrives over USB from the interface. It is present for the push-to-talk line, mode switching between listening and combat presets, and a status indicator on the prototype enclosure.']},
+piusb:{lane:'b',tag:'Data path',h:'USB 3.0 — interface to board',b:[
  'The UMC202HD connects here as a USB audio class device. Two channels at 24-bit feed blocks 1 to 11.',
  'Using USB 3.0 rather than 2.0 is not about bandwidth — two audio channels need very little — but about keeping the audio device off a shared bus with anything else that might introduce scheduling jitter.']},
-eth:{tag:'Development',h:'Gigabit Ethernet',b:[
+eth:{lane:'b',tag:'Development',h:'Gigabit Ethernet',b:[
  'Used during development for remote access and for pulling training artefacts onto the board. It plays no part in the deployed signal path, which is entirely local — no cloud, no network dependency.']},
-ram:{tag:'Compute',h:'8 GB LPDDR4X',b:[
+ram:{lane:'b',tag:'Compute',h:'8 GB LPDDR4X',b:[
  'Development headroom. The deployed model occupies a fraction of a megabyte; the memory is for the toolchain, the operating system and holding test material in RAM during benchmarking.']},
-band:{tag:'Mechanical',h:'The headband',b:[
- 'Sets clamping force, which sets the seal, which sets the passive attenuation. It also carries the wiring between the two cups. It decides more of the measured performance than most of the signal processing does.']},
-cup:{tag:'Mechanical',h:'The earcup',b:[
- 'Provides passive attenuation before any electronics are involved, and houses Mic 2 outside with the driver and Mic 3 inside.',
+band:{lane:'*',tag:'Mechanical',h:'The headband',b:[
+ 'Sets clamping force, which sets the seal, which sets the passive attenuation. It also carries the wiring between the two cups. It decides more of the measured Lane A performance than most of the signal processing does.']},
+cup:{lane:'*',tag:'Mechanical',h:'The earcup',b:[
+ 'Provides passive attenuation before any electronics are involved, and houses Mic 2 outside with the driver and Mic 3 inside. The right cup is drawn cut away so the Lane A hardware is visible.',
  'The seal matters continuously. A cup that lifts even slightly changes the acoustic path, which is the slow drift Lane A\'s error microphone exists to track.']},
-boom:{tag:'Mechanical',h:'The boom arm',b:[
+boom:{lane:'b',tag:'Mechanical',h:'The boom arm',b:[
  'Carries Mic 1 to within a few centimetres of the mouth and holds it there through movement. Its length and rigidity are an acoustic decision rather than a comfort one: they set the voice level at the primary microphone and the distance to Mic 2.']},
-ifin:{tag:'Capture',h:'XLR / TRS combo input',b:[
+ifin:{lane:'b',tag:'Capture',h:'XLR / TRS combo input',b:[
  'Balanced input with a Midas preamplifier and switchable 48 V phantom power. Balanced cabling matters on a prototype with a switching supply and a fan a few centimetres away — common-mode rejection is what keeps that out of the recording.']},
-ifusb:{tag:'Data path',h:'USB-B to the Pi',b:[
+ifusb:{lane:'b',tag:'Data path',h:'USB-B to the Pi',b:[
  'Carries both captured channels to the board and draws bus power. One cable, no separate supply for the interface.']},
-pipwr:{tag:'Power',h:'USB-C power input',b:[
+pipwr:{lane:'b',tag:'Power',h:'USB-C power input',b:[
  'Negotiates 5 V at 5 A over USB Power Delivery with the official supply. With a generic charger it falls back and the board throttles under load.']},
-pihdmi:{tag:'Bring-up only',h:'micro-HDMI',b:['Two micro-HDMI outputs, used to configure the board and read logs during bring-up.','Deliberately not drawn as part of the bench: the deployed system runs headless and its output goes to the communication unit. The cable stays on the parts list because the Pi 5 takes micro-HDMI rather than full-size, which is a detail better discovered at the bench than at the venue.']},
-mouth:{tag:'Reference',h:'The mouth — the signal being protected',b:[
- 'Everything in the system exists to get what happens here to the far end of the radio intact.',
+pihdmi:{lane:'b',tag:'Bring-up only',h:'micro-HDMI',b:[
+ 'Two micro-HDMI outputs, used to configure the board and read logs during bring-up.',
+ 'Deliberately not cabled on the bench: the deployed system runs headless and its output goes to the communication unit. The cable stays on the parts list because the Pi 5 takes micro-HDMI rather than full-size, which is a detail better discovered at the bench than at the venue.']},
+mouth:{lane:'*',tag:'Reference',h:'The mouth — the signal being protected',b:[
+ 'Everything in Lane B exists to get what happens here to the far end of the radio intact.',
  'One thing missing from the current dataset plan matters enormously: under 80 dB or more of noise, people involuntarily change how they speak — higher pitch, more level, shifted spectral tilt. That is the Lombard effect, and systems trained on calm read speech lose around 5 dB on it.']}
 };
+var LANE_NAME={a:'Lane A',b:'Lane B'};
 function select(k){
   var d=INFO[k],box=document.getElementById('infobody');
-  if(!d){box.innerHTML='<p style="color:var(--text-3);font-size:14px">Click any part in the scene, or any label, for its specification.</p>';
+  if(!d){box.innerHTML='<p style="color:var(--text-3);font-size:14px">Click any part in the scene, or any label, for its specification. Use the lane filter to see either system on its own.</p>';
     LBL.forEach(function(o){o.el.classList.remove('dim');});return;}
-  var h='<span class="tag">'+d.tag+'</span><h4>'+d.h+'</h4>';
+  var sw=d.lane==='a'?'<i style="background:var(--laneA)"></i>':
+         d.lane==='b'?'<i style="background:var(--laneB)"></i>':
+         '<i style="background:var(--laneA)"></i>';
+  var h='<span class="tag">'+sw+d.tag+'</span><h4>'+d.h+'</h4>';
   d.b.forEach(function(p){h+='<p>'+p+'</p>';});
   if(d.d){h+='<dl>';d.d.forEach(function(r){h+='<dt>'+r[0]+'</dt><dd>'+r[1]+'</dd>';});h+='</dl>';}
   if(d.w)h+='<div class="warn"><b>'+d.w[0]+'</b>'+d.w[1]+'</div>';
@@ -1142,16 +1325,40 @@ vp.addEventListener('click',function(e){
   select(null);
 });
 
-/* ---------------- toggles ---------------- */
-var spin=true,showLabels=true,exploded=false,showW=true,showFlow=true,showCables=true;
+/* ---------------- toggles and the lane filter ---------------- */
+var spin=true,showLabels=true,exploded=false,showW=true,showFlow=true,showCables=true,
+    showZones=true,lane='both';
 function syncTog(){
   document.querySelectorAll('[data-tog]').forEach(function(b){
     var k=b.dataset.tog;
     b.classList.toggle('on',(k==='waves'&&showW)||(k==='flow'&&showFlow)||(k==='cables'&&showCables)||
-      (k==='explode'&&exploded)||(k==='labels'&&showLabels)||(k==='spin'&&spin));
+      (k==='explode'&&exploded)||(k==='labels'&&showLabels)||(k==='spin'&&spin)||
+      (k==='zones'&&showZones));
   });
-  gWaveHolder.visible=showW;gCable.visible=showCables;gFlow.visible=showFlow;
+  document.querySelectorAll('[data-lane]').forEach(function(b){
+    b.classList.toggle('on',b.dataset.lane===lane);
+  });
+
+  var showA=(lane!=='b'), showB=(lane!=='a');
+  gLaneA.visible=showA;
+  gIface.visible=showB;gPi.visible=showB;gRadio.visible=showB;
+  gCabA.visible=showA&&showCables;
+  gCabB.visible=showB&&showCables;
+  gWaveHolder.visible=showW;
+  gFlow.visible=showFlow;
+  gBench.visible=true;
+  ZONES.forEach(function(z){if(z.el)z.el.style.display=showZones?'':'none';});
   lblBox.style.display=showLabels?'':'none';
+
+  var ll=document.getElementById('lanelab');
+  ll.innerHTML = lane==='a'
+    ? '<i style="background:var(--laneA)"></i>Lane A — hearing protection'
+    : lane==='b'
+    ? '<i style="background:var(--laneB)"></i>Lane B — speech to the radio'
+    : '<i style="background:var(--laneA)"></i>A<i style="background:var(--laneB);margin-left:10px"></i>B';
+
+  document.getElementById('cflowA').parentNode.style.opacity=showA?'1':'.34';
+  document.getElementById('cflow' ).parentNode.style.opacity=showB?'1':'.34';
 }
 document.querySelectorAll('[data-tog]').forEach(function(b){
   b.addEventListener('click',function(){
@@ -1159,6 +1366,18 @@ document.querySelectorAll('[data-tog]').forEach(function(b){
     if(k==='waves')showW=!showW;else if(k==='flow')showFlow=!showFlow;
     else if(k==='cables')showCables=!showCables;else if(k==='labels')showLabels=!showLabels;
     else if(k==='spin')spin=!spin;else if(k==='explode')exploded=!exploded;
+    else if(k==='zones')showZones=!showZones;
+    syncTog();
+  });
+});
+document.querySelectorAll('[data-lane]').forEach(function(b){
+  b.addEventListener('click',function(){
+    lane=b.dataset.lane;
+    if(lane==='a')goView('earcup');
+    else if(lane==='b')goView('system');
+    document.querySelectorAll('[data-view]').forEach(function(x){
+      x.classList.toggle('on',x.dataset.view===(lane==='a'?'earcup':'system'));
+    });
     syncTog();
   });
 });
@@ -1174,6 +1393,7 @@ syncTog();
    TIMELINE — shooter at 30 m, supersonic round. All times in true ms.
    ===================================================================== */
 var T_BULLET=36.5, T_CRACK=45.2, T_CRACK1=45.78, T_BLAST=87.5, T_BLAST1=88.08;
+var T_LANEA_END=T_BLAST+1.0;
 var T_LANEB_END=T_BLAST1+25.3, T_IRT=T_BLAST+34.5, T_END=200;
 var RATES=[{k:100,l:'Rate — 100× slow',s:'20 s for 200 ms'},
            {k:300,l:'Rate — 300× slow',s:'60 s for 200 ms'},
@@ -1184,17 +1404,19 @@ var EVENTS=[
  [0.0  ,'TRIG','Muzzle blast initiated · 30 m stand-off · supersonic round'],
  [36.5 ,'PROP','Bullet at closest approach 3.0 m — ballistic shockwave generated'],
  [45.2 ,'RX'  ,'MIC 2 ballistic crack · est. peak <b>152 dB SPL</b> · rise 42 µs'],
- [45.25,'CLS' ,'Frame kurtosis <b>214</b> (Gaussian = 3) → class <b>IMPULSIVE</b>'],
- [45.30,'CLS' ,'γ set to 12.5% · β +6 dB · mode COMBAT'],
+ [45.25,'A'   ,'Lane A reference updated — FxLMS tracking, loop independent of the Pi'],
+ [45.3 ,'CLS' ,'Frame kurtosis <b>214</b> (Gaussian = 3) → class <b>IMPULSIVE</b>'],
+ [45.35,'CLS' ,'γ set to 12.5% · β +6 dB · mode COMBAT'],
  [45.78,'RX'  ,'MIC 1 crack · Δ <b>0.58 ms</b> behind MIC 2 — too small to predict with'],
  [45.9 ,'DSP' ,'Transient path armed · <b>42.3 ms</b> of look-ahead before the blast'],
  [87.5 ,'RX'  ,'MIC 2 muzzle blast · est. peak <b>149 dB SPL</b>'],
  [87.55,'WARN','MIC 2 capsule saturated — 3.1 ms clipped, level unrecoverable'],
- [87.92,'A'   ,'Lane A anti-noise emitted · <b>0.42 ms</b> after detection'],
- [88.05,'A'   ,'MIC 3 residual <b>−18.4 dB</b> vs MIC 2 · loop converged'],
+ [87.62,'A'   ,'A1–A3 reference filtered by Ŝ(z), W(z) updated'],
+ [87.92,'A'   ,'A4–A5 anti-noise emitted at the driver · <b>0.42 ms</b> after detection'],
+ [88.05,'A'   ,'A6 MIC 3 residual <b>−18.4 dB</b> vs MIC 2 · loop converged, <b>0.55 / 1.0 ms</b>'],
  [88.08,'RX'  ,'MIC 1 muzzle blast · Δ 0.58 ms · lane B frame opens'],
  [88.4 ,'DSP' ,'01 Audio in — 128-sample block via lock-free ring buffer'],
- [90.1 ,'DSP' ,'02 Aux-IVA — 3 streams separated · 0.20 MMAC/s'],
+ [90.1 ,'DSP' ,'02 Aux-IVA — 3 streams separated, unordered · 0.20 MMAC/s'],
  [92.0 ,'DSP' ,'03 Normalise — 90th percentile scaling (RMS undefined here)'],
  [94.3 ,'DSP' ,'04 STFT + ERB — 20 ms frame · 192 bins → 64 ERB, 65 kept'],
  [96.0 ,'DSP' ,'05 Classifier — confirms IMPULSIVE, holds γ at 12.5%'],
@@ -1202,7 +1424,7 @@ var EVENTS=[
  [102.4,'DSP' ,'07 GTCRN — complex ratio mask · 23.7 K params · 39.6 MMAC/s'],
  [106.0,'DSP' ,'08 Deep filtering — harmonics rebuilt below 5 kHz'],
  [108.7,'DSP' ,'09 Voice guard — LF rumble from interpolation removed'],
- [110.5,'DSP' ,'10 Residual — LMS from MIC 2 reference · −2.1 dB further'],
+ [110.5,'DSP' ,'10 Residual — LMS driven by <b>MIC 2</b> (not MIC 3) · −2.1 dB further'],
  [112.4,'DSP' ,'11 ISTFT — overlap-add, phase intact'],
  [113.4,'OUT' ,'Frame released · lane B <b>25.3 / 25.3 ms</b> · deadline met'],
  [113.5,'OUT' ,'To MELPe vocoder at 2400 bps — metrics re-measured after this'],
@@ -1213,10 +1435,12 @@ var evIdx=0;
 
 var elEv=document.getElementById('r-ev'),elT=document.getElementById('r-t'),
     elD=document.getElementById('r-d'),elLB=document.getElementById('r-lb'),
-    elLA=document.getElementById('r-la'),elBar=document.getElementById('barfill'),
+    elLA=document.getElementById('r-la'),elRes=document.getElementById('r-res'),
+    elBar=document.getElementById('barfill'),
     elLog=document.getElementById('log'),elNote=document.getElementById('scopenote'),
     elIrt=document.getElementById('irtnote');
-var cbs=[].slice.call(document.querySelectorAll('#cflow .cb'));
+var cbs =[].slice.call(document.querySelectorAll('#cflow .cb'));
+var cbsA=[].slice.call(document.querySelectorAll('#cflowA .cb'));
 var logEmpty=true;
 
 function logLine(t,kind,msg){
@@ -1232,12 +1456,15 @@ document.getElementById('clearlog').addEventListener('click',function(){
   logEmpty=true;
 });
 
-/* ---------------- signal-flow markers along the cabling ---------------- */
-function flowDot(c){
-  var m=new THREE.Mesh(new THREE.SphereGeometry(.42,14,10),
-    new THREE.MeshBasicMaterial({color:c}));m.visible=false;gFlow.add(m);return m;
+/* ---------------- signal-flow markers ---------------- */
+function flowDot(parent,c,r){
+  var m=new THREE.Mesh(new THREE.SphereGeometry(r||.42,12,9),
+    new THREE.MeshBasicMaterial({color:c}));m.visible=false;parent.add(m);return m;
 }
-var F1=flowDot(COL.m1),F2=flowDot(COL.m2),F3=flowDot(COL.text),F4=flowDot(COL.ok);
+var F1=flowDot(gFlow,COL.m1),F2=flowDot(gFlow,COL.m2),
+    F3=flowDot(gFlow,COL.text),F4=flowDot(gFlow,COL.ok);
+var FA1=flowDot(gFlow,COL.laneA,.18),FA2=flowDot(gFlow,COL.laneA,.18),
+    FA3=flowDot(gFlow,COL.m3,.16);
 
 /* ---------------- signal monitor ---------------- */
 var cv=document.getElementById('scopecv'),ctx=cv.getContext('2d');
@@ -1257,6 +1484,15 @@ function blastAt(t){
 function clip(v,l){return Math.max(-l,Math.min(l,v));}
 function mic1At(t){return clip(speechAt(t)+.82*blastAt(t)+.74*crackAt(t),.97);}
 function mic2At(t){return clip(1.0*blastAt(t)+.95*crackAt(t)+.012*Math.sin(t*7.7),.97);}
+/* Mic 3 is what is left at the ear: passive attenuation, then the
+   anti-noise converging over the first millisecond of the event. */
+function mic3At(t){
+  var pass=0.26;                                  // passive attenuation of the cup
+  var g=1;
+  if(t>=T_CRACK)  g=Math.min(g,0.34+0.66*Math.exp(-(t-T_CRACK)/0.45));
+  if(t>=T_BLAST)  g=Math.min(g,0.30+0.70*Math.exp(-(t-T_BLAST)/0.42));
+  return clip(pass*g*(blastAt(t)+0.95*crackAt(t)),.97);
+}
 function outAt(t){
   var g=1;
   if(t>=T_CRACK&&t<T_CRACK+4)g*=.62+.38*((t-T_CRACK)/4);
@@ -1264,24 +1500,28 @@ function outAt(t){
   return clip(speechAt(t)*g+.055*blastAt(t)*Math.exp(-(Math.max(0,t-T_BLAST))/8),.97);
 }
 var TRACES=[
-  {f:mic1At,lab:'MIC 1',sub:'voice + noise',cv:'--m1'},
-  {f:mic2At,lab:'MIC 2',sub:'reference',cv:'--m2'},
-  {f:outAt ,lab:'OUT'  ,sub:'transmitted',cv:'--ok'}
+  {f:mic1At,lab:'MIC 1',sub:'voice + noise · lane B',cv:'--m1' ,lane:'b'},
+  {f:mic2At,lab:'MIC 2',sub:'reference · both lanes',cv:'--m2' ,lane:'*'},
+  {f:mic3At,lab:'MIC 3',sub:'at the ear · lane A'   ,cv:'--m3' ,lane:'a'},
+  {f:outAt ,lab:'OUT'  ,sub:'transmitted · lane B'  ,cv:'--ok' ,lane:'b'}
 ];
+function visibleTraces(){
+  return TRACES.filter(function(t){
+    return lane==='both'||t.lane==='*'||t.lane===lane;
+  });
+}
 function drawScope(playhead){
-  var W=cv.width,H=cv.height,rows=3,rh=H/rows;
+  var W=cv.width,H=cv.height,TR=visibleTraces(),rows=TR.length,rh=H/rows;
   var bg=css('--bg')||'#fff', ln=css('--rule-soft')||'#e8e8ed', tx=css('--text-3')||'#6e6e73';
   ctx.clearRect(0,0,W,H);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
   var padL=96,padR=18,plotW=W-padL-padR;
   function X(t){return padL+(t/T_END)*plotW;}
 
-  /* grid + time ticks */
   ctx.strokeStyle=ln;ctx.lineWidth=1;ctx.font='500 17px ui-monospace,Menlo,Consolas,monospace';
   for(var t=0;t<=T_END;t+=25){
     ctx.beginPath();ctx.moveTo(X(t),8);ctx.lineTo(X(t),H-24);ctx.stroke();
     ctx.fillStyle=tx;ctx.textAlign='center';ctx.fillText(t+' ms',X(t),H-6);
   }
-  /* arrival markers */
   [[T_CRACK,'CRACK'],[T_BLAST,'BLAST']].forEach(function(m){
     ctx.save();ctx.strokeStyle=css('--src')||'#b3261e';ctx.setLineDash([5,4]);ctx.lineWidth=1.6;
     ctx.beginPath();ctx.moveTo(X(m[0]),4);ctx.lineTo(X(m[0]),H-24);ctx.stroke();ctx.restore();
@@ -1290,13 +1530,13 @@ function drawScope(playhead){
     ctx.fillText(m[1],X(m[0])+6,18);
   });
 
-  TRACES.forEach(function(tr,i){
-    var y0=i*rh, mid=y0+rh/2, amp=rh*0.40;
+  TR.forEach(function(tr,i){
+    var y0=i*rh, mid=y0+rh/2, amp=rh*0.38;
     ctx.strokeStyle=ln;ctx.beginPath();ctx.moveTo(padL,mid);ctx.lineTo(W-padR,mid);ctx.stroke();
     ctx.fillStyle=css('--text')||'#1d1d1f';ctx.textAlign='left';
     ctx.font='700 19px -apple-system,Segoe UI,Helvetica,Arial,sans-serif';
     ctx.fillText(tr.lab,10,mid-4);
-    ctx.fillStyle=tx;ctx.font='400 15px -apple-system,Segoe UI,Helvetica,Arial,sans-serif';
+    ctx.fillStyle=tx;ctx.font='400 14px -apple-system,Segoe UI,Helvetica,Arial,sans-serif';
     ctx.fillText(tr.sub,10,mid+16);
 
     var col=css(tr.cv)||'#1d1d1f';
@@ -1315,8 +1555,13 @@ function drawScope(playhead){
       stroke(0,Math.max(0.1,playhead),col,2.2);
       stroke(Math.max(0.1,playhead),T_END,ln,1.6);
     }
-    /* IRT bracket on the OUT trace */
-    if(i===2){
+    /* annotations: the attenuation bracket on MIC 3, IRT on OUT */
+    if(tr.lab==='MIC 3'){
+      ctx.fillStyle=css('--m3')||'#6a3fa0';ctx.textAlign='left';
+      ctx.font='600 15px ui-monospace,Menlo,Consolas,monospace';
+      ctx.fillText('lane A converged · −18.4 dB vs MIC 2',X(T_BLAST)+10,y0+rh-10);
+    }
+    if(tr.lab==='OUT'){
       var a=X(T_BLAST),b2=X(T_IRT);
       ctx.save();ctx.strokeStyle=css('--ok')||'#1d7a3e';ctx.lineWidth=1.8;
       ctx.beginPath();ctx.moveTo(a,y0+rh-34);ctx.lineTo(a,y0+rh-26);
@@ -1343,6 +1588,7 @@ rateBtn.addEventListener('click',function(){
 fireBtn.addEventListener('click',function(){
   SIM.on=true;SIM.t=-6;evIdx=0;SIM.fired++;
   cbs.forEach(function(c){c.classList.remove('lit','done');});
+  cbsA.forEach(function(c){c.classList.remove('lit','done');});
   logLine(0,'HW','── run '+SIM.fired+' · '+RATES[rIdx].l.replace('Rate — ','')+' ──');
   fireBtn.textContent='Running…';fireBtn.disabled=true;
   elNote.textContent='running';
@@ -1353,8 +1599,9 @@ function endRun(){
   elEv.textContent='complete';elNote.textContent='run '+SIM.fired+' complete — traces held';
   elBar.style.width='100%';
   setFront(W_BLAST,0,0);setFront(W_CRACK,0,0);
-  [F1,F2,F3,F4].forEach(function(d){d.visible=false;});
+  [F1,F2,F3,F4,FA1,FA2,FA3].forEach(function(d){d.visible=false;});
   cbs.forEach(function(c){c.classList.remove('lit');c.classList.add('done');});
+  cbsA.forEach(function(c){c.classList.remove('lit');c.classList.add('done');});
   drawScope(null);
 }
 function setFront(g,radius,alpha){
@@ -1392,6 +1639,7 @@ function stepSim(dtms){
   else if(t<T_BULLET)ev='blast expanding';
   else if(t<T_CRACK)ev='crack en route';
   else if(t<T_BLAST)ev='crack heard · armed';
+  else if(t<T_LANEA_END)ev='lane A cancelling';
   else if(t<T_LANEB_END)ev='lane B processing';
   else if(t<T_IRT)ev='recovering';
   else ev='transmitted';
@@ -1400,14 +1648,38 @@ function stepSim(dtms){
   elD.textContent=(t>=T_CRACK1)?'0.58 ms':'— ms';
   elLB.textContent=(t>=T_BLAST1?Math.min(25.3,t-T_BLAST1).toFixed(1):'—')+' / 25.3 ms';
   elLA.textContent=(t>=T_BLAST?Math.min(1.0,t-T_BLAST).toFixed(2):'—')+' / 1.0 ms';
+  if(t>=T_BLAST+0.55)      elRes.textContent='−18.4 dB';
+  else if(t>=T_BLAST)      elRes.textContent=(-18.4*((t-T_BLAST)/0.55)).toFixed(1)+' dB';
+  else                     elRes.textContent='— dB';
   elBar.style.width=Math.max(0,Math.min(100,(t/T_END)*100))+'%';
 
   function fl(n,a,b){if(PARTS[n]&&t>=a&&t<b)PARTS[n].userData.flash=1;}
   fl('mic2',T_CRACK,T_CRACK+3);fl('mic1',T_CRACK1,T_CRACK1+3);
   fl('mic2',T_BLAST,T_BLAST+3);fl('mic1',T_BLAST1,T_BLAST1+3);
-  fl('spk',T_BLAST+.4,T_BLAST+3);fl('mic3',T_BLAST+1.2,T_BLAST+4);
+  fl('spk',T_BLAST+.4,T_BLAST+3);fl('mic3',T_BLAST+.6,T_BLAST+4);
 
-  if(showFlow){
+  /* ---- Lane A: the loop closes inside one millisecond ---- */
+  if(showFlow&&lane!=='b'){
+    var aOn=t>=T_BLAST&&t<T_BLAST+1.6;
+    FA1.visible=aOn;FA2.visible=aOn;FA3.visible=aOn;
+    if(aOn){
+      var ua=Math.min(.999,Math.max(0,(t-T_BLAST)/0.55));
+      LANEA_PATH.ref .getPointAt(ua,FA1.position);
+      LANEA_PATH.anti.getPointAt(ua,FA2.position);
+      LANEA_PATH.err .getPointAt(Math.min(.999,Math.max(0,(t-T_BLAST-0.3)/0.55)),FA3.position);
+    }
+  }else{FA1.visible=FA2.visible=FA3.visible=false;}
+
+  if(t>=T_BLAST){
+    var ua2=(t-T_BLAST)/1.0, ia=Math.floor(ua2*6);
+    cbsA.forEach(function(c,i){
+      c.classList.toggle('lit',i===Math.min(5,ia));
+      c.classList.toggle('done',i<Math.min(5,ia));
+    });
+  }
+
+  /* ---- Lane B: across the bench ---- */
+  if(showFlow&&lane!=='a'){
     var f1on=t>=T_BLAST1&&t<T_BLAST1+8;
     F1.visible=f1on;F2.visible=f1on;
     if(f1on){
@@ -1421,7 +1693,7 @@ function stepSim(dtms){
     var f4on=t>=T_LANEB_END&&t<T_LANEB_END+8;
     F4.visible=f4on;
     if(f4on)CB.radio.userData.curve.getPointAt(Math.min(.999,(t-T_LANEB_END)/8),F4.position);
-  }
+  }else{F1.visible=F2.visible=F3.visible=F4.visible=false;}
 
   if(t>=T_BLAST1){
     var ub=(t-T_BLAST1)/25.3, idx=Math.floor(((ub-.04)/.86)*12);
@@ -1448,19 +1720,36 @@ function resize(){
 }
 window.addEventListener('resize',resize);
 
+/* ---------------- label projection ----------------
+   Two decluttering rules: secondary labels appear only when the
+   camera is close enough to be looking at that assembly, and any
+   label that would land on top of another is pushed down.        */
 var v3=new THREE.Vector3();
 function projectLabels(){
   if(!showLabels)return;
   var r=vp.getBoundingClientRect(),placed=[];
+  var closeIn=cam.r<70;
   LBL.forEach(function(o){
+    var inLane=(lane==='both')||(o.lane==='*')||(o.lane===lane);
+    if(!inLane||(o.pri>1&&!closeIn)){o.el.style.display='none';return;}
     v3.copy(o.p).project(camera);
     if(v3.z>=1){o.el.style.display='none';return;}
     var x=(v3.x*.5+.5)*r.width, y=(-v3.y*.5+.5)*r.height;
     for(var i=0;i<placed.length;i++)
-      if(Math.abs(placed[i][0]-x)<126&&Math.abs(placed[i][1]-y)<22)y=placed[i][1]+24;
+      if(Math.abs(placed[i][0]-x)<132&&Math.abs(placed[i][1]-y)<23)y=placed[i][1]+25;
     placed.push([x,y]);
     if(x<-100||x>r.width+100||y<-30||y>r.height+30){o.el.style.display='none';return;}
     o.el.style.display='';o.el.style.left=x+'px';o.el.style.top=y+'px';
+  });
+  /* bench zone captions */
+  ZONES.forEach(function(z){
+    if(!z.el)return;
+    if(!showZones||closeIn){z.el.style.display='none';return;}
+    v3.copy(z.anchor).project(camera);
+    if(v3.z>=1){z.el.style.display='none';return;}
+    var x=(v3.x*.5+.5)*r.width, y=(-v3.y*.5+.5)*r.height;
+    if(x<0||x>r.width||y<0||y>r.height){z.el.style.display='none';return;}
+    z.el.style.display='';z.el.style.left=x+'px';z.el.style.top=y+'px';
   });
 }
 
@@ -1470,19 +1759,27 @@ function loop(now){
   if(spin&&!drag)camTo.th+=dt*.000055;
   dampCamera(dt);
 
-  /* exploded view */
+  /* ---- exploded view ----
+     The cup shell lifts away from the head, taking the driver with
+     it; the sensor markers follow so the Lane A geometry stays
+     aligned. The loop wiring is a schematic, so it is hidden.     */
   var ex=exploded?1:0;
   if(PARTS.cups)PARTS.cups.forEach(function(c){
     c.position.x=c.userData.home.x+c.userData.side*ex*6.5;
   });
   if(PARTS.boom)PARTS.boom.position.set(-ex*6.5,0,ex*2.0);
   if(PARTS.cooler)PARTS.cooler.position.y=PARTS.cooler.userData.home.y+ex*7.0;
-  if(PARTS.psuGroup)PARTS.psuGroup.position.z=P_PSU.z+ex*7.0;
+  if(PARTS.psuGroup)PARTS.psuGroup.position.z=P_PSU.z+ex*6.0;
+  if(PARTS.dspA){
+    if(!PARTS.dspA.userData.home)PARTS.dspA.userData.home=PARTS.dspA.position.clone();
+    PARTS.dspA.position.x=PARTS.dspA.userData.home.x+ex*5.0;
+  }
   ['mic1','mic2','mic3','spk'].forEach(function(k){
     var n=PARTS[k];if(!n)return;
     var s=(k==='mic1')?-1:1, home=n.userData.home;
-    n.position.set(home.x+s*ex*(k==='mic3'?3.4:6.5),home.y,home.z+(k==='mic1'?ex*2.0:0));
+    n.position.set(home.x+s*ex*6.5,home.y,home.z+(k==='mic1'?ex*2.0:0));
   });
+  if(typeof gLaneLoop!=='undefined')gLaneLoop.visible=!exploded;
 
   /* cooler fan spins whenever the board is powered */
   if(PARTS.coolerFan)PARTS.coolerFan.rotation.y+=dt*.010;

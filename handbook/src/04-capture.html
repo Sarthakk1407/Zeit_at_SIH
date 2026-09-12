@@ -6,16 +6,50 @@
   <div class="col">
     <h3>Why real data at all</h3>
     <p>The real recordings are <strong>not the training set</strong>. They are the <em>reference</em> against which the synthetic generator is validated. The network trains on generated audio, which is effectively unlimited — the limit is compute, not recordings. The real set only has to be large enough to establish a <strong>tolerance</strong>.</p>
-    <pre><code>real gunshots (~48–60 events)  ──►  validate the generator
-                                         │
-                                         ▼
-                                synthetic generator
-                                         │
-                                         ▼
-              unlimited noise  ──+──  clean speech corpus
-                                 │
-                                 ▼
-                        training mixtures  ──►  the model</code></pre>
+  </div>
+<figure>
+  <span class="fignum">Figure 6 &middot; The real recordings are the reference, not the training set</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 260" role="img"
+       aria-label="About fifty real gunshot events validate a synthetic generator, which then produces unlimited noise; that noise is mixed with a clean speech corpus to make the training pairs.">
+    <rect class="box crit" x="20" y="90" width="200" height="76" rx="8"/>
+    <text class="t sm" x="34" y="118">Real gunshots</text>
+    <text class="s" x="34" y="136">48&ndash;60 events, calibrated</text>
+    <text class="s" x="34" y="152">one trip, no retry</text>
+
+    <line class="e" x1="220" y1="128" x2="296" y2="128" marker-end="url(#ar)"/>
+    <text class="el" x="226" y="118">validates</text>
+
+    <rect class="box" x="300" y="90" width="220" height="76" rx="8"/>
+    <text class="t sm" x="314" y="118">Synthetic generator</text>
+    <text class="s" x="314" y="136">Friedlander, directivity,</text>
+    <text class="s" x="314" y="152">ground reflection, device chain</text>
+
+    <line class="e" x1="520" y1="128" x2="596" y2="128" marker-end="url(#ar)"/>
+    <text class="el" x="526" y="118">produces</text>
+
+    <rect class="box" x="600" y="42" width="200" height="62" rx="8"/>
+    <text class="t sm" x="614" y="68">Unlimited noise</text>
+    <text class="s" x="614" y="86">the limit is compute</text>
+
+    <rect class="box" x="600" y="152" width="200" height="62" rx="8"/>
+    <text class="t sm" x="614" y="178">Clean speech corpus</text>
+    <text class="s" x="614" y="196">the answer to learn</text>
+
+    <path class="e" d="M800,73 C 840,73 850,110 880,122" marker-end="url(#ar)"/>
+    <path class="e" d="M800,183 C 840,183 850,146 880,134" marker-end="url(#ar)"/>
+
+    <rect class="box hi" x="884" y="96" width="96" height="64" rx="8"/>
+    <text class="t sm" x="896" y="122">Training</text>
+    <text class="t sm" x="896" y="140">pairs</text>
+
+    <text class="el" x="20" y="210">The network never trains on the real recordings. They only establish the tolerance the generator must fall inside.</text>
+    <text class="el" x="20" y="232">A holdout split is assigned <tspan font-weight="700">before the data exists</tspan>, so the comparison cannot be tuned after the fact.</text>
+  </svg>
+  </div>
+  <figcaption><b>This is the answer to &ldquo;you only have fifty gunshots &mdash; how can you train on that?&rdquo;</b> We do not. Fifty calibrated events are plenty to fit a distribution and to <em>test</em> whether a generator reproduces it. The generator then produces as much training material as compute allows.</figcaption>
+</figure>
+  <div class="col">
 
     <h3>Recording settings, and why each one is not negotiable</h3>
   </div>
@@ -44,9 +78,61 @@
     <p><code>validate.py --array</code> understands this: clipping on the hot channel is <em>not</em> a failure as long as the cold channel holds the peak. Without that flag every take would fail and the operator would learn to ignore warnings — which is the real failure mode that flag exists to prevent.</p>
 
     <h3>The signal chain, and the one constraint software cannot fix</h3>
-    <pre><code>mic --XLR--&gt; [pad] --&gt; preamp / USB interface --&gt; laptop
-                            │
-                      +48 V phantom: a condenser needs it, a dynamic does not</code></pre>
+  </div>
+<figure>
+  <span class="fignum">Figure 7 &middot; The capture chain, and the one thing software cannot fix</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 300" role="img"
+       aria-label="The capture chain from microphone through pad and preamp to two staggered-gain channels, with microphone maximum SPL marked as the binding constraint.">
+    <rect class="box crit" x="20" y="104" width="150" height="70" rx="8"/>
+    <text class="t sm" x="34" y="130">Microphone</text>
+    <text class="s" x="34" y="148">max SPL 110&ndash;120 dB</text>
+    <text class="s" x="34" y="164">the binding constraint</text>
+
+    <line class="e" x1="170" y1="139" x2="216" y2="139" marker-end="url(#ar)"/>
+    <text class="el" x="174" y="130">XLR</text>
+
+    <rect class="box" x="220" y="104" width="110" height="70" rx="8"/>
+    <text class="t sm" x="234" y="130">Pad</text>
+    <text class="s" x="234" y="148">&minus;10 / &minus;20 dB</text>
+
+    <line class="e" x1="330" y1="139" x2="376" y2="139" marker-end="url(#ar)"/>
+
+    <rect class="box" x="380" y="104" width="190" height="70" rx="8"/>
+    <text class="t sm" x="394" y="130">Preamp / interface</text>
+    <text class="s" x="394" y="148">24-bit &middot; 96 kHz</text>
+    <text class="s" x="394" y="164">+48 V for a condenser</text>
+
+    <path class="e" d="M570,124 C 600,124 604,66 634,66" marker-end="url(#ar)"/>
+    <path class="e" d="M570,154 C 600,154 604,212 634,212" marker-end="url(#ar)"/>
+
+    <rect class="box warn" x="638" y="36" width="230" height="62" rx="8"/>
+    <text class="t sm" x="652" y="62">ch 1 &mdash; HOT</text>
+    <text class="s" x="652" y="80">tail and quiet detail &middot; will clip</text>
+
+    <rect class="box" x="638" y="182" width="230" height="62" rx="8"/>
+    <text class="t sm" x="652" y="208">ch 2 &mdash; COLD</text>
+    <text class="s" x="652" y="226">18&ndash;24 dB down &middot; holds the peak</text>
+
+    <path class="e" d="M868,67 C 900,67 906,124 936,132" marker-end="url(#ar)"/>
+    <path class="e" d="M868,213 C 900,213 906,156 936,148" marker-end="url(#ar)"/>
+    <rect class="box" x="880" y="104" width="100" height="70" rx="8"/>
+    <text class="t sm" x="892" y="132">validate</text>
+    <text class="s" x="892" y="150">--array</text>
+
+    <text class="el no" x="20" y="216">Once the capsule saturates, the</text>
+    <text class="el no" x="20" y="232">waveform arrives already flat-topped.</text>
+    <text class="el no" x="20" y="248">No pad and no gain change downstream</text>
+    <text class="el no" x="20" y="264">recovers it. Only distance helps &mdash;</text>
+    <text class="el no" x="20" y="280">6 dB per doubling.</text>
+
+    <text class="el" x="380" y="264">One gain setting cannot span 100 dB in a single event,</text>
+    <text class="el" x="380" y="280">so two sample-aligned channels are recorded instead.</text>
+  </svg>
+  </div>
+  <figcaption><b>Clipping on the hot channel is not a failure</b> as long as the cold channel holds the peak, and <code>validate.py --array</code> knows that. Without the flag every take would fail, and the operator would learn to ignore warnings &mdash; which is the real failure mode the flag exists to prevent.</figcaption>
+</figure>
+  <div class="col">
     <p><strong>Microphone maximum SPL is the binding constraint.</strong> A 3.5 mm electret tops out around 100–120 dB SPL; a blank pistol at 1 m is 140–155 dB. Once the capsule or its internal FET saturates, no pad and no gain change downstream recovers the waveform. Only distance helps. Check the microphone's published "Max SPL" against the source before trusting any recording of it.</p>
 
     <h4>Setting gain without live fire</h4>

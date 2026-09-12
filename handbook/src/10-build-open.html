@@ -4,29 +4,86 @@
   <p class="sec-sub">What each stage produces, what blocks what, and the two stages that need no hardware and can start today.</p>
 
   <div class="col">
-    <pre><code>  STAGE 0  foundations ─────────────────────────┐
-      0a toolkit            BUILT                │
-      0b baselines          READY TO START       │
-      0c noise corpora      READY TO START       │
-      0d speech corpus      DECIDE TODAY         │
-                                                 │
-  STAGE 1  real reference ◄── needs 0a           │
-      range trip → calibrate → IR → measure → FREEZE
-                          │                      │
-  STAGE 2  baseline collapse ◄── needs 0b + 0c ──┘
-      normalisation fix → impulsive grid → latency chart
-                          │   ◄── the finding the story rests on
-  STAGE 3  synthetic generator ◄── needs 1 + 2
-      build → measure with the SAME engine → compare vs holdout
-                          ▼   dataset-quality claim proven here
-  STAGE 4  training data ◄── needs 3 + 0d
-      mix at SNRs → augment → convolve with RIRs
-  STAGE 5  model ◄── needs 4
-      two-path architecture → train → evaluate on the grid
-  STAGE 6  edge ◄── needs 5
-      prune → quantize → deploy → measure MMAC, latency, WATTS
-  STAGE 7  the extra experiment ◄── needs 6
-      α-stable vs prune-ability</code></pre>
+  </div>
+<figure>
+  <span class="fignum">Figure 10 &middot; Build order &mdash; what blocks what</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 470" role="img"
+       aria-label="Build dependency graph: stage 0 foundations feed the range trip and the baseline collapse experiment, which together feed the synthetic generator, then training data, model, edge deployment and a final experiment.">
+
+    <!-- stage 0 -->
+    <rect class="band" x="20" y="26" width="300" height="150" rx="10"/>
+    <text class="hd" x="36" y="50">STAGE 0 &middot; FOUNDATIONS</text>
+    <text class="t sm" x="36" y="76">0a Toolkit</text>
+    <text class="s" x="220" y="76" fill="var(--ok)">BUILT</text>
+    <text class="t sm" x="36" y="100">0b Baselines</text>
+    <text class="s" x="176" y="100" fill="var(--warn)">READY TO START</text>
+    <text class="t sm" x="36" y="124">0c Noise corpora</text>
+    <text class="s" x="176" y="124" fill="var(--warn)">READY TO START</text>
+    <text class="t sm" x="36" y="148">0d Speech corpus</text>
+    <text class="s" x="192" y="148" fill="var(--crit)">DECIDE TODAY</text>
+
+    <!-- stage 1 -->
+    <path class="e" d="M320,76 L360,76 L360,72" marker-end="url(#ar)"/>
+    <rect class="box" x="380" y="26" width="290" height="70" rx="8"/>
+    <text class="n" x="394" y="46">STAGE 1</text>
+    <text class="t sm" x="394" y="64">Real reference</text>
+    <text class="s" x="394" y="82">range trip &rarr; calibrate &rarr; IR &rarr; measure &rarr; FREEZE</text>
+    <text class="el" x="330" y="66">needs 0a</text>
+
+    <!-- stage 2 -->
+    <path class="e" d="M320,112 L360,112 L360,146" marker-end="url(#ar)"/>
+    <rect class="box crit" x="380" y="122" width="290" height="70" rx="8"/>
+    <text class="n" x="394" y="142">STAGE 2</text>
+    <text class="t sm" x="394" y="160">Baseline collapse</text>
+    <text class="s" x="394" y="178">normalisation fix &rarr; impulsive grid &rarr; latency chart</text>
+    <text class="el" x="326" y="136">needs 0b + 0c</text>
+    <text class="el no" x="690" y="152">the finding the</text>
+    <text class="el no" x="690" y="167">whole story rests on</text>
+
+    <!-- stage 3 -->
+    <path class="e" d="M525,96 L525,110 L280,110 L280,214" marker-end="url(#ar)"/>
+    <path class="e" d="M525,192 L525,206 L280,206"/>
+    <rect class="box" x="120" y="218" width="420" height="70" rx="8"/>
+    <text class="n" x="134" y="238">STAGE 3</text>
+    <text class="t sm" x="134" y="256">Synthetic generator</text>
+    <text class="s" x="134" y="274">build &rarr; measure with the SAME engine &rarr; compare vs holdout</text>
+    <text class="el" x="548" y="234">needs 1 + 2 &mdash; the dataset-quality claim is proven here</text>
+
+    <!-- stage 4 -->
+    <line class="e" x1="330" y1="288" x2="330" y2="314" marker-end="url(#ar)"/>
+    <path class="e" d="M170,176 L100,176 L100,330 L116,330" marker-end="url(#ar)"/>
+    <text class="el" x="36" y="200">0d joins here</text>
+    <rect class="box" x="120" y="318" width="420" height="62" rx="8"/>
+    <text class="n" x="134" y="338">STAGE 4</text>
+    <text class="t sm" x="134" y="356">Training data</text>
+    <text class="s" x="134" y="373">mix at SNRs &rarr; augment &rarr; convolve with room responses</text>
+
+    <!-- stage 5 -->
+    <line class="e" x1="540" y1="349" x2="596" y2="349" marker-end="url(#ar)"/>
+    <rect class="box hi" x="600" y="318" width="380" height="62" rx="8"/>
+    <text class="n" x="614" y="338">STAGE 5</text>
+    <text class="t sm" x="614" y="356">Model</text>
+    <text class="s" x="614" y="373">two-path architecture &rarr; train &rarr; evaluate on the grid</text>
+
+    <!-- stage 6 -->
+    <path class="e" d="M790,380 L790,398 L600,398 L600,416" marker-end="url(#ar)"/>
+    <rect class="box b" x="120" y="420" width="480" height="44" rx="8"/>
+    <text class="n" x="134" y="440">STAGE 6</text>
+    <text class="t sm" x="200" y="440">Edge</text>
+    <text class="s" x="256" y="440">prune &rarr; quantise &rarr; deploy &rarr; measure MMAC, latency and WATTS</text>
+
+    <!-- stage 7 -->
+    <line class="e" x1="600" y1="442" x2="646" y2="442" marker-end="url(#ar)"/>
+    <rect class="box" x="650" y="420" width="330" height="44" rx="8"/>
+    <text class="n" x="664" y="440">STAGE 7</text>
+    <text class="t sm" x="730" y="440">Extra experiment</text>
+    <text class="s" x="854" y="440">&alpha;-stable vs prune-ability</text>
+  </svg>
+  </div>
+  <figcaption><b>Stage 2 is the one to start first even though it looks optional.</b> It needs no hardware, no range trip and no new data &mdash; and it produces the measurement the entire argument rests on: how badly prediction-based cancellation collapses on impulsive noise. Stage 0d is marked in red because an undecided speech corpus silently blocks Stage 4, which blocks everything after it.</figcaption>
+</figure>
+  <div class="col">
 
     <p><strong>Stage 2 does not wait for the range trip.</strong> It needs only public data, it can start today, and it produces the two findings the whole project argues from — the baseline-collapse table and the latency chart.</p>
   </div>

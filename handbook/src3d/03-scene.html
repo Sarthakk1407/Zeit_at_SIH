@@ -7,6 +7,10 @@ if(!window.THREE){L.textContent='three.js failed to load — check the network c
 /* =====================================================================
    ZEIT prototype bench
    World scale: 1 unit = 10 mm. Component dimensions follow datasheets.
+
+   Layout rule: every device lies flat on one bench plane so nothing
+   towers over anything else, and the three functional zones — CAPTURE,
+   COMPUTE, SINK — are spaced apart and marked on the bench surface.
    ===================================================================== */
 
 function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
@@ -23,19 +27,19 @@ renderer.toneMappingExposure=1.0;
 vp.insertBefore(renderer.domElement,vp.firstChild);
 
 /* ---------------- lighting: soft studio ---------------- */
-var hemi=new THREE.HemisphereLight(0xffffff,0x9aa0a6,0.75);scene.add(hemi);
-var keyL=new THREE.DirectionalLight(0xffffff,0.62);keyL.position.set(40,70,50);scene.add(keyL);
+var hemi=new THREE.HemisphereLight(0xffffff,0x9aa0a6,0.78);scene.add(hemi);
+var keyL=new THREE.DirectionalLight(0xffffff,0.60);keyL.position.set(40,70,50);scene.add(keyL);
 var fillL=new THREE.DirectionalLight(0xffffff,0.26);fillL.position.set(-60,30,-30);scene.add(fillL);
 var rimL=new THREE.DirectionalLight(0xffffff,0.20);rimL.position.set(0,20,-70);scene.add(rimL);
 
-var grid=new THREE.GridHelper(600,60);grid.position.y=-0.55;scene.add(grid);
-grid.material.transparent=true;grid.material.opacity=.32;
+var grid=new THREE.GridHelper(600,60);grid.position.y=-1.4;scene.add(grid);
+grid.material.transparent=true;grid.material.opacity=.24;
 
 var COL={};
 function readColours(){
   COL.m1=hexOf('--m1');COL.m2=hexOf('--m2');COL.m3=hexOf('--m3');
   COL.spk=hexOf('--spk');COL.src=hexOf('--src');COL.text=hexOf('--text');
-  COL.ok=hexOf('--ok');
+  COL.ok=hexOf('--ok');COL.laneA=hexOf('--laneA');COL.laneB=hexOf('--laneB');
 }
 readColours();
 
@@ -46,8 +50,9 @@ function std(c,r,m,o){
   return new THREE.MeshStandardMaterial(p);
 }
 var MAT={
-  bench    : std(0xdcdce0,.92,.02),
-  skin     : std(0xd6d6da,.95,.00,.60),
+  bench    : std(0xdcdce0,.94,.02),
+  benchTop : std(0xe6e6ea,.96,.01),
+  skin     : std(0xd6d6da,.95,.00,.52),
   plastic  : std(0xb4b4ba,.55,.10),
   plasticD : std(0x4a4a50,.60,.10),
   foam     : std(0x5c5c62,.97,.00),
@@ -55,9 +60,8 @@ var MAT={
   metalD   : std(0x8c8f94,.42,.68),
   gold     : std(0xc9a227,.34,.85),
   pcb      : std(0x0f7a46,.72,.06),   // Raspberry Pi green
-  pcbDark  : std(0x0a5a34,.75,.06),
+  pcbBlue  : std(0x14406e,.70,.06),   // Lane A DSP module
   black    : std(0x16161a,.62,.14),
-  blackGl  : std(0x0d0d10,.36,.20),
   white    : std(0xf2f2f4,.62,.02),
   usb3     : std(0x1f4fa8,.60,.10),
   behringer: std(0x9d1b1b,.46,.22),   // UMC202HD body
@@ -71,44 +75,73 @@ function applyTheme(){
   readColours();
   var bg=new THREE.Color(css('--scene')||'#ececed');
   scene.background=bg;
-  scene.fog=new THREE.Fog(bg.getHex(),260,760);
+  scene.fog=new THREE.Fog(bg.getHex(),280,820);
   grid.material.color=new THREE.Color(css('--grid')||'#c9c9ce');
   var dark=bg.r<0.4;
-  hemi.intensity=dark?0.42:0.75;
-  keyL.intensity=dark?0.52:0.62;
+  hemi.intensity=dark?0.44:0.78;
+  keyL.intensity=dark?0.52:0.60;
   MAT.bench.color.setHex(dark?0x141416:0xdcdce0);
+  MAT.benchTop.color.setHex(dark?0x1b1b1e:0xe6e6ea);
   MAT.skin.color.setHex(dark?0x6a6a74:0xd6d6da);
   MAT.plastic.color.setHex(dark?0x53535a:0xb4b4ba);
   MAT.metal.color.setHex(dark?0x8b8e93:0xb9bcc0);
   MAT.white.color.setHex(dark?0xcfcfd4:0xf2f2f4);
 }
 
-/* ---------------- scene graph ---------------- */
+/* ---------------- scene graph ----------------
+   Groups are tagged by lane so the lane filter can isolate either
+   system without the other's hardware in the frame.                */
 var root=new THREE.Group();scene.add(root);
-var gHead =new THREE.Group();   // head + headset + stand
-var gIface=new THREE.Group();   // UMC202HD
-var gPi   =new THREE.Group();   // Pi 5 + cooler + PSU + SD
+var gBench=new THREE.Group();   // slab + zone outlines
+var gHead =new THREE.Group();   // head + headset + stand   (both lanes)
+var gLaneA=new THREE.Group();   // FxLMS module + the anti-noise loop
+var gIface=new THREE.Group();   // UMC202HD                 (lane B)
+var gPi   =new THREE.Group();   // Pi 5 + cooler + PSU      (lane B)
+var gRadio=new THREE.Group();   // communication unit       (lane B)
 var gField=new THREE.Group();   // source, trajectory, wavefronts
-var gCable=new THREE.Group();   // cabling
+var gCabA =new THREE.Group();   // lane A cabling
+var gCabB =new THREE.Group();   // lane B cabling
 var gFlow =new THREE.Group();   // signal-flow markers
-root.add(gHead,gIface,gPi,gField,gCable,gFlow);
+root.add(gBench,gHead,gLaneA,gIface,gPi,gRadio,gField,gCabA,gCabB,gFlow);
 
-/* bench slab */
+/* ---------------- bench slab, sized to its contents ---------------- */
+var BENCH={x0:-56,x1:44,z0:-20,z1:20};
 (function(){
-  var slab=new THREE.Mesh(new THREE.BoxGeometry(150,1.1,64),MAT.bench);
-  slab.position.set(4,-0.55,0);root.add(slab);
+  var w=BENCH.x1-BENCH.x0, d=BENCH.z1-BENCH.z0, cx=(BENCH.x0+BENCH.x1)/2, cz=(BENCH.z0+BENCH.z1)/2;
+  var slab=new THREE.Mesh(new THREE.BoxGeometry(w,1.2,d),MAT.bench);
+  slab.position.set(cx,-0.6,cz);gBench.add(slab);
+  var top=new THREE.Mesh(new THREE.BoxGeometry(w-0.6,0.06,d-0.6),MAT.benchTop);
+  top.position.set(cx,0.02,cz);gBench.add(top);
+})();
+
+/* zone outlines drawn on the bench surface, like a layout drawing */
+var ZONES=[
+  {x0:-52,x1:-24,z0:-13,z1:13,t:'CAPTURE'},
+  {x0:-19,x1: 22,z0:-13,z1:13,t:'COMPUTE'},
+  {x0: 26,x1: 41,z0:-13,z1:13,t:'SINK'}
+];
+(function(){
+  var lm=new THREE.LineBasicMaterial({color:COL.text,transparent:true,opacity:.17});
+  ZONES.forEach(function(z){
+    var p=[new THREE.Vector3(z.x0,0.08,z.z0),new THREE.Vector3(z.x1,0.08,z.z0),
+           new THREE.Vector3(z.x1,0.08,z.z1),new THREE.Vector3(z.x0,0.08,z.z1),
+           new THREE.Vector3(z.x0,0.08,z.z0)];
+    var l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),lm);
+    gBench.add(l);
+    z.anchor=new THREE.Vector3((z.x0+z.x1)/2,0.4,z.z1+1.2);
+  });
 })();
 
 /* ---------------- damped orbit camera ---------------- */
-var tgt   ={x:-4,y:12,z:0};      // current look-at
-var tgtTo ={x:-4,y:12,z:0};      // desired look-at
-var cam   ={r:150,th:0.62,ph:1.14};
-var camTo ={r:150,th:0.62,ph:1.14};
+var tgt   ={x:-6,y:9,z:0};
+var tgtTo ={x:-6,y:9,z:0};
+var cam   ={r:126,th:0.60,ph:1.10};
+var camTo ={r:126,th:0.60,ph:1.10};
 var drag=null,lx=0,ly=0,pointers={},pinch0=0,userMoved=0;
 
 function clampCam(o){
   o.ph=Math.max(0.10,Math.min(Math.PI-0.10,o.ph));
-  o.r =Math.max(9,Math.min(520,o.r));
+  o.r =Math.max(7,Math.min(520,o.r));
 }
 function placeCamera(){
   camera.position.set(
@@ -118,7 +151,7 @@ function placeCamera(){
   camera.lookAt(tgt.x,tgt.y,tgt.z);
 }
 function dampCamera(dt){
-  var k=1-Math.pow(0.0016,dt/1000);         // frame-rate independent smoothing
+  var k=1-Math.pow(0.0016,dt/1000);
   clampCam(camTo);
   cam.r  += (camTo.r  - cam.r )*k;
   cam.th += (camTo.th - cam.th)*k;
@@ -174,11 +207,13 @@ vp.addEventListener('wheel',function(e){
 
 /* ---------------- camera presets ---------------- */
 var VIEWS={
-  system :{r:150,th:.62,ph:1.14,t:[  -4,12,  0],lab:'System overview'},
-  headset:{r:34 ,th:.75,ph:1.20,t:[ -34,22,  0],lab:'Headset — three microphones'},
-  iface  :{r:30 ,th:.55,ph:1.06,t:[  -6, 3,  0],lab:'Audio interface — UMC202HD'},
-  pi     :{r:26 ,th:.70,ph:0.98,t:[  17, 2,  2],lab:'Raspberry Pi 5 — the engine'},
-  field  :{r:420,th:.86,ph:1.16,t:[-120,14,100],lab:'Field — source at 30 m'}
+  system :{r:126,th:.60,ph:1.10,t:[  -6, 9,  0],lab:'System overview'},
+  headset:{r:32 ,th:.78,ph:1.18,t:[ -40,17,  0],lab:'Headset — three microphones'},
+  earcup :{r:20 ,th:.40,ph:1.02,t:[-29.8,16.6,0.8],lab:'Earcup cutaway — Lane A loop'},
+  iface  :{r:26 ,th:.55,ph:1.04,t:[ -10, 3,  0],lab:'Audio interface — UMC202HD'},
+  pi     :{r:23 ,th:.70,ph:0.96,t:[  12, 3,  0],lab:'Raspberry Pi 5 — the Lane B engine'},
+  radio  :{r:24 ,th:.62,ph:0.94,t:[  33, 2,  0],lab:'Communication unit — Lane B sink'},
+  field  :{r:400,th:.86,ph:1.14,t:[-130,12, 96],lab:'Field — source at 30 m'}
 };
 function goView(k){
   var v=VIEWS[k];if(!v)return;

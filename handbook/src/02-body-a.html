@@ -126,6 +126,72 @@
 
     <p>The two lanes are also <strong>complementary in what they are good at</strong>. Lane A, being classical adaptive filtering, is genuinely strong on low-frequency continuous noise — engine, rotor, generator, vehicle rumble. Lane B, being learned, is strong on broadband, non-stationary and impulsive content in the speech channel. Saying so explicitly is worth doing: it explains why both exist rather than one being a weaker version of the other.</p>
   </div>
+
+<figure>
+  <span class="fignum">Figure 2 &middot; Lane A &mdash; the FxLMS loop, in full</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 366" role="img"
+       aria-label="FxLMS block diagram: the Mic 2 reference drives an adaptive filter whose output passes through the driver and air to sum with the leaked noise at the eardrum; Mic 3 measures the residual and updates the filter through a filtered reference.">
+
+    <rect class="box" x="20" y="148" width="150" height="56" rx="8"/>
+    <text class="t sm" x="32" y="174">Mic 2</text>
+    <text class="s" x="32" y="192">reference x(n)</text>
+
+    <path class="e" d="M200,176 L200,68 L247,68" marker-end="url(#ar)"/>
+    <rect class="box" x="250" y="40" width="410" height="56" rx="8"/>
+    <text class="t sm" x="264" y="66">P(z) &mdash; the primary path</text>
+    <text class="s" x="264" y="84">shell, cushion and seal: the noise that gets through passively</text>
+    <path class="e" d="M660,68 L760,68 L760,150" marker-end="url(#ar)"/>
+    <text class="el" x="668" y="58">d(n) &mdash; what leaks in</text>
+
+    <line class="e a" x1="170" y1="176" x2="247" y2="176" marker-end="url(#arA)"/>
+    <rect class="box a" x="250" y="148" width="180" height="56" rx="8"/>
+    <text class="t sm" x="264" y="174">W(z) &mdash; adaptive filter</text>
+    <text class="s" x="264" y="192">the coefficients that adapt</text>
+
+    <line class="e a" x1="430" y1="176" x2="477" y2="176" marker-end="url(#arA)"/>
+    <text class="el a" x="437" y="166">y(n)</text>
+    <rect class="box a" x="480" y="148" width="180" height="56" rx="8"/>
+    <text class="t sm" x="494" y="174">S(z) &mdash; secondary path</text>
+    <text class="s" x="494" y="192">converter, amp, driver, air</text>
+
+    <line class="e a" x1="660" y1="176" x2="734" y2="176" marker-end="url(#arA)"/>
+    <text class="el a" x="668" y="166">anti-noise</text>
+
+    <circle class="box hi" cx="760" cy="176" r="24"/>
+    <text class="t" x="752" y="182">&Sigma;</text>
+
+    <line class="e" x1="784" y1="176" x2="855" y2="176" marker-end="url(#ar)"/>
+    <rect class="box" x="858" y="148" width="122" height="56" rx="8"/>
+    <text class="t sm" x="870" y="174">The eardrum</text>
+    <text class="s" x="870" y="192">what is heard</text>
+
+    <path class="e a" d="M760,200 L760,244 L800,244 L800,268" marker-end="url(#arA)"/>
+    <rect class="box a" x="700" y="270" width="180" height="56" rx="8"/>
+    <text class="t sm" x="714" y="296">Mic 3</text>
+    <text class="s" x="714" y="314">residual error e(n)</text>
+
+    <path class="e dash" d="M200,176 L200,298 L247,298" marker-end="url(#ar)"/>
+    <rect class="box" x="250" y="270" width="180" height="56" rx="8"/>
+    <text class="t sm" x="264" y="296">&Scaron;(z) &mdash; the estimate</text>
+    <text class="s" x="264" y="314">measured once, with a sweep</text>
+
+    <line class="e" x1="430" y1="298" x2="467" y2="298" marker-end="url(#ar)"/>
+    <rect class="box warn" x="470" y="270" width="180" height="56" rx="8"/>
+    <text class="t sm" x="484" y="296">LMS update</text>
+    <text class="s" x="484" y="314">the only learning here</text>
+
+    <line class="e a" x1="700" y1="298" x2="656" y2="298" marker-end="url(#arA)"/>
+
+    <path class="e dash" d="M560,270 L560,234 L340,234 L340,207" marker-end="url(#ar)"/>
+    <text class="el" x="360" y="228">new coefficients, every sample</text>
+
+    <text class="hd" x="20" y="352" fill="var(--ok)">THE WHOLE LOOP CLOSES IN UNDER 1 ms &mdash; THE ANTI-NOISE MUST BEAT THE SOUND ACROSS THE EARCUP</text>
+  </svg>
+  </div>
+  <figcaption><b>Why it is &ldquo;filtered-x&rdquo; and not plain LMS.</b> The filter&rsquo;s output does not reach the error microphone instantly &mdash; it passes through a converter, an amplifier, a loudspeaker and a few centimetres of air. That is <b>S(z)</b>, the secondary path. FxLMS filters the reference by an estimate of it, <b>&Scaron;(z)</b>, before the update step. A wrong estimate does not degrade the loop gracefully; it makes it diverge &mdash; which is why the sweep that measures it is not an optional step.</figcaption>
+</figure>
+
 </section>
 
 <!-- ============ 04 ARCHITECTURE ============ -->
@@ -182,6 +248,75 @@
     </ul>
     <p>The whole event spans roughly <strong>100 dB of <span class="term" data-t="dynamic range">dynamic range</span></strong>:</p>
   </div>
+
+<figure>
+  <span class="fignum">Figure 3 &middot; Why the crack arrives 42 ms before the blast</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 400" role="img"
+       aria-label="A shooter at 30 m: the muzzle blast travels the full 30 m while the ballistic shockwave is generated only 3 m from the listener, so the crack arrives 42.3 milliseconds earlier.">
+
+    <text class="hd" x="20" y="22">THE GEOMETRY</text>
+
+    <line class="tick" x1="40" y1="150" x2="980" y2="150"/>
+
+    <circle class="fillC" cx="70" cy="130" r="9"/>
+    <text class="t sm" x="44" y="176">Shooter</text>
+    <text class="s" x="44" y="193">t = 0</text>
+
+    <circle class="fillT" cx="930" cy="130" r="9"/>
+    <text class="t sm" x="880" y="176">Listener</text>
+    <text class="s" x="876" y="193">the headset</text>
+
+    <line class="e no" x1="80" y1="126" x2="975" y2="112"/>
+    <text class="el no" x="360" y="104">bullet &middot; about Mach 2.4</text>
+
+    <circle class="fillC" cx="838" cy="114" r="6"/>
+    <line class="e dash" x1="838" y1="114" x2="838" y2="150"/>
+    <text class="el no" x="686" y="140">closest approach &middot; 3 m</text>
+
+    <path class="e" d="M70,130 m0,-46 a46,46 0 0 1 0,92" opacity=".35"/>
+    <path class="e" d="M70,130 m0,-78 a78,78 0 0 1 0,156" opacity=".25"/>
+    <path class="e" d="M70,130 m0,-108 a108,108 0 0 1 0,216" opacity=".18"/>
+    <text class="el" x="112" y="48">muzzle blast &middot; 343 m/s over the whole 30 m</text>
+
+    <path class="e a" d="M838,114 m0,-28 a28,28 0 0 1 0,56" opacity=".55"/>
+    <path class="e a" d="M838,114 m0,-48 a48,48 0 0 1 0,96" opacity=".35"/>
+    <text class="el a" x="636" y="60">shockwave &middot; starts 3 m away, not 30</text>
+
+    <path class="e" d="M70,214 L70,222 L930,222 L930,214"/>
+    <text class="el" x="466" y="240">30 m stand-off</text>
+
+    <text class="hd" x="20" y="282">THE ARRIVALS, IN TRUE MILLISECONDS</text>
+
+    <line class="tick" x1="80" y1="330" x2="960" y2="330"/>
+    <g class="s">
+      <text x="72" y="352">0</text><text x="292" y="352">36.5</text>
+      <text x="350" y="352">45.2</text><text x="614" y="352">87.5</text>
+      <text x="774" y="352">113.4</text><text x="942" y="352">140</text>
+    </g>
+
+    <line class="e no" x1="80" y1="306" x2="80" y2="338"/>
+    <text class="el no" x="66" y="300">trigger</text>
+
+    <line class="e dash" x1="309" y1="312" x2="309" y2="338"/>
+    <text class="el" x="252" y="306">bullet passes</text>
+
+    <line class="e a" x1="364" y1="300" x2="364" y2="338"/>
+    <text class="el a" x="338" y="294">CRACK</text>
+
+    <line class="e b" x1="630" y1="300" x2="630" y2="338"/>
+    <text class="el b" x="604" y="294">BLAST</text>
+
+    <line class="e" x1="793" y1="312" x2="793" y2="338"/>
+    <text class="el" x="738" y="306">lane B out</text>
+
+    <path class="e thick" d="M364,372 L364,380 L630,380 L630,372"/>
+    <text class="el" x="398" y="396" fill="var(--text)">42.3 ms &mdash; the only genuine look-ahead a headset has</text>
+  </svg>
+  </div>
+  <figcaption><b>Both sounds travel at the same speed. One simply starts much closer.</b> The muzzle blast leaves the barrel and crosses the full 30 m. The ballistic shockwave is dragged behind a supersonic round and is generated at the bullet&rsquo;s <em>closest approach</em> &mdash; about 3 m from the listener. 36.5 ms of bullet flight plus 8.7 ms of sound over the last 3 m puts the crack at 45.2 ms; the blast needs 87.5 ms. This is the physics counter-sniper acoustic systems are built on, and it is the one piece of warning this architecture can legitimately use.</figcaption>
+</figure>
+
 
   <div class="tblwrap">
   <table>

@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>ZEIT System Handbook</title>
 
 <style>
@@ -297,6 +298,51 @@ pre{background:var(--bg-alt);border-radius:var(--radius);padding:20px 22px;overf
   font-size:12.5px;line-height:1.62;color:var(--text-2);margin:20px 0 26px}
 pre code{background:none;padding:0;font-size:inherit;border-radius:0}
 
+/* ---------- figures and flowcharts ---------- */
+figure{margin:30px 0 34px}
+.figbox{background:var(--bg-alt);border-radius:var(--radius);padding:24px 24px 18px;
+  overflow-x:auto}
+.figbox svg{display:block;width:100%;height:auto;min-width:660px}
+.fignum{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  font-weight:600;display:block;margin-bottom:14px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+figcaption{font-size:14px;color:var(--text-3);margin-top:14px;line-height:1.5;max-width:82ch}
+figcaption b{color:var(--text-2);font-weight:600}
+
+/* diagram primitives — colour is carried by tokens so both themes work */
+svg.dg{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif}
+svg.dg .box{fill:var(--bg);stroke:var(--line);stroke-width:1.2}
+svg.dg .box.hi{stroke:var(--text);stroke-width:2}
+svg.dg .box.a{stroke:var(--ok);stroke-width:1.8}
+svg.dg .box.b{stroke:var(--accent);stroke-width:1.8}
+svg.dg .box.warn{stroke:var(--warn);stroke-width:1.8}
+svg.dg .box.crit{stroke:var(--crit);stroke-width:1.8}
+svg.dg .band{fill:var(--bg-sunk);stroke:var(--line-soft);stroke-width:1}
+svg.dg .t{fill:var(--text);font-size:13.5px;font-weight:600}
+svg.dg .t.sm{font-size:12px}
+svg.dg .s{fill:var(--text-3);font-size:10.5px;font-weight:500;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+svg.dg .s.bg{font-size:11.5px}
+svg.dg .hd{fill:var(--text-3);font-size:10.5px;font-weight:700;letter-spacing:.1em}
+svg.dg .n{fill:var(--text-3);font-size:10px;font-weight:700;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+svg.dg .e{stroke:var(--text-3);stroke-width:1.4;fill:none;opacity:.75}
+svg.dg .e.thick{stroke:var(--text);stroke-width:2;opacity:1}
+svg.dg .e.a{stroke:var(--ok);stroke-width:1.8;opacity:1}
+svg.dg .e.b{stroke:var(--accent);stroke-width:1.8;opacity:1}
+svg.dg .e.dash{stroke-dasharray:5 4}
+svg.dg .e.no{stroke:var(--crit);stroke-dasharray:5 4;opacity:.9}
+svg.dg .el{fill:var(--text-3);font-size:10.5px;font-weight:600}
+svg.dg .el.a{fill:var(--ok)}
+svg.dg .el.b{fill:var(--accent)}
+svg.dg .el.no{fill:var(--crit)}
+svg.dg .tick{stroke:var(--line);stroke-width:1}
+svg.dg .fillA{fill:var(--ok)}
+svg.dg .fillB{fill:var(--accent)}
+svg.dg .fillC{fill:var(--crit)}
+svg.dg .fillT{fill:var(--text)}
+@media(max-width:700px){.figbox{padding:16px 14px 14px}}
+
 footer{margin-top:100px;padding-top:30px;border-top:1px solid var(--line);
   font-size:13px;color:var(--text-3);line-height:1.65;max-width:80ch}
 footer p{margin:0 0 12px}
@@ -315,6 +361,22 @@ footer p{margin:0 0 12px}
 
 <div id="tip" role="tooltip" aria-hidden="true"></div>
 
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text-3)"/></marker>
+    <marker id="arT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text)"/></marker>
+    <marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--ok)"/></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker>
+    <marker id="arC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--crit)"/></marker>
+  </defs>
+</svg>
+
+
 <div class="wrap" id="doc">
 
 <header class="mast">
@@ -323,9 +385,9 @@ footer p{margin:0 0 12px}
   <p class="dek">A complete technical account of the proposed system, prepared for evaluation. It states what has been built, how every layer works, what each of the sixteen cited works contributes, how each clause of the problem statement is addressed, and — explicitly — what has not yet been built.</p>
   <div class="mast-meta">
     <span><b>Prepared for</b> Evaluation under PS 26052</span>
-    <span><b>Scope</b> 6 design documents · 16 papers · 21 tools</span>
+    <span><b>Scope</b> 6 design documents · 16 papers · 21 tools · 10 figures</span>
     <span><b>Companion</b> Architecture Audit · Headset Explorer</span>
-    <span><b>Revision</b> 6 September 2026</span>
+    <span><b>Revision</b> 12 September 2026</span>
   </div>
 </header>
 
@@ -337,14 +399,108 @@ footer p{margin:0 0 12px}
 
 <div class="howto">
   <span class="ic">How to read</span>
-  <p>Any word with a <span class="term" data-t="dashed underline">dotted underline</span> is a technical term. Hover it, or tap it on a phone, for a plain-language definition and how it is used in this project specifically. There is no glossary to scroll to; the explanation comes to the word.</p>
+  <p><strong>Ten numbered figures carry the architecture.</strong> Figure 1 is the whole system on one page; Figures 2 and 4 are the two lanes in full; Figure 3 is the timing the design depends on. If you read nothing else, read those four. Any word with a <span class="term" data-t="dashed underline">dotted underline</span> is a technical term. Hover it, or tap it on a phone, for a plain-language definition and how it is used in this project specifically. There is no glossary to scroll to; the explanation comes to the word.</p>
 </div>
 
 <a class="card3d" href="zeit-bench-3d.html" target="_blank" rel="noopener">
   <span class="lb">Interactive companion</span>
   <strong>ZEIT Prototype Bench</strong>
-  <span class="d">A three-dimensional model of the complete prototype — the three-microphone headset, the Behringer UMC202HD interface and the Raspberry Pi 5 that runs the engine. Fire a simulated shot to watch the wavefronts propagate, the eleven blocks execute against their 25.3 ms budget, and a timestamped event log accumulate beside a three-channel signal monitor.</span>
+  <span class="d">A three-dimensional model of the complete prototype, with <strong>both lanes modelled</strong>. The earcup is drawn cut away so the anti-noise driver, the error microphone and the Lane A filter module are visible; a lane filter isolates either system on its own. Fire a simulated shot to watch the wavefronts propagate, Lane A close its loop inside a millisecond, and the eleven Lane B blocks execute against their 25.3 ms budget beside a four-channel signal monitor.</span>
 </a>
+
+
+<figure>
+  <span class="fignum">Figure 1 · The whole system on one page</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 470" role="img"
+       aria-label="Three microphones feed two independent lanes: Lane A protects the wearer's hearing inside the earcup, Lane B sends enhanced speech to the radio.">
+
+    <!-- sources -->
+    <rect class="box" x="20" y="30" width="140" height="54" rx="8"/>
+    <text class="t" x="32" y="55">Voice</text>
+    <text class="s" x="32" y="72">80–90 dB SPL</text>
+
+    <rect class="box crit" x="20" y="336" width="140" height="54" rx="8"/>
+    <text class="t" x="32" y="361">Gunshot</text>
+    <text class="s" x="32" y="378">140–155 dB SPL</text>
+
+    <!-- the acoustic trunk: the blast reaches every microphone -->
+    <path class="e thick" d="M160,363 L200,363 L200,57"/>
+    <line class="e thick" x1="200" y1="72"  x2="233" y2="72"  marker-end="url(#arT)"/>
+    <line class="e thick" x1="200" y1="222" x2="233" y2="222" marker-end="url(#arT)"/>
+    <line class="e thick" x1="200" y1="367" x2="233" y2="367" marker-end="url(#arT)"/>
+
+    <!-- the voice reaches Mic 1 -->
+    <line class="e" x1="160" y1="50" x2="233" y2="45" marker-end="url(#ar)"/>
+
+    <!-- the path that must not exist -->
+    <path class="e no" d="M110,84 C 110,145 150,196 230,205" marker-end="url(#arC)"/>
+    <g stroke="var(--crit)" stroke-width="2.4">
+      <line x1="140" y1="145" x2="156" y2="161"/><line x1="156" y1="145" x2="140" y2="161"/>
+    </g>
+    <text class="el no" x="22" y="150">the voice must</text>
+    <text class="el no" x="22" y="165">never reach Mic 2</text>
+
+    <!-- microphones -->
+    <rect class="box" x="233" y="26" width="172" height="62" rx="8"/>
+    <text class="t" x="245" y="52">Mic 1 — voice</text>
+    <text class="s" x="245" y="70">boom arm · 2–5 cm · lane B</text>
+
+    <rect class="box hi" x="233" y="186" width="172" height="62" rx="8"/>
+    <text class="t" x="245" y="212">Mic 2 — reference</text>
+    <text class="s" x="245" y="230">outer shell · BOTH lanes</text>
+
+    <rect class="box" x="233" y="336" width="172" height="62" rx="8"/>
+    <text class="t" x="245" y="362">Mic 3 — error</text>
+    <text class="s" x="245" y="380">inside the cup · lane A</text>
+
+    <!-- mics into lanes -->
+    <line class="e b" x1="405" y1="52" x2="457" y2="58" marker-end="url(#arB)"/>
+    <path class="e b" d="M405,200 C 432,200 434,126 457,120" marker-end="url(#arB)"/>
+    <path class="e a" d="M405,234 C 433,234 436,296 457,302" marker-end="url(#arA)"/>
+    <line class="e a" x1="405" y1="367" x2="457" y2="360" marker-end="url(#arA)"/>
+    <text class="el a" x="410" y="388">error</text>
+
+    <!-- lane B -->
+    <rect class="box b" x="460" y="20" width="285" height="132" rx="10"/>
+    <text class="hd" x="476" y="44" fill="var(--accent)">LANE B — SPEECH ENHANCEMENT</text>
+    <text class="t" x="476" y="70">Make the transmitted voice intelligible</text>
+    <text class="s bg" x="476" y="92">11 blocks · Aux-IVA, robust normalise,</text>
+    <text class="s bg" x="476" y="109">STFT+ERB, classifier, BMRI, GTCRN</text>
+    <text class="s bg" x="476" y="134" fill="var(--accent)">budget 25.3 ms algorithmic</text>
+
+    <!-- lane A -->
+    <rect class="box a" x="460" y="270" width="285" height="132" rx="10"/>
+    <text class="hd" x="476" y="294" fill="var(--ok)">LANE A — HEARING PROTECTION</text>
+    <text class="t" x="476" y="320">Make the wearer hear less noise</text>
+    <text class="s bg" x="476" y="342">FxLMS on its own module in the earcup,</text>
+    <text class="s bg" x="476" y="359">classical adaptive filtering, no network</text>
+    <text class="s bg" x="476" y="384" fill="var(--ok)">budget under 1 ms</text>
+
+    <!-- outputs -->
+    <line class="e b" x1="745" y1="86" x2="797" y2="86" marker-end="url(#arB)"/>
+    <rect class="box" x="800" y="46" width="180" height="80" rx="8"/>
+    <text class="t sm" x="812" y="72">MELPe vocoder</text>
+    <text class="s" x="812" y="91">STANAG 4591 · 2400 bps</text>
+    <text class="s" x="812" y="110">→ the radio, far end</text>
+
+    <line class="e a" x1="745" y1="336" x2="797" y2="336" marker-end="url(#arA)"/>
+    <rect class="box" x="800" y="296" width="180" height="80" rx="8"/>
+    <text class="t sm" x="812" y="322">The wearer's ear</text>
+    <text class="s" x="812" y="341">anti-noise cancels in air</text>
+    <text class="s" x="812" y="360">before the eardrum</text>
+
+    <!-- lane A closes its loop -->
+    <path class="e a dash" d="M890,376 L890,442 L319,442 L319,400" marker-end="url(#arA)"/>
+    <text class="el a" x="470" y="436">Mic 3 measures what is left — the loop corrects itself from that</text>
+
+    <!-- the separation that matters -->
+    <text class="hd" x="460" y="215" fill="var(--text-3)">THE TWO LANES NEVER MEET. DIFFERENT PHYSICS, BUDGETS AND METRICS.</text>
+    <line class="e dash" x1="460" y1="228" x2="980" y2="228"/>
+  </svg>
+  </div>
+  <figcaption><b>Read it left to right.</b> Sound arrives, three microphones transduce it, and two independent systems act on it. Lane&nbsp;A never touches the transmitted voice; Lane&nbsp;B never touches what the wearer hears. Mic&nbsp;2 is the only sensor both use, which is why the red path — the wearer's own voice leaking into Mic&nbsp;2 — breaks both lanes at once and cannot be repaired in software.</figcaption>
+</figure>
 
 <nav class="toc" aria-label="Contents">
   <ol>
@@ -495,6 +651,72 @@ footer p{margin:0 0 12px}
 
     <p>The two lanes are also <strong>complementary in what they are good at</strong>. Lane A, being classical adaptive filtering, is genuinely strong on low-frequency continuous noise — engine, rotor, generator, vehicle rumble. Lane B, being learned, is strong on broadband, non-stationary and impulsive content in the speech channel. Saying so explicitly is worth doing: it explains why both exist rather than one being a weaker version of the other.</p>
   </div>
+
+<figure>
+  <span class="fignum">Figure 2 &middot; Lane A &mdash; the FxLMS loop, in full</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 366" role="img"
+       aria-label="FxLMS block diagram: the Mic 2 reference drives an adaptive filter whose output passes through the driver and air to sum with the leaked noise at the eardrum; Mic 3 measures the residual and updates the filter through a filtered reference.">
+
+    <rect class="box" x="20" y="148" width="150" height="56" rx="8"/>
+    <text class="t sm" x="32" y="174">Mic 2</text>
+    <text class="s" x="32" y="192">reference x(n)</text>
+
+    <path class="e" d="M200,176 L200,68 L247,68" marker-end="url(#ar)"/>
+    <rect class="box" x="250" y="40" width="410" height="56" rx="8"/>
+    <text class="t sm" x="264" y="66">P(z) &mdash; the primary path</text>
+    <text class="s" x="264" y="84">shell, cushion and seal: the noise that gets through passively</text>
+    <path class="e" d="M660,68 L760,68 L760,150" marker-end="url(#ar)"/>
+    <text class="el" x="668" y="58">d(n) &mdash; what leaks in</text>
+
+    <line class="e a" x1="170" y1="176" x2="247" y2="176" marker-end="url(#arA)"/>
+    <rect class="box a" x="250" y="148" width="180" height="56" rx="8"/>
+    <text class="t sm" x="264" y="174">W(z) &mdash; adaptive filter</text>
+    <text class="s" x="264" y="192">the coefficients that adapt</text>
+
+    <line class="e a" x1="430" y1="176" x2="477" y2="176" marker-end="url(#arA)"/>
+    <text class="el a" x="437" y="166">y(n)</text>
+    <rect class="box a" x="480" y="148" width="180" height="56" rx="8"/>
+    <text class="t sm" x="494" y="174">S(z) &mdash; secondary path</text>
+    <text class="s" x="494" y="192">converter, amp, driver, air</text>
+
+    <line class="e a" x1="660" y1="176" x2="734" y2="176" marker-end="url(#arA)"/>
+    <text class="el a" x="668" y="166">anti-noise</text>
+
+    <circle class="box hi" cx="760" cy="176" r="24"/>
+    <text class="t" x="752" y="182">&Sigma;</text>
+
+    <line class="e" x1="784" y1="176" x2="855" y2="176" marker-end="url(#ar)"/>
+    <rect class="box" x="858" y="148" width="122" height="56" rx="8"/>
+    <text class="t sm" x="870" y="174">The eardrum</text>
+    <text class="s" x="870" y="192">what is heard</text>
+
+    <path class="e a" d="M760,200 L760,244 L800,244 L800,268" marker-end="url(#arA)"/>
+    <rect class="box a" x="700" y="270" width="180" height="56" rx="8"/>
+    <text class="t sm" x="714" y="296">Mic 3</text>
+    <text class="s" x="714" y="314">residual error e(n)</text>
+
+    <path class="e dash" d="M200,176 L200,298 L247,298" marker-end="url(#ar)"/>
+    <rect class="box" x="250" y="270" width="180" height="56" rx="8"/>
+    <text class="t sm" x="264" y="296">&Scaron;(z) &mdash; the estimate</text>
+    <text class="s" x="264" y="314">measured once, with a sweep</text>
+
+    <line class="e" x1="430" y1="298" x2="467" y2="298" marker-end="url(#ar)"/>
+    <rect class="box warn" x="470" y="270" width="180" height="56" rx="8"/>
+    <text class="t sm" x="484" y="296">LMS update</text>
+    <text class="s" x="484" y="314">the only learning here</text>
+
+    <line class="e a" x1="700" y1="298" x2="656" y2="298" marker-end="url(#arA)"/>
+
+    <path class="e dash" d="M560,270 L560,234 L340,234 L340,207" marker-end="url(#ar)"/>
+    <text class="el" x="360" y="228">new coefficients, every sample</text>
+
+    <text class="hd" x="20" y="352" fill="var(--ok)">THE WHOLE LOOP CLOSES IN UNDER 1 ms &mdash; THE ANTI-NOISE MUST BEAT THE SOUND ACROSS THE EARCUP</text>
+  </svg>
+  </div>
+  <figcaption><b>Why it is &ldquo;filtered-x&rdquo; and not plain LMS.</b> The filter&rsquo;s output does not reach the error microphone instantly &mdash; it passes through a converter, an amplifier, a loudspeaker and a few centimetres of air. That is <b>S(z)</b>, the secondary path. FxLMS filters the reference by an estimate of it, <b>&Scaron;(z)</b>, before the update step. A wrong estimate does not degrade the loop gracefully; it makes it diverge &mdash; which is why the sweep that measures it is not an optional step.</figcaption>
+</figure>
+
 </section>
 
 <!-- ============ 04 ARCHITECTURE ============ -->
@@ -551,6 +773,75 @@ footer p{margin:0 0 12px}
     </ul>
     <p>The whole event spans roughly <strong>100 dB of <span class="term" data-t="dynamic range">dynamic range</span></strong>:</p>
   </div>
+
+<figure>
+  <span class="fignum">Figure 3 &middot; Why the crack arrives 42 ms before the blast</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 400" role="img"
+       aria-label="A shooter at 30 m: the muzzle blast travels the full 30 m while the ballistic shockwave is generated only 3 m from the listener, so the crack arrives 42.3 milliseconds earlier.">
+
+    <text class="hd" x="20" y="22">THE GEOMETRY</text>
+
+    <line class="tick" x1="40" y1="150" x2="980" y2="150"/>
+
+    <circle class="fillC" cx="70" cy="130" r="9"/>
+    <text class="t sm" x="44" y="176">Shooter</text>
+    <text class="s" x="44" y="193">t = 0</text>
+
+    <circle class="fillT" cx="930" cy="130" r="9"/>
+    <text class="t sm" x="880" y="176">Listener</text>
+    <text class="s" x="876" y="193">the headset</text>
+
+    <line class="e no" x1="80" y1="126" x2="975" y2="112"/>
+    <text class="el no" x="360" y="104">bullet &middot; about Mach 2.4</text>
+
+    <circle class="fillC" cx="838" cy="114" r="6"/>
+    <line class="e dash" x1="838" y1="114" x2="838" y2="150"/>
+    <text class="el no" x="686" y="140">closest approach &middot; 3 m</text>
+
+    <path class="e" d="M70,130 m0,-46 a46,46 0 0 1 0,92" opacity=".35"/>
+    <path class="e" d="M70,130 m0,-78 a78,78 0 0 1 0,156" opacity=".25"/>
+    <path class="e" d="M70,130 m0,-108 a108,108 0 0 1 0,216" opacity=".18"/>
+    <text class="el" x="112" y="48">muzzle blast &middot; 343 m/s over the whole 30 m</text>
+
+    <path class="e a" d="M838,114 m0,-28 a28,28 0 0 1 0,56" opacity=".55"/>
+    <path class="e a" d="M838,114 m0,-48 a48,48 0 0 1 0,96" opacity=".35"/>
+    <text class="el a" x="636" y="60">shockwave &middot; starts 3 m away, not 30</text>
+
+    <path class="e" d="M70,214 L70,222 L930,222 L930,214"/>
+    <text class="el" x="466" y="240">30 m stand-off</text>
+
+    <text class="hd" x="20" y="282">THE ARRIVALS, IN TRUE MILLISECONDS</text>
+
+    <line class="tick" x1="80" y1="330" x2="960" y2="330"/>
+    <g class="s">
+      <text x="72" y="352">0</text><text x="292" y="352">36.5</text>
+      <text x="350" y="352">45.2</text><text x="614" y="352">87.5</text>
+      <text x="774" y="352">113.4</text><text x="942" y="352">140</text>
+    </g>
+
+    <line class="e no" x1="80" y1="306" x2="80" y2="338"/>
+    <text class="el no" x="66" y="300">trigger</text>
+
+    <line class="e dash" x1="309" y1="312" x2="309" y2="338"/>
+    <text class="el" x="252" y="306">bullet passes</text>
+
+    <line class="e a" x1="364" y1="300" x2="364" y2="338"/>
+    <text class="el a" x="338" y="294">CRACK</text>
+
+    <line class="e b" x1="630" y1="300" x2="630" y2="338"/>
+    <text class="el b" x="604" y="294">BLAST</text>
+
+    <line class="e" x1="793" y1="312" x2="793" y2="338"/>
+    <text class="el" x="738" y="306">lane B out</text>
+
+    <path class="e thick" d="M364,372 L364,380 L630,380 L630,372"/>
+    <text class="el" x="398" y="396" fill="var(--text)">42.3 ms &mdash; the only genuine look-ahead a headset has</text>
+  </svg>
+  </div>
+  <figcaption><b>Both sounds travel at the same speed. One simply starts much closer.</b> The muzzle blast leaves the barrel and crosses the full 30 m. The ballistic shockwave is dragged behind a supersonic round and is generated at the bullet&rsquo;s <em>closest approach</em> &mdash; about 3 m from the listener. 36.5 ms of bullet flight plus 8.7 ms of sound over the last 3 m puts the crack at 45.2 ms; the blast needs 87.5 ms. This is the physics counter-sniper acoustic systems are built on, and it is the one piece of warning this architecture can legitimately use.</figcaption>
+</figure>
+
 
   <div class="tblwrap">
   <table>
@@ -640,30 +931,131 @@ footer p{margin:0 0 12px}
   <div class="sec-head"><span class="sec-num">05</span><h2>Lane B, block by block</h2></div>
   <p class="sec-sub">The only code that ships and runs in real time. Read top to bottom — that is the signal flow.</p>
 
-  <div class="chain">
-    <div class="chain-row">
-      <div class="blk"><span class="n">1</span><span class="t">Audio in</span><span class="s">3 ch · ring buffer</span></div>
-      <div class="blk"><span class="n">2</span><span class="t">Aux-IVA</span><span class="s">blind separation</span></div>
-      <div class="blk"><span class="n">3</span><span class="t">Normalise</span><span class="s">90th pct / FLOM</span></div>
-      <div class="blk"><span class="n">4</span><span class="t">STFT + ERB</span><span class="s">complex · 32 bands</span></div>
-      <div class="blk cls"><span class="n">5</span><span class="t">Classifier</span><span class="s">kurtosis → γ, β</span></div>
-      <div class="blk"><span class="n">6</span><span class="t">Impulsive</span><span class="s">BMRI · AR interp</span></div>
-    </div>
-    <div class="chain-row" style="margin-top:9px">
-      <div class="blk ai"><span class="n">7</span><span class="t">Neural core</span><span class="s">GTCRN · 24K</span></div>
-      <div class="blk"><span class="n">8</span><span class="t">Deep filter</span><span class="s">harmonics &lt;5 kHz</span></div>
-      <div class="blk"><span class="n">9</span><span class="t">Voice guard</span><span class="s">spectral correction</span></div>
-      <div class="blk"><span class="n">10</span><span class="t">Residual</span><span class="s">optional LMS</span></div>
-      <div class="blk"><span class="n">11</span><span class="t">ISTFT</span><span class="s">overlap-add</span></div>
-      <div class="blk"><span class="n">→</span><span class="t">Vocoder</span><span class="s">MELPe · radio</span></div>
-    </div>
-    <p class="legend">Teal = the learned block · Amber = the block that makes the system "adaptive" · The vocoder is not ours, but everything is judged after it.</p>
+<figure>
+  <span class="fignum">Figure 4 &middot; Lane B &mdash; eleven blocks, one 20 ms frame</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 610" role="img"
+       aria-label="Lane B flowchart: two microphones feed audio input, blind separation, robust normalisation and the STFT; a classifier then splits each frame between a classical impulsive path and the GTCRN neural core, which are recombined through deep filtering, the voice guard, an optional residual filter and the inverse transform before the vocoder.">
+
+    <!-- inputs -->
+    <rect class="box" x="20" y="22" width="120" height="52" rx="8"/>
+    <text class="t sm" x="32" y="48">Mic 1</text>
+    <text class="s" x="32" y="66">voice</text>
+    <rect class="box hi" x="20" y="92" width="120" height="52" rx="8"/>
+    <text class="t sm" x="32" y="118">Mic 2</text>
+    <text class="s" x="32" y="136">reference</text>
+
+    <line class="e" x1="140" y1="48" x2="187" y2="68" marker-end="url(#ar)"/>
+    <line class="e" x1="140" y1="118" x2="187" y2="94" marker-end="url(#ar)"/>
+
+    <!-- band 1 -->
+    <rect class="box" x="190" y="50" width="160" height="62" rx="8"/>
+    <text class="n" x="204" y="70">01</text>
+    <text class="t sm" x="204" y="88">Audio in</text>
+    <text class="s" x="204" y="104">lock-free ring buffer</text>
+
+    <line class="e" x1="350" y1="81" x2="377" y2="81" marker-end="url(#ar)"/>
+    <rect class="box" x="380" y="50" width="160" height="62" rx="8"/>
+    <text class="n" x="394" y="70">02</text>
+    <text class="t sm" x="394" y="88">Aux-IVA</text>
+    <text class="s" x="394" y="104">3 streams, unordered</text>
+
+    <line class="e" x1="540" y1="81" x2="567" y2="81" marker-end="url(#ar)"/>
+    <rect class="box crit" x="570" y="50" width="180" height="62" rx="8"/>
+    <text class="n" x="584" y="70">03</text>
+    <text class="t sm" x="584" y="88">Robust normalise</text>
+    <text class="s" x="584" y="104">90th pct / FLOM, not RMS</text>
+
+    <line class="e" x1="750" y1="81" x2="777" y2="81" marker-end="url(#ar)"/>
+    <rect class="box" x="780" y="50" width="190" height="62" rx="8"/>
+    <text class="n" x="794" y="70">04</text>
+    <text class="t sm" x="794" y="88">STFT + ERB</text>
+    <text class="s" x="794" y="104">complex &middot; 192 bins &rarr; 64 bands</text>
+
+    <line class="e" x1="875" y1="112" x2="875" y2="156" marker-end="url(#ar)"/>
+
+    <!-- band 2: the classifier, applied to every frame -->
+    <rect class="box warn" x="20" y="158" width="950" height="76" rx="10"/>
+    <text class="hd" x="38" y="182" fill="var(--warn)">05 &mdash; THE CLASSIFIER &middot; THIS IS THE BLOCK THAT MAKES THE SYSTEM ADAPTIVE</text>
+    <text class="t sm" x="38" y="206">Measures kurtosis per frame: steady noise, changing noise, or a sudden bang</text>
+    <text class="s" x="38" y="224">and sets &gamma; &mdash; how aggressively to clean &mdash; and &beta;, the detection threshold. BMRI tunes these by hand, offline. Here they are live.</text>
+
+    <!-- fork -->
+    <line class="e" x1="300" y1="234" x2="300" y2="268" marker-end="url(#ar)"/>
+    <text class="el" x="308" y="256">when &gamma; is high</text>
+    <line class="e thick" x1="710" y1="234" x2="710" y2="268" marker-end="url(#arT)"/>
+    <text class="el" x="718" y="256">every frame</text>
+
+    <!-- band 3: the two paths -->
+    <rect class="box" x="150" y="270" width="300" height="78" rx="8"/>
+    <text class="n" x="164" y="290">06</text>
+    <text class="t sm" x="164" y="308">Impulsive path &mdash; BMRI</text>
+    <text class="s" x="164" y="325">AR model detects, interpolation fills</text>
+    <text class="s" x="164" y="340">classical &middot; does not predict, reacts</text>
+
+    <rect class="box hi" x="560" y="270" width="300" height="78" rx="8"/>
+    <text class="n" x="574" y="290">07</text>
+    <text class="t sm" x="574" y="308">Neural core &mdash; GTCRN</text>
+    <text class="s" x="574" y="325">complex ratio mask &middot; 23.7 K params</text>
+    <text class="s" x="574" y="340">the only learned block in the chain</text>
+
+    <!-- merge -->
+    <path class="e" d="M300,348 L300,370 L160,370"/>
+    <path class="e" d="M710,348 L710,370 L160,370"/>
+    <line class="e" x1="160" y1="370" x2="160" y2="392" marker-end="url(#ar)"/>
+
+    <!-- band 4 -->
+    <rect class="box" x="60" y="396" width="200" height="62" rx="8"/>
+    <text class="n" x="74" y="416">08</text>
+    <text class="t sm" x="74" y="434">Deep filtering</text>
+    <text class="s" x="74" y="450">harmonics rebuilt &lt; 5 kHz</text>
+
+    <line class="e" x1="260" y1="427" x2="297" y2="427" marker-end="url(#ar)"/>
+    <rect class="box" x="300" y="396" width="200" height="62" rx="8"/>
+    <text class="n" x="314" y="416">09</text>
+    <text class="t sm" x="314" y="434">Voice guard</text>
+    <text class="s" x="314" y="450">the intelligibility safety net</text>
+
+    <line class="e" x1="500" y1="427" x2="537" y2="427" marker-end="url(#ar)"/>
+    <rect class="box" x="540" y="396" width="200" height="62" rx="8"/>
+    <text class="n" x="554" y="416">10</text>
+    <text class="t sm" x="554" y="434">Residual LMS</text>
+    <text class="s" x="554" y="450">optional &middot; must earn its latency</text>
+
+    <line class="e" x1="740" y1="427" x2="777" y2="427" marker-end="url(#ar)"/>
+    <rect class="box" x="780" y="396" width="190" height="62" rx="8"/>
+    <text class="n" x="794" y="416">11</text>
+    <text class="t sm" x="794" y="434">ISTFT</text>
+    <text class="s" x="794" y="450">overlap-add, phase intact</text>
+
+    <!-- the Mic 2 reference into block 10 -->
+    <line class="e no" x1="600" y1="496" x2="600" y2="462" marker-end="url(#arC)"/>
+    <text class="el no" x="200" y="512">Block 10&rsquo;s reference is <tspan font-weight="700">Mic 2</tspan>, never Mic 3 &mdash; Mic 3 measures what the wearer hears, and the transmitted voice never passes through the wearer&rsquo;s ear (audit F2)</text>
+
+    <!-- band 5 -->
+    <path class="e" d="M875,458 L875,502 L690,502 L690,526" marker-end="url(#ar)"/>
+    <rect class="band" x="560" y="530" width="260" height="62" rx="8"/>
+    <text class="t sm" x="576" y="556">MELPe vocoder</text>
+    <text class="s" x="576" y="574">STANAG 4591 &middot; 2400 bps &middot; not ours</text>
+
+    <line class="e" x1="820" y1="561" x2="857" y2="561" marker-end="url(#ar)"/>
+    <rect class="box" x="860" y="530" width="120" height="62" rx="8"/>
+    <text class="t sm" x="874" y="556">The radio</text>
+    <text class="s" x="874" y="574">the far end</text>
+
+    <text class="hd" x="20" y="561">EVERY METRIC</text>
+    <text class="hd" x="20" y="576">REPORTED TWICE:</text>
+    <text class="hd" x="20" y="591">BEFORE AND AFTER</text>
+  </svg>
   </div>
+  <figcaption><b>Read top to bottom &mdash; that is the signal flow.</b> Block&nbsp;03 is outlined in red because it is the one place the nearest published system is formally wrong. Block&nbsp;05 is the adaptive stage the problem statement demands. Block&nbsp;07 is the only learned block. The vocoder is drawn in grey because it is not ours &mdash; but it is what the listener actually hears, which is why every metric has to be reported on both sides of it.</figcaption>
+</figure>
+
 
   <div class="spec">
     <div class="spec-h"><span class="bn">01</span><h4>Audio input</h4><span class="cost">real-time thread · ~0 compute</span></div>
     <div class="spec-b">
-      <p>Reads 128 samples at a time from three microphones and pushes them into a <span class="term" data-t="lock-free ring buffer">lock-free ring buffer</span>. It does almost nothing, on purpose.</p>
+      <p>Reads 128 samples at a time from the two Lane&nbsp;B microphones and pushes them into a <span class="term" data-t="lock-free ring buffer">lock-free ring buffer</span>. It does almost nothing, on purpose.</p>
       <p><strong>Why it does nothing:</strong> this runs on the audio <span class="term" data-t="callback">callback</span> thread, which has a hard deadline. If it is ever late, the sound card runs out of samples and the listener hears a click. So it copies and hands off. It never allocates memory, never takes a lock, never logs, never throws an exception, never grows a <code>std::vector</code> and never touches a <code>std::string</code>. Any one of those can block for an unpredictable time, and violating the rule produces a click that appears once every few minutes and is almost impossible to debug afterwards.</p>
       <dl class="spec-io">
         <dt>In</dt><dd>3 channels of raw samples</dd>
@@ -738,17 +1130,52 @@ footer p{margin:0 0 12px}
       <p>A small, fast piece of code that looks at each frame and asks: <strong>is this steady noise, changing noise, or a sudden bang?</strong></p>
       <p>It measures <strong><span class="term" data-t="kurtosis">kurtosis</span></strong> — a number describing how spiky a signal is. Steady Gaussian noise sits at 3. The Cauchy noise BMRI was validated on measures 27. A gunshot is orders of magnitude higher. Based on the answer it sets two dials: <strong>γ (gamma)</strong>, how aggressively to clean, and <strong>β (beta)</strong>, the detection threshold.</p>
       <p><strong>Why this block is load-bearing:</strong> the problem statement asks for an <em>adaptive</em> system. This is the piece that makes it adaptive. Without it the pipeline behaves identically for a gunshot and for engine hum, and the word "adaptive" becomes an assertion. The BMRI paper tunes γ by hand, offline, from a chart; replacing that with a live classifier is genuinely our change.</p>
-      <p><strong>It gives operator modes for free</strong>, because γ has a known relationship to how much gets removed:</p>
     </div>
-    <div class="tblwrap" style="margin:0;border-left:none;border-right:none;border-bottom:none">
-    <table>
-      <thead><tr><th>Mode</th><th>γ</th><th>Behaviour</th></tr></thead>
-      <tbody>
-        <tr><td class="name">Listening</td><td class="num">low</td><td>Gentle. Keeps ambient sound so the wearer stays aware of the surroundings</td></tr>
-        <tr><td class="name">Combat</td><td class="num">high</td><td>Aggressive. Protects the voice through gunfire, accepts losing ambient detail</td></tr>
-      </tbody>
-    </table>
-    </div>
+    <figure>
+      <span class="fignum">Figure 5 &middot; What the classifier decides, and what it changes</span>
+      <div class="figbox">
+      <svg class="dg" viewBox="0 0 1000 260" role="img"
+           aria-label="The classifier measures frame kurtosis and maps it to three noise classes, each setting different values of gamma and beta.">
+        <rect class="box" x="20" y="88" width="200" height="76" rx="8"/>
+        <text class="t sm" x="34" y="116">Kurtosis of the frame</text>
+        <text class="s" x="34" y="134">how spiky the signal is</text>
+        <text class="s" x="34" y="150">Gaussian noise = 3</text>
+
+        <path class="e" d="M220,112 C 256,112 260,50 296,50" marker-end="url(#ar)"/>
+        <line class="e" x1="220" y1="126" x2="296" y2="126" marker-end="url(#ar)"/>
+        <path class="e" d="M220,140 C 256,140 260,202 296,202" marker-end="url(#arC)"/>
+
+        <rect class="box" x="300" y="22" width="250" height="56" rx="8"/>
+        <text class="t sm" x="314" y="46">near 3 &mdash; STATIONARY</text>
+        <text class="s" x="314" y="64">engine hum, road noise</text>
+
+        <rect class="box warn" x="300" y="98" width="250" height="56" rx="8"/>
+        <text class="t sm" x="314" y="122">raised &mdash; NON-STATIONARY</text>
+        <text class="s" x="314" y="140">wind, vehicles, babble</text>
+
+        <rect class="box crit" x="300" y="174" width="250" height="56" rx="8"/>
+        <text class="t sm" x="314" y="198">hundreds &mdash; IMPULSIVE</text>
+        <text class="s" x="314" y="216">gunshot, blast</text>
+
+        <line class="e" x1="550" y1="50" x2="606" y2="50" marker-end="url(#ar)"/>
+        <line class="e" x1="550" y1="126" x2="606" y2="126" marker-end="url(#ar)"/>
+        <line class="e" x1="550" y1="202" x2="606" y2="202" marker-end="url(#arC)"/>
+
+        <rect class="band" x="610" y="22" width="370" height="56" rx="8"/>
+        <text class="t sm" x="624" y="46">&gamma; low &middot; &beta; nominal</text>
+        <text class="s" x="624" y="64">the neural core leads, transient path idle</text>
+
+        <rect class="band" x="610" y="98" width="370" height="56" rx="8"/>
+        <text class="t sm" x="624" y="122">&gamma; mid &middot; &beta; nominal</text>
+        <text class="s" x="624" y="140">the neural core leads, mask tightened</text>
+
+        <rect class="band" x="610" y="174" width="370" height="56" rx="8"/>
+        <text class="t sm" x="624" y="198">&gamma; high &middot; &beta; +6 dB</text>
+        <text class="s" x="624" y="216">transient path leads, then the mask</text>
+      </svg>
+      </div>
+      <figcaption>The same dial gives the operator modes for free: a low-&gamma; <b>listening</b> mode that preserves ambient awareness, and a high-&gamma; <b>combat</b> mode that protects the voice through gunfire and accepts losing ambient detail.</figcaption>
+    </figure>
     <div class="spec-b">
       <dl class="spec-io" style="border-top:none;padding-top:0">
         <dt>In</dt><dd>Frame statistics — residual kurtosis over a window</dd>
@@ -874,16 +1301,50 @@ footer p{margin:0 0 12px}
   <div class="col">
     <h3>Why real data at all</h3>
     <p>The real recordings are <strong>not the training set</strong>. They are the <em>reference</em> against which the synthetic generator is validated. The network trains on generated audio, which is effectively unlimited — the limit is compute, not recordings. The real set only has to be large enough to establish a <strong>tolerance</strong>.</p>
-    <pre><code>real gunshots (~48–60 events)  ──►  validate the generator
-                                         │
-                                         ▼
-                                synthetic generator
-                                         │
-                                         ▼
-              unlimited noise  ──+──  clean speech corpus
-                                 │
-                                 ▼
-                        training mixtures  ──►  the model</code></pre>
+  </div>
+<figure>
+  <span class="fignum">Figure 6 &middot; The real recordings are the reference, not the training set</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 260" role="img"
+       aria-label="About fifty real gunshot events validate a synthetic generator, which then produces unlimited noise; that noise is mixed with a clean speech corpus to make the training pairs.">
+    <rect class="box crit" x="20" y="90" width="200" height="76" rx="8"/>
+    <text class="t sm" x="34" y="118">Real gunshots</text>
+    <text class="s" x="34" y="136">48&ndash;60 events, calibrated</text>
+    <text class="s" x="34" y="152">one trip, no retry</text>
+
+    <line class="e" x1="220" y1="128" x2="296" y2="128" marker-end="url(#ar)"/>
+    <text class="el" x="226" y="118">validates</text>
+
+    <rect class="box" x="300" y="90" width="220" height="76" rx="8"/>
+    <text class="t sm" x="314" y="118">Synthetic generator</text>
+    <text class="s" x="314" y="136">Friedlander, directivity,</text>
+    <text class="s" x="314" y="152">ground reflection, device chain</text>
+
+    <line class="e" x1="520" y1="128" x2="596" y2="128" marker-end="url(#ar)"/>
+    <text class="el" x="526" y="118">produces</text>
+
+    <rect class="box" x="600" y="42" width="200" height="62" rx="8"/>
+    <text class="t sm" x="614" y="68">Unlimited noise</text>
+    <text class="s" x="614" y="86">the limit is compute</text>
+
+    <rect class="box" x="600" y="152" width="200" height="62" rx="8"/>
+    <text class="t sm" x="614" y="178">Clean speech corpus</text>
+    <text class="s" x="614" y="196">the answer to learn</text>
+
+    <path class="e" d="M800,73 C 840,73 850,110 880,122" marker-end="url(#ar)"/>
+    <path class="e" d="M800,183 C 840,183 850,146 880,134" marker-end="url(#ar)"/>
+
+    <rect class="box hi" x="884" y="96" width="96" height="64" rx="8"/>
+    <text class="t sm" x="896" y="122">Training</text>
+    <text class="t sm" x="896" y="140">pairs</text>
+
+    <text class="el" x="20" y="210">The network never trains on the real recordings. They only establish the tolerance the generator must fall inside.</text>
+    <text class="el" x="20" y="232">A holdout split is assigned <tspan font-weight="700">before the data exists</tspan>, so the comparison cannot be tuned after the fact.</text>
+  </svg>
+  </div>
+  <figcaption><b>This is the answer to &ldquo;you only have fifty gunshots &mdash; how can you train on that?&rdquo;</b> We do not. Fifty calibrated events are plenty to fit a distribution and to <em>test</em> whether a generator reproduces it. The generator then produces as much training material as compute allows.</figcaption>
+</figure>
+  <div class="col">
 
     <h3>Recording settings, and why each one is not negotiable</h3>
   </div>
@@ -912,9 +1373,61 @@ footer p{margin:0 0 12px}
     <p><code>validate.py --array</code> understands this: clipping on the hot channel is <em>not</em> a failure as long as the cold channel holds the peak. Without that flag every take would fail and the operator would learn to ignore warnings — which is the real failure mode that flag exists to prevent.</p>
 
     <h3>The signal chain, and the one constraint software cannot fix</h3>
-    <pre><code>mic --XLR--&gt; [pad] --&gt; preamp / USB interface --&gt; laptop
-                            │
-                      +48 V phantom: a condenser needs it, a dynamic does not</code></pre>
+  </div>
+<figure>
+  <span class="fignum">Figure 7 &middot; The capture chain, and the one thing software cannot fix</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 300" role="img"
+       aria-label="The capture chain from microphone through pad and preamp to two staggered-gain channels, with microphone maximum SPL marked as the binding constraint.">
+    <rect class="box crit" x="20" y="104" width="150" height="70" rx="8"/>
+    <text class="t sm" x="34" y="130">Microphone</text>
+    <text class="s" x="34" y="148">max SPL 110&ndash;120 dB</text>
+    <text class="s" x="34" y="164">the binding constraint</text>
+
+    <line class="e" x1="170" y1="139" x2="216" y2="139" marker-end="url(#ar)"/>
+    <text class="el" x="174" y="130">XLR</text>
+
+    <rect class="box" x="220" y="104" width="110" height="70" rx="8"/>
+    <text class="t sm" x="234" y="130">Pad</text>
+    <text class="s" x="234" y="148">&minus;10 / &minus;20 dB</text>
+
+    <line class="e" x1="330" y1="139" x2="376" y2="139" marker-end="url(#ar)"/>
+
+    <rect class="box" x="380" y="104" width="190" height="70" rx="8"/>
+    <text class="t sm" x="394" y="130">Preamp / interface</text>
+    <text class="s" x="394" y="148">24-bit &middot; 96 kHz</text>
+    <text class="s" x="394" y="164">+48 V for a condenser</text>
+
+    <path class="e" d="M570,124 C 600,124 604,66 634,66" marker-end="url(#ar)"/>
+    <path class="e" d="M570,154 C 600,154 604,212 634,212" marker-end="url(#ar)"/>
+
+    <rect class="box warn" x="638" y="36" width="230" height="62" rx="8"/>
+    <text class="t sm" x="652" y="62">ch 1 &mdash; HOT</text>
+    <text class="s" x="652" y="80">tail and quiet detail &middot; will clip</text>
+
+    <rect class="box" x="638" y="182" width="230" height="62" rx="8"/>
+    <text class="t sm" x="652" y="208">ch 2 &mdash; COLD</text>
+    <text class="s" x="652" y="226">18&ndash;24 dB down &middot; holds the peak</text>
+
+    <path class="e" d="M868,67 C 900,67 906,124 936,132" marker-end="url(#ar)"/>
+    <path class="e" d="M868,213 C 900,213 906,156 936,148" marker-end="url(#ar)"/>
+    <rect class="box" x="880" y="104" width="100" height="70" rx="8"/>
+    <text class="t sm" x="892" y="132">validate</text>
+    <text class="s" x="892" y="150">--array</text>
+
+    <text class="el no" x="20" y="216">Once the capsule saturates, the</text>
+    <text class="el no" x="20" y="232">waveform arrives already flat-topped.</text>
+    <text class="el no" x="20" y="248">No pad and no gain change downstream</text>
+    <text class="el no" x="20" y="264">recovers it. Only distance helps &mdash;</text>
+    <text class="el no" x="20" y="280">6 dB per doubling.</text>
+
+    <text class="el" x="380" y="264">One gain setting cannot span 100 dB in a single event,</text>
+    <text class="el" x="380" y="280">so two sample-aligned channels are recorded instead.</text>
+  </svg>
+  </div>
+  <figcaption><b>Clipping on the hot channel is not a failure</b> as long as the cold channel holds the peak, and <code>validate.py --array</code> knows that. Without the flag every take would fail, and the operator would learn to ignore warnings &mdash; which is the real failure mode the flag exists to prevent.</figcaption>
+</figure>
+  <div class="col">
     <p><strong>Microphone maximum SPL is the binding constraint.</strong> A 3.5 mm electret tops out around 100–120 dB SPL; a blank pistol at 1 m is 140–155 dB. Once the capsule or its internal FET saturates, no pad and no gain change downstream recovers the waveform. Only distance helps. Check the microphone's published "Max SPL" against the source before trusting any recording of it.</p>
 
     <h4>Setting gain without live fire</h4>
@@ -1275,8 +1788,85 @@ python3 session.py verify DATA    # before every comparison</code></pre>
   <div class="sec-head"><span class="sec-num">08</span><h2>The offline pipeline</h2></div>
   <p class="sec-sub">What plays the role of a backend. There is no server and no API — there is a workstation pipeline that produces one file, and that file is the only thing that ships.</p>
 
+<figure>
+  <span class="fignum">Figure 8 &middot; The offline pipeline &mdash; five stages, one shipped file</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 330" role="img"
+       aria-label="Five offline stages run on a workstation: data acquisition, the synthetic generator, mixing and augmentation, training, and compression and export. Only the exported model file reaches the device.">
+
+    <rect class="band" x="20" y="34" width="770" height="184" rx="12"/>
+    <text class="hd" x="38" y="58">RUNS ON A WORKSTATION &middot; NONE OF THIS SHIPS &middot; BUDGET UNLIMITED</text>
+
+    <rect class="box" x="40" y="82" width="132" height="112" rx="8"/>
+    <text class="n" x="54" y="104">STAGE 1</text>
+    <text class="t sm" x="54" y="124">Acquisition</text>
+    <text class="s" x="54" y="142">one range trip</text>
+    <text class="s" x="54" y="158">96 kHz / 24-bit</text>
+    <text class="s" x="54" y="174">absolute Pascals</text>
+
+    <line class="e" x1="172" y1="138" x2="196" y2="138" marker-end="url(#ar)"/>
+
+    <rect class="box" x="200" y="82" width="132" height="112" rx="8"/>
+    <text class="n" x="214" y="104">STAGE 2</text>
+    <text class="t sm" x="214" y="124">Generator</text>
+    <text class="s" x="214" y="142">Friedlander wave</text>
+    <text class="s" x="214" y="158">directivity, ground</text>
+    <text class="s" x="214" y="174">device chain</text>
+
+    <line class="e" x1="332" y1="138" x2="356" y2="138" marker-end="url(#ar)"/>
+
+    <rect class="box" x="360" y="82" width="132" height="112" rx="8"/>
+    <text class="n" x="374" y="104">STAGE 3</text>
+    <text class="t sm" x="374" y="124">Mixing</text>
+    <text class="s" x="374" y="142">controlled SNR</text>
+    <text class="s" x="374" y="158">room responses</text>
+    <text class="s" x="374" y="174">&alpha;-stable augment</text>
+
+    <line class="e" x1="492" y1="138" x2="516" y2="138" marker-end="url(#ar)"/>
+
+    <rect class="box hi" x="520" y="82" width="132" height="112" rx="8"/>
+    <text class="n" x="534" y="104">STAGE 4</text>
+    <text class="t sm" x="534" y="124">Training</text>
+    <text class="s" x="534" y="142">GTCRN</text>
+    <text class="s" x="534" y="158">PyTorch</text>
+    <text class="s" x="534" y="174">GPU, hours</text>
+
+    <line class="e" x1="652" y1="138" x2="676" y2="138" marker-end="url(#ar)"/>
+
+    <rect class="box" x="680" y="82" width="92" height="112" rx="8"/>
+    <text class="n" x="692" y="104">STAGE 5</text>
+    <text class="t sm" x="692" y="124">Compress</text>
+    <text class="s" x="692" y="142">prune</text>
+    <text class="s" x="692" y="158">quantise</text>
+    <text class="s" x="692" y="174">export</text>
+
+    <!-- the boundary -->
+    <line class="e thick" x1="810" y1="20" x2="810" y2="310" stroke-dasharray="6 5"/>
+    <text class="hd" x="820" y="34" fill="var(--text)">THE ONLY THING</text>
+    <text class="hd" x="820" y="49" fill="var(--text)">THAT CROSSES</text>
+
+    <line class="e thick" x1="772" y1="138" x2="866" y2="138" marker-end="url(#arT)"/>
+
+    <rect class="box hi" x="870" y="82" width="110" height="112" rx="8"/>
+    <text class="t sm" x="884" y="124">model</text>
+    <text class="t sm" x="884" y="142">.onnx</text>
+    <text class="s" x="884" y="166">&lt; 1 MB</text>
+
+    <line class="e thick" x1="925" y1="194" x2="925" y2="240" marker-end="url(#arT)"/>
+    <rect class="box b" x="838" y="242" width="142" height="62" rx="8"/>
+    <text class="t sm" x="852" y="268">The device</text>
+    <text class="s" x="852" y="286">C++ &middot; ONNX Runtime</text>
+
+    <text class="el" x="20" y="248">&ldquo;Where is your backend?&rdquo; &mdash; this is the backend. There is no server and no API.</text>
+    <text class="el" x="20" y="270">&alpha;-stable augmentation, the generator, pruning and every metric run <tspan font-weight="700">once, on a workstation, months before</tspan></text>
+    <text class="el" x="20" y="292">the device is switched on. A judge asking whether &alpha;-stable generation is too heavy for embedded has</text>
+    <text class="el" x="20" y="314">misunderstood the question, and you should be able to say why in one sentence.</text>
+  </svg>
+  </div>
+  <figcaption>The pipeline shapes the weights; the weights ship. Everything to the left of the dashed line is free to be as expensive as it needs to be, which is exactly why the expensive ideas &mdash; heavy-tailed augmentation, a full physical generator, the vocoder in the evaluation chain &mdash; cost the deployed system nothing.</figcaption>
+</figure>
+
   <div class="col">
-    <p>"Where is your backend?" is a question that will be asked, and the answer is worth having ready: <strong>the backend is the offline pipeline, and its output is <code>model.onnx</code></strong>. Everything from data generation to quantisation lives here. None of it runs on the device.</p>
 
     <h3>Stage 1 — Real data acquisition</h3>
     <p>Covered in full in section 06. One trip, 96 kHz / 24-bit, calibrated to absolute Pascals, with the range impulse response captured before anything else that can be shortened.</p>
@@ -1529,6 +2119,55 @@ python3 session.py verify DATA    # before every comparison</code></pre>
     <h4>Why our own two metrics are worth the fifty lines</h4>
     <p>PESQ and STOI average over an utterance. A gunshot destroys about 200 ms; in a ten-second clip the average barely moves. <strong>The standard metrics hide exactly the damage this problem statement is about.</strong> IRT measures how fast intelligibility comes back; WLPS measures how many words a shot costs. The narrative — <em>"we showed the standard metrics under-report impulsive damage, so we propose two that don't"</em> — is a genuine measurement contribution of exactly the kind DRDO respects, and it needs no hardware, no range data and no trained model.</p>
 
+  </div>
+<figure>
+  <span class="fignum">Figure 9 &middot; Where the metrics are measured, and where they should be</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 300" role="img"
+       aria-label="Metrics are normally measured at the denoiser output, but the listener hears the vocoder output, so every figure should be reported at both points.">
+    <rect class="box" x="20" y="110" width="150" height="66" rx="8"/>
+    <text class="t sm" x="34" y="138">Noisy mixture</text>
+    <text class="s" x="34" y="156">at a known SNR</text>
+
+    <line class="e" x1="170" y1="143" x2="216" y2="143" marker-end="url(#ar)"/>
+
+    <rect class="box b" x="220" y="110" width="200" height="66" rx="8"/>
+    <text class="t sm" x="234" y="138">Lane B engine</text>
+    <text class="s" x="234" y="156">the 11 blocks</text>
+
+    <line class="e b" x1="420" y1="143" x2="486" y2="143" marker-end="url(#arB)"/>
+
+    <rect class="band" x="490" y="110" width="220" height="66" rx="8"/>
+    <text class="t sm" x="504" y="138">MELPe vocoder</text>
+    <text class="s" x="504" y="156">2400 / 1200 / 600 bps</text>
+
+    <line class="e" x1="710" y1="143" x2="776" y2="143" marker-end="url(#ar)"/>
+
+    <rect class="box" x="780" y="110" width="200" height="66" rx="8"/>
+    <text class="t sm" x="794" y="138">The listener</text>
+    <text class="s" x="794" y="156">what is actually heard</text>
+
+    <!-- measurement point 1 -->
+    <line class="e dash" x1="455" y1="110" x2="455" y2="62" />
+    <circle class="fillB" cx="455" cy="143" r="5"/>
+    <rect class="box b" x="300" y="18" width="310" height="44" rx="8"/>
+    <text class="t sm" x="314" y="46">MEASURED HERE &mdash; PESQ, STOI, SI-SNR</text>
+
+    <!-- measurement point 2 -->
+    <line class="e dash" x1="745" y1="176" x2="745" y2="228" />
+    <circle class="fillT" cx="745" cy="143" r="5"/>
+    <rect class="box hi" x="590" y="230" width="310" height="44" rx="8"/>
+    <text class="t sm" x="604" y="258">SHOULD ALSO BE MEASURED HERE</text>
+
+    <text class="el" x="20" y="240">Artefacts PESQ barely notices &mdash; musical noise,</text>
+    <text class="el" x="20" y="256">smeared harmonics, a mis-tracked pitch across an</text>
+    <text class="el" x="20" y="272">interpolated gap &mdash; corrupt exactly the parameters</text>
+    <text class="el" x="20" y="288">MELPe transmits: pitch, voicing, spectral envelope.</text>
+  </svg>
+  </div>
+  <figcaption><b>The cheapest original experiment available.</b> Put a vocoder into the evaluation chain &mdash; an open MELPe or Codec2 build is enough &mdash; and report every metric twice. If the ranking of two methods flips across the vocoder, that single table is a more original contribution than anything else in the plan, and it is the first question a DRDO communications evaluator asks.</figcaption>
+</figure>
+  <div class="col">
     <h3>The evaluation grid — the core experiment</h3>
   </div>
 
@@ -1884,29 +2523,86 @@ python3 session.py verify DATA    # before every comparison</code></pre>
   <p class="sec-sub">What each stage produces, what blocks what, and the two stages that need no hardware and can start today.</p>
 
   <div class="col">
-    <pre><code>  STAGE 0  foundations ─────────────────────────┐
-      0a toolkit            BUILT                │
-      0b baselines          READY TO START       │
-      0c noise corpora      READY TO START       │
-      0d speech corpus      DECIDE TODAY         │
-                                                 │
-  STAGE 1  real reference ◄── needs 0a           │
-      range trip → calibrate → IR → measure → FREEZE
-                          │                      │
-  STAGE 2  baseline collapse ◄── needs 0b + 0c ──┘
-      normalisation fix → impulsive grid → latency chart
-                          │   ◄── the finding the story rests on
-  STAGE 3  synthetic generator ◄── needs 1 + 2
-      build → measure with the SAME engine → compare vs holdout
-                          ▼   dataset-quality claim proven here
-  STAGE 4  training data ◄── needs 3 + 0d
-      mix at SNRs → augment → convolve with RIRs
-  STAGE 5  model ◄── needs 4
-      two-path architecture → train → evaluate on the grid
-  STAGE 6  edge ◄── needs 5
-      prune → quantize → deploy → measure MMAC, latency, WATTS
-  STAGE 7  the extra experiment ◄── needs 6
-      α-stable vs prune-ability</code></pre>
+  </div>
+<figure>
+  <span class="fignum">Figure 10 &middot; Build order &mdash; what blocks what</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 470" role="img"
+       aria-label="Build dependency graph: stage 0 foundations feed the range trip and the baseline collapse experiment, which together feed the synthetic generator, then training data, model, edge deployment and a final experiment.">
+
+    <!-- stage 0 -->
+    <rect class="band" x="20" y="26" width="300" height="150" rx="10"/>
+    <text class="hd" x="36" y="50">STAGE 0 &middot; FOUNDATIONS</text>
+    <text class="t sm" x="36" y="76">0a Toolkit</text>
+    <text class="s" x="220" y="76" fill="var(--ok)">BUILT</text>
+    <text class="t sm" x="36" y="100">0b Baselines</text>
+    <text class="s" x="176" y="100" fill="var(--warn)">READY TO START</text>
+    <text class="t sm" x="36" y="124">0c Noise corpora</text>
+    <text class="s" x="176" y="124" fill="var(--warn)">READY TO START</text>
+    <text class="t sm" x="36" y="148">0d Speech corpus</text>
+    <text class="s" x="192" y="148" fill="var(--crit)">DECIDE TODAY</text>
+
+    <!-- stage 1 -->
+    <path class="e" d="M320,76 L360,76 L360,72" marker-end="url(#ar)"/>
+    <rect class="box" x="380" y="26" width="290" height="70" rx="8"/>
+    <text class="n" x="394" y="46">STAGE 1</text>
+    <text class="t sm" x="394" y="64">Real reference</text>
+    <text class="s" x="394" y="82">range trip &rarr; calibrate &rarr; IR &rarr; measure &rarr; FREEZE</text>
+    <text class="el" x="330" y="66">needs 0a</text>
+
+    <!-- stage 2 -->
+    <path class="e" d="M320,112 L360,112 L360,146" marker-end="url(#ar)"/>
+    <rect class="box crit" x="380" y="122" width="290" height="70" rx="8"/>
+    <text class="n" x="394" y="142">STAGE 2</text>
+    <text class="t sm" x="394" y="160">Baseline collapse</text>
+    <text class="s" x="394" y="178">normalisation fix &rarr; impulsive grid &rarr; latency chart</text>
+    <text class="el" x="326" y="136">needs 0b + 0c</text>
+    <text class="el no" x="690" y="152">the finding the</text>
+    <text class="el no" x="690" y="167">whole story rests on</text>
+
+    <!-- stage 3 -->
+    <path class="e" d="M525,96 L525,110 L280,110 L280,214" marker-end="url(#ar)"/>
+    <path class="e" d="M525,192 L525,206 L280,206"/>
+    <rect class="box" x="120" y="218" width="420" height="70" rx="8"/>
+    <text class="n" x="134" y="238">STAGE 3</text>
+    <text class="t sm" x="134" y="256">Synthetic generator</text>
+    <text class="s" x="134" y="274">build &rarr; measure with the SAME engine &rarr; compare vs holdout</text>
+    <text class="el" x="548" y="234">needs 1 + 2 &mdash; the dataset-quality claim is proven here</text>
+
+    <!-- stage 4 -->
+    <line class="e" x1="330" y1="288" x2="330" y2="314" marker-end="url(#ar)"/>
+    <path class="e" d="M170,176 L100,176 L100,330 L116,330" marker-end="url(#ar)"/>
+    <text class="el" x="36" y="200">0d joins here</text>
+    <rect class="box" x="120" y="318" width="420" height="62" rx="8"/>
+    <text class="n" x="134" y="338">STAGE 4</text>
+    <text class="t sm" x="134" y="356">Training data</text>
+    <text class="s" x="134" y="373">mix at SNRs &rarr; augment &rarr; convolve with room responses</text>
+
+    <!-- stage 5 -->
+    <line class="e" x1="540" y1="349" x2="596" y2="349" marker-end="url(#ar)"/>
+    <rect class="box hi" x="600" y="318" width="380" height="62" rx="8"/>
+    <text class="n" x="614" y="338">STAGE 5</text>
+    <text class="t sm" x="614" y="356">Model</text>
+    <text class="s" x="614" y="373">two-path architecture &rarr; train &rarr; evaluate on the grid</text>
+
+    <!-- stage 6 -->
+    <path class="e" d="M790,380 L790,398 L600,398 L600,416" marker-end="url(#ar)"/>
+    <rect class="box b" x="120" y="420" width="480" height="44" rx="8"/>
+    <text class="n" x="134" y="440">STAGE 6</text>
+    <text class="t sm" x="200" y="440">Edge</text>
+    <text class="s" x="256" y="440">prune &rarr; quantise &rarr; deploy &rarr; measure MMAC, latency and WATTS</text>
+
+    <!-- stage 7 -->
+    <line class="e" x1="600" y1="442" x2="646" y2="442" marker-end="url(#ar)"/>
+    <rect class="box" x="650" y="420" width="330" height="44" rx="8"/>
+    <text class="n" x="664" y="440">STAGE 7</text>
+    <text class="t sm" x="730" y="440">Extra experiment</text>
+    <text class="s" x="854" y="440">&alpha;-stable vs prune-ability</text>
+  </svg>
+  </div>
+  <figcaption><b>Stage 2 is the one to start first even though it looks optional.</b> It needs no hardware, no range trip and no new data &mdash; and it produces the measurement the entire argument rests on: how badly prediction-based cancellation collapses on impulsive noise. Stage 0d is marked in red because an undecided speech corpus silently blocks Stage 4, which blocks everything after it.</figcaption>
+</figure>
+  <div class="col">
 
     <p><strong>Stage 2 does not wait for the range trip.</strong> It needs only public data, it can start today, and it produces the two findings the whole project argues from — the baseline-collapse table and the latency chart.</p>
   </div>
@@ -2277,6 +2973,10 @@ Object.assign(TERMS, {
 
   function marked(node){
     for(var p=node.parentNode; p && p!==doc; p=p.parentNode){
+      /* Never descend into a diagram. An HTML <span> inside an SVG <text>
+         is not an SVG element, so the browser renders nothing at all and
+         the word silently disappears from the figure. */
+      if(p.namespaceURI === 'http://www.w3.org/2000/svg') return true;
       if(SKIP[p.nodeName]) return true;
       if(p.classList && (p.classList.contains('term')||p.classList.contains('tag'))) return true;
     }

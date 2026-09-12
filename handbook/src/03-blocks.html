@@ -3,30 +3,131 @@
   <div class="sec-head"><span class="sec-num">05</span><h2>Lane B, block by block</h2></div>
   <p class="sec-sub">The only code that ships and runs in real time. Read top to bottom — that is the signal flow.</p>
 
-  <div class="chain">
-    <div class="chain-row">
-      <div class="blk"><span class="n">1</span><span class="t">Audio in</span><span class="s">3 ch · ring buffer</span></div>
-      <div class="blk"><span class="n">2</span><span class="t">Aux-IVA</span><span class="s">blind separation</span></div>
-      <div class="blk"><span class="n">3</span><span class="t">Normalise</span><span class="s">90th pct / FLOM</span></div>
-      <div class="blk"><span class="n">4</span><span class="t">STFT + ERB</span><span class="s">complex · 32 bands</span></div>
-      <div class="blk cls"><span class="n">5</span><span class="t">Classifier</span><span class="s">kurtosis → γ, β</span></div>
-      <div class="blk"><span class="n">6</span><span class="t">Impulsive</span><span class="s">BMRI · AR interp</span></div>
-    </div>
-    <div class="chain-row" style="margin-top:9px">
-      <div class="blk ai"><span class="n">7</span><span class="t">Neural core</span><span class="s">GTCRN · 24K</span></div>
-      <div class="blk"><span class="n">8</span><span class="t">Deep filter</span><span class="s">harmonics &lt;5 kHz</span></div>
-      <div class="blk"><span class="n">9</span><span class="t">Voice guard</span><span class="s">spectral correction</span></div>
-      <div class="blk"><span class="n">10</span><span class="t">Residual</span><span class="s">optional LMS</span></div>
-      <div class="blk"><span class="n">11</span><span class="t">ISTFT</span><span class="s">overlap-add</span></div>
-      <div class="blk"><span class="n">→</span><span class="t">Vocoder</span><span class="s">MELPe · radio</span></div>
-    </div>
-    <p class="legend">Teal = the learned block · Amber = the block that makes the system "adaptive" · The vocoder is not ours, but everything is judged after it.</p>
+<figure>
+  <span class="fignum">Figure 4 &middot; Lane B &mdash; eleven blocks, one 20 ms frame</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 610" role="img"
+       aria-label="Lane B flowchart: two microphones feed audio input, blind separation, robust normalisation and the STFT; a classifier then splits each frame between a classical impulsive path and the GTCRN neural core, which are recombined through deep filtering, the voice guard, an optional residual filter and the inverse transform before the vocoder.">
+
+    <!-- inputs -->
+    <rect class="box" x="20" y="22" width="120" height="52" rx="8"/>
+    <text class="t sm" x="32" y="48">Mic 1</text>
+    <text class="s" x="32" y="66">voice</text>
+    <rect class="box hi" x="20" y="92" width="120" height="52" rx="8"/>
+    <text class="t sm" x="32" y="118">Mic 2</text>
+    <text class="s" x="32" y="136">reference</text>
+
+    <line class="e" x1="140" y1="48" x2="187" y2="68" marker-end="url(#ar)"/>
+    <line class="e" x1="140" y1="118" x2="187" y2="94" marker-end="url(#ar)"/>
+
+    <!-- band 1 -->
+    <rect class="box" x="190" y="50" width="160" height="62" rx="8"/>
+    <text class="n" x="204" y="70">01</text>
+    <text class="t sm" x="204" y="88">Audio in</text>
+    <text class="s" x="204" y="104">lock-free ring buffer</text>
+
+    <line class="e" x1="350" y1="81" x2="377" y2="81" marker-end="url(#ar)"/>
+    <rect class="box" x="380" y="50" width="160" height="62" rx="8"/>
+    <text class="n" x="394" y="70">02</text>
+    <text class="t sm" x="394" y="88">Aux-IVA</text>
+    <text class="s" x="394" y="104">3 streams, unordered</text>
+
+    <line class="e" x1="540" y1="81" x2="567" y2="81" marker-end="url(#ar)"/>
+    <rect class="box crit" x="570" y="50" width="180" height="62" rx="8"/>
+    <text class="n" x="584" y="70">03</text>
+    <text class="t sm" x="584" y="88">Robust normalise</text>
+    <text class="s" x="584" y="104">90th pct / FLOM, not RMS</text>
+
+    <line class="e" x1="750" y1="81" x2="777" y2="81" marker-end="url(#ar)"/>
+    <rect class="box" x="780" y="50" width="190" height="62" rx="8"/>
+    <text class="n" x="794" y="70">04</text>
+    <text class="t sm" x="794" y="88">STFT + ERB</text>
+    <text class="s" x="794" y="104">complex &middot; 192 bins &rarr; 64 bands</text>
+
+    <line class="e" x1="875" y1="112" x2="875" y2="156" marker-end="url(#ar)"/>
+
+    <!-- band 2: the classifier, applied to every frame -->
+    <rect class="box warn" x="20" y="158" width="950" height="76" rx="10"/>
+    <text class="hd" x="38" y="182" fill="var(--warn)">05 &mdash; THE CLASSIFIER &middot; THIS IS THE BLOCK THAT MAKES THE SYSTEM ADAPTIVE</text>
+    <text class="t sm" x="38" y="206">Measures kurtosis per frame: steady noise, changing noise, or a sudden bang</text>
+    <text class="s" x="38" y="224">and sets &gamma; &mdash; how aggressively to clean &mdash; and &beta;, the detection threshold. BMRI tunes these by hand, offline. Here they are live.</text>
+
+    <!-- fork -->
+    <line class="e" x1="300" y1="234" x2="300" y2="268" marker-end="url(#ar)"/>
+    <text class="el" x="308" y="256">when &gamma; is high</text>
+    <line class="e thick" x1="710" y1="234" x2="710" y2="268" marker-end="url(#arT)"/>
+    <text class="el" x="718" y="256">every frame</text>
+
+    <!-- band 3: the two paths -->
+    <rect class="box" x="150" y="270" width="300" height="78" rx="8"/>
+    <text class="n" x="164" y="290">06</text>
+    <text class="t sm" x="164" y="308">Impulsive path &mdash; BMRI</text>
+    <text class="s" x="164" y="325">AR model detects, interpolation fills</text>
+    <text class="s" x="164" y="340">classical &middot; does not predict, reacts</text>
+
+    <rect class="box hi" x="560" y="270" width="300" height="78" rx="8"/>
+    <text class="n" x="574" y="290">07</text>
+    <text class="t sm" x="574" y="308">Neural core &mdash; GTCRN</text>
+    <text class="s" x="574" y="325">complex ratio mask &middot; 23.7 K params</text>
+    <text class="s" x="574" y="340">the only learned block in the chain</text>
+
+    <!-- merge -->
+    <path class="e" d="M300,348 L300,370 L160,370"/>
+    <path class="e" d="M710,348 L710,370 L160,370"/>
+    <line class="e" x1="160" y1="370" x2="160" y2="392" marker-end="url(#ar)"/>
+
+    <!-- band 4 -->
+    <rect class="box" x="60" y="396" width="200" height="62" rx="8"/>
+    <text class="n" x="74" y="416">08</text>
+    <text class="t sm" x="74" y="434">Deep filtering</text>
+    <text class="s" x="74" y="450">harmonics rebuilt &lt; 5 kHz</text>
+
+    <line class="e" x1="260" y1="427" x2="297" y2="427" marker-end="url(#ar)"/>
+    <rect class="box" x="300" y="396" width="200" height="62" rx="8"/>
+    <text class="n" x="314" y="416">09</text>
+    <text class="t sm" x="314" y="434">Voice guard</text>
+    <text class="s" x="314" y="450">the intelligibility safety net</text>
+
+    <line class="e" x1="500" y1="427" x2="537" y2="427" marker-end="url(#ar)"/>
+    <rect class="box" x="540" y="396" width="200" height="62" rx="8"/>
+    <text class="n" x="554" y="416">10</text>
+    <text class="t sm" x="554" y="434">Residual LMS</text>
+    <text class="s" x="554" y="450">optional &middot; must earn its latency</text>
+
+    <line class="e" x1="740" y1="427" x2="777" y2="427" marker-end="url(#ar)"/>
+    <rect class="box" x="780" y="396" width="190" height="62" rx="8"/>
+    <text class="n" x="794" y="416">11</text>
+    <text class="t sm" x="794" y="434">ISTFT</text>
+    <text class="s" x="794" y="450">overlap-add, phase intact</text>
+
+    <!-- the Mic 2 reference into block 10 -->
+    <line class="e no" x1="600" y1="496" x2="600" y2="462" marker-end="url(#arC)"/>
+    <text class="el no" x="200" y="512">Block 10&rsquo;s reference is <tspan font-weight="700">Mic 2</tspan>, never Mic 3 &mdash; Mic 3 measures what the wearer hears, and the transmitted voice never passes through the wearer&rsquo;s ear (audit F2)</text>
+
+    <!-- band 5 -->
+    <path class="e" d="M875,458 L875,502 L690,502 L690,526" marker-end="url(#ar)"/>
+    <rect class="band" x="560" y="530" width="260" height="62" rx="8"/>
+    <text class="t sm" x="576" y="556">MELPe vocoder</text>
+    <text class="s" x="576" y="574">STANAG 4591 &middot; 2400 bps &middot; not ours</text>
+
+    <line class="e" x1="820" y1="561" x2="857" y2="561" marker-end="url(#ar)"/>
+    <rect class="box" x="860" y="530" width="120" height="62" rx="8"/>
+    <text class="t sm" x="874" y="556">The radio</text>
+    <text class="s" x="874" y="574">the far end</text>
+
+    <text class="hd" x="20" y="561">EVERY METRIC</text>
+    <text class="hd" x="20" y="576">REPORTED TWICE:</text>
+    <text class="hd" x="20" y="591">BEFORE AND AFTER</text>
+  </svg>
   </div>
+  <figcaption><b>Read top to bottom &mdash; that is the signal flow.</b> Block&nbsp;03 is outlined in red because it is the one place the nearest published system is formally wrong. Block&nbsp;05 is the adaptive stage the problem statement demands. Block&nbsp;07 is the only learned block. The vocoder is drawn in grey because it is not ours &mdash; but it is what the listener actually hears, which is why every metric has to be reported on both sides of it.</figcaption>
+</figure>
+
 
   <div class="spec">
     <div class="spec-h"><span class="bn">01</span><h4>Audio input</h4><span class="cost">real-time thread · ~0 compute</span></div>
     <div class="spec-b">
-      <p>Reads 128 samples at a time from three microphones and pushes them into a <span class="term" data-t="lock-free ring buffer">lock-free ring buffer</span>. It does almost nothing, on purpose.</p>
+      <p>Reads 128 samples at a time from the two Lane&nbsp;B microphones and pushes them into a <span class="term" data-t="lock-free ring buffer">lock-free ring buffer</span>. It does almost nothing, on purpose.</p>
       <p><strong>Why it does nothing:</strong> this runs on the audio <span class="term" data-t="callback">callback</span> thread, which has a hard deadline. If it is ever late, the sound card runs out of samples and the listener hears a click. So it copies and hands off. It never allocates memory, never takes a lock, never logs, never throws an exception, never grows a <code>std::vector</code> and never touches a <code>std::string</code>. Any one of those can block for an unpredictable time, and violating the rule produces a click that appears once every few minutes and is almost impossible to debug afterwards.</p>
       <dl class="spec-io">
         <dt>In</dt><dd>3 channels of raw samples</dd>
@@ -101,17 +202,52 @@
       <p>A small, fast piece of code that looks at each frame and asks: <strong>is this steady noise, changing noise, or a sudden bang?</strong></p>
       <p>It measures <strong><span class="term" data-t="kurtosis">kurtosis</span></strong> — a number describing how spiky a signal is. Steady Gaussian noise sits at 3. The Cauchy noise BMRI was validated on measures 27. A gunshot is orders of magnitude higher. Based on the answer it sets two dials: <strong>γ (gamma)</strong>, how aggressively to clean, and <strong>β (beta)</strong>, the detection threshold.</p>
       <p><strong>Why this block is load-bearing:</strong> the problem statement asks for an <em>adaptive</em> system. This is the piece that makes it adaptive. Without it the pipeline behaves identically for a gunshot and for engine hum, and the word "adaptive" becomes an assertion. The BMRI paper tunes γ by hand, offline, from a chart; replacing that with a live classifier is genuinely our change.</p>
-      <p><strong>It gives operator modes for free</strong>, because γ has a known relationship to how much gets removed:</p>
     </div>
-    <div class="tblwrap" style="margin:0;border-left:none;border-right:none;border-bottom:none">
-    <table>
-      <thead><tr><th>Mode</th><th>γ</th><th>Behaviour</th></tr></thead>
-      <tbody>
-        <tr><td class="name">Listening</td><td class="num">low</td><td>Gentle. Keeps ambient sound so the wearer stays aware of the surroundings</td></tr>
-        <tr><td class="name">Combat</td><td class="num">high</td><td>Aggressive. Protects the voice through gunfire, accepts losing ambient detail</td></tr>
-      </tbody>
-    </table>
-    </div>
+    <figure>
+      <span class="fignum">Figure 5 &middot; What the classifier decides, and what it changes</span>
+      <div class="figbox">
+      <svg class="dg" viewBox="0 0 1000 260" role="img"
+           aria-label="The classifier measures frame kurtosis and maps it to three noise classes, each setting different values of gamma and beta.">
+        <rect class="box" x="20" y="88" width="200" height="76" rx="8"/>
+        <text class="t sm" x="34" y="116">Kurtosis of the frame</text>
+        <text class="s" x="34" y="134">how spiky the signal is</text>
+        <text class="s" x="34" y="150">Gaussian noise = 3</text>
+
+        <path class="e" d="M220,112 C 256,112 260,50 296,50" marker-end="url(#ar)"/>
+        <line class="e" x1="220" y1="126" x2="296" y2="126" marker-end="url(#ar)"/>
+        <path class="e" d="M220,140 C 256,140 260,202 296,202" marker-end="url(#arC)"/>
+
+        <rect class="box" x="300" y="22" width="250" height="56" rx="8"/>
+        <text class="t sm" x="314" y="46">near 3 &mdash; STATIONARY</text>
+        <text class="s" x="314" y="64">engine hum, road noise</text>
+
+        <rect class="box warn" x="300" y="98" width="250" height="56" rx="8"/>
+        <text class="t sm" x="314" y="122">raised &mdash; NON-STATIONARY</text>
+        <text class="s" x="314" y="140">wind, vehicles, babble</text>
+
+        <rect class="box crit" x="300" y="174" width="250" height="56" rx="8"/>
+        <text class="t sm" x="314" y="198">hundreds &mdash; IMPULSIVE</text>
+        <text class="s" x="314" y="216">gunshot, blast</text>
+
+        <line class="e" x1="550" y1="50" x2="606" y2="50" marker-end="url(#ar)"/>
+        <line class="e" x1="550" y1="126" x2="606" y2="126" marker-end="url(#ar)"/>
+        <line class="e" x1="550" y1="202" x2="606" y2="202" marker-end="url(#arC)"/>
+
+        <rect class="band" x="610" y="22" width="370" height="56" rx="8"/>
+        <text class="t sm" x="624" y="46">&gamma; low &middot; &beta; nominal</text>
+        <text class="s" x="624" y="64">the neural core leads, transient path idle</text>
+
+        <rect class="band" x="610" y="98" width="370" height="56" rx="8"/>
+        <text class="t sm" x="624" y="122">&gamma; mid &middot; &beta; nominal</text>
+        <text class="s" x="624" y="140">the neural core leads, mask tightened</text>
+
+        <rect class="band" x="610" y="174" width="370" height="56" rx="8"/>
+        <text class="t sm" x="624" y="198">&gamma; high &middot; &beta; +6 dB</text>
+        <text class="s" x="624" y="216">transient path leads, then the mask</text>
+      </svg>
+      </div>
+      <figcaption>The same dial gives the operator modes for free: a low-&gamma; <b>listening</b> mode that preserves ambient awareness, and a high-&gamma; <b>combat</b> mode that protects the voice through gunfire and accepts losing ambient detail.</figcaption>
+    </figure>
     <div class="spec-b">
       <dl class="spec-io" style="border-top:none;padding-top:0">
         <dt>In</dt><dd>Frame statistics — residual kurtosis over a window</dd>

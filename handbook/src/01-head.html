@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>ZEIT System Handbook</title>
 
 <style>
@@ -297,6 +298,51 @@ pre{background:var(--bg-alt);border-radius:var(--radius);padding:20px 22px;overf
   font-size:12.5px;line-height:1.62;color:var(--text-2);margin:20px 0 26px}
 pre code{background:none;padding:0;font-size:inherit;border-radius:0}
 
+/* ---------- figures and flowcharts ---------- */
+figure{margin:30px 0 34px}
+.figbox{background:var(--bg-alt);border-radius:var(--radius);padding:24px 24px 18px;
+  overflow-x:auto}
+.figbox svg{display:block;width:100%;height:auto;min-width:660px}
+.fignum{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  font-weight:600;display:block;margin-bottom:14px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+figcaption{font-size:14px;color:var(--text-3);margin-top:14px;line-height:1.5;max-width:82ch}
+figcaption b{color:var(--text-2);font-weight:600}
+
+/* diagram primitives — colour is carried by tokens so both themes work */
+svg.dg{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif}
+svg.dg .box{fill:var(--bg);stroke:var(--line);stroke-width:1.2}
+svg.dg .box.hi{stroke:var(--text);stroke-width:2}
+svg.dg .box.a{stroke:var(--ok);stroke-width:1.8}
+svg.dg .box.b{stroke:var(--accent);stroke-width:1.8}
+svg.dg .box.warn{stroke:var(--warn);stroke-width:1.8}
+svg.dg .box.crit{stroke:var(--crit);stroke-width:1.8}
+svg.dg .band{fill:var(--bg-sunk);stroke:var(--line-soft);stroke-width:1}
+svg.dg .t{fill:var(--text);font-size:13.5px;font-weight:600}
+svg.dg .t.sm{font-size:12px}
+svg.dg .s{fill:var(--text-3);font-size:10.5px;font-weight:500;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+svg.dg .s.bg{font-size:11.5px}
+svg.dg .hd{fill:var(--text-3);font-size:10.5px;font-weight:700;letter-spacing:.1em}
+svg.dg .n{fill:var(--text-3);font-size:10px;font-weight:700;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+svg.dg .e{stroke:var(--text-3);stroke-width:1.4;fill:none;opacity:.75}
+svg.dg .e.thick{stroke:var(--text);stroke-width:2;opacity:1}
+svg.dg .e.a{stroke:var(--ok);stroke-width:1.8;opacity:1}
+svg.dg .e.b{stroke:var(--accent);stroke-width:1.8;opacity:1}
+svg.dg .e.dash{stroke-dasharray:5 4}
+svg.dg .e.no{stroke:var(--crit);stroke-dasharray:5 4;opacity:.9}
+svg.dg .el{fill:var(--text-3);font-size:10.5px;font-weight:600}
+svg.dg .el.a{fill:var(--ok)}
+svg.dg .el.b{fill:var(--accent)}
+svg.dg .el.no{fill:var(--crit)}
+svg.dg .tick{stroke:var(--line);stroke-width:1}
+svg.dg .fillA{fill:var(--ok)}
+svg.dg .fillB{fill:var(--accent)}
+svg.dg .fillC{fill:var(--crit)}
+svg.dg .fillT{fill:var(--text)}
+@media(max-width:700px){.figbox{padding:16px 14px 14px}}
+
 footer{margin-top:100px;padding-top:30px;border-top:1px solid var(--line);
   font-size:13px;color:var(--text-3);line-height:1.65;max-width:80ch}
 footer p{margin:0 0 12px}
@@ -315,6 +361,22 @@ footer p{margin:0 0 12px}
 
 <div id="tip" role="tooltip" aria-hidden="true"></div>
 
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text-3)"/></marker>
+    <marker id="arT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text)"/></marker>
+    <marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--ok)"/></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker>
+    <marker id="arC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--crit)"/></marker>
+  </defs>
+</svg>
+
+
 <div class="wrap" id="doc">
 
 <header class="mast">
@@ -323,9 +385,9 @@ footer p{margin:0 0 12px}
   <p class="dek">A complete technical account of the proposed system, prepared for evaluation. It states what has been built, how every layer works, what each of the sixteen cited works contributes, how each clause of the problem statement is addressed, and — explicitly — what has not yet been built.</p>
   <div class="mast-meta">
     <span><b>Prepared for</b> Evaluation under PS 26052</span>
-    <span><b>Scope</b> 6 design documents · 16 papers · 21 tools</span>
+    <span><b>Scope</b> 6 design documents · 16 papers · 21 tools · 10 figures</span>
     <span><b>Companion</b> Architecture Audit · Headset Explorer</span>
-    <span><b>Revision</b> 6 September 2026</span>
+    <span><b>Revision</b> 12 September 2026</span>
   </div>
 </header>
 
@@ -337,14 +399,108 @@ footer p{margin:0 0 12px}
 
 <div class="howto">
   <span class="ic">How to read</span>
-  <p>Any word with a <span class="term" data-t="dashed underline">dotted underline</span> is a technical term. Hover it, or tap it on a phone, for a plain-language definition and how it is used in this project specifically. There is no glossary to scroll to; the explanation comes to the word.</p>
+  <p><strong>Ten numbered figures carry the architecture.</strong> Figure 1 is the whole system on one page; Figures 2 and 4 are the two lanes in full; Figure 3 is the timing the design depends on. If you read nothing else, read those four. Any word with a <span class="term" data-t="dashed underline">dotted underline</span> is a technical term. Hover it, or tap it on a phone, for a plain-language definition and how it is used in this project specifically. There is no glossary to scroll to; the explanation comes to the word.</p>
 </div>
 
-<a class="card3d" href="https://claude.ai/code/artifact/2b31066d-6991-4b3a-acb1-2c2e1a6bd76e" target="_blank" rel="noopener">
+<a class="card3d" href="zeit-bench-3d.html" target="_blank" rel="noopener">
   <span class="lb">Interactive companion</span>
   <strong>ZEIT Prototype Bench</strong>
-  <span class="d">A three-dimensional model of the complete prototype — the three-microphone headset, the Behringer UMC202HD interface and the Raspberry Pi 5 that runs the engine. Fire a simulated shot to watch the wavefronts propagate, the eleven blocks execute against their 25.3 ms budget, and a timestamped event log accumulate beside a three-channel signal monitor.</span>
+  <span class="d">A three-dimensional model of the complete prototype, with <strong>both lanes modelled</strong>. The earcup is drawn cut away so the anti-noise driver, the error microphone and the Lane A filter module are visible; a lane filter isolates either system on its own. Fire a simulated shot to watch the wavefronts propagate, Lane A close its loop inside a millisecond, and the eleven Lane B blocks execute against their 25.3 ms budget beside a four-channel signal monitor.</span>
 </a>
+
+
+<figure>
+  <span class="fignum">Figure 1 · The whole system on one page</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 470" role="img"
+       aria-label="Three microphones feed two independent lanes: Lane A protects the wearer's hearing inside the earcup, Lane B sends enhanced speech to the radio.">
+
+    <!-- sources -->
+    <rect class="box" x="20" y="30" width="140" height="54" rx="8"/>
+    <text class="t" x="32" y="55">Voice</text>
+    <text class="s" x="32" y="72">80–90 dB SPL</text>
+
+    <rect class="box crit" x="20" y="336" width="140" height="54" rx="8"/>
+    <text class="t" x="32" y="361">Gunshot</text>
+    <text class="s" x="32" y="378">140–155 dB SPL</text>
+
+    <!-- the acoustic trunk: the blast reaches every microphone -->
+    <path class="e thick" d="M160,363 L200,363 L200,57"/>
+    <line class="e thick" x1="200" y1="72"  x2="233" y2="72"  marker-end="url(#arT)"/>
+    <line class="e thick" x1="200" y1="222" x2="233" y2="222" marker-end="url(#arT)"/>
+    <line class="e thick" x1="200" y1="367" x2="233" y2="367" marker-end="url(#arT)"/>
+
+    <!-- the voice reaches Mic 1 -->
+    <line class="e" x1="160" y1="50" x2="233" y2="45" marker-end="url(#ar)"/>
+
+    <!-- the path that must not exist -->
+    <path class="e no" d="M110,84 C 110,145 150,196 230,205" marker-end="url(#arC)"/>
+    <g stroke="var(--crit)" stroke-width="2.4">
+      <line x1="140" y1="145" x2="156" y2="161"/><line x1="156" y1="145" x2="140" y2="161"/>
+    </g>
+    <text class="el no" x="22" y="150">the voice must</text>
+    <text class="el no" x="22" y="165">never reach Mic 2</text>
+
+    <!-- microphones -->
+    <rect class="box" x="233" y="26" width="172" height="62" rx="8"/>
+    <text class="t" x="245" y="52">Mic 1 — voice</text>
+    <text class="s" x="245" y="70">boom arm · 2–5 cm · lane B</text>
+
+    <rect class="box hi" x="233" y="186" width="172" height="62" rx="8"/>
+    <text class="t" x="245" y="212">Mic 2 — reference</text>
+    <text class="s" x="245" y="230">outer shell · BOTH lanes</text>
+
+    <rect class="box" x="233" y="336" width="172" height="62" rx="8"/>
+    <text class="t" x="245" y="362">Mic 3 — error</text>
+    <text class="s" x="245" y="380">inside the cup · lane A</text>
+
+    <!-- mics into lanes -->
+    <line class="e b" x1="405" y1="52" x2="457" y2="58" marker-end="url(#arB)"/>
+    <path class="e b" d="M405,200 C 432,200 434,126 457,120" marker-end="url(#arB)"/>
+    <path class="e a" d="M405,234 C 433,234 436,296 457,302" marker-end="url(#arA)"/>
+    <line class="e a" x1="405" y1="367" x2="457" y2="360" marker-end="url(#arA)"/>
+    <text class="el a" x="410" y="388">error</text>
+
+    <!-- lane B -->
+    <rect class="box b" x="460" y="20" width="285" height="132" rx="10"/>
+    <text class="hd" x="476" y="44" fill="var(--accent)">LANE B — SPEECH ENHANCEMENT</text>
+    <text class="t" x="476" y="70">Make the transmitted voice intelligible</text>
+    <text class="s bg" x="476" y="92">11 blocks · Aux-IVA, robust normalise,</text>
+    <text class="s bg" x="476" y="109">STFT+ERB, classifier, BMRI, GTCRN</text>
+    <text class="s bg" x="476" y="134" fill="var(--accent)">budget 25.3 ms algorithmic</text>
+
+    <!-- lane A -->
+    <rect class="box a" x="460" y="270" width="285" height="132" rx="10"/>
+    <text class="hd" x="476" y="294" fill="var(--ok)">LANE A — HEARING PROTECTION</text>
+    <text class="t" x="476" y="320">Make the wearer hear less noise</text>
+    <text class="s bg" x="476" y="342">FxLMS on its own module in the earcup,</text>
+    <text class="s bg" x="476" y="359">classical adaptive filtering, no network</text>
+    <text class="s bg" x="476" y="384" fill="var(--ok)">budget under 1 ms</text>
+
+    <!-- outputs -->
+    <line class="e b" x1="745" y1="86" x2="797" y2="86" marker-end="url(#arB)"/>
+    <rect class="box" x="800" y="46" width="180" height="80" rx="8"/>
+    <text class="t sm" x="812" y="72">MELPe vocoder</text>
+    <text class="s" x="812" y="91">STANAG 4591 · 2400 bps</text>
+    <text class="s" x="812" y="110">→ the radio, far end</text>
+
+    <line class="e a" x1="745" y1="336" x2="797" y2="336" marker-end="url(#arA)"/>
+    <rect class="box" x="800" y="296" width="180" height="80" rx="8"/>
+    <text class="t sm" x="812" y="322">The wearer's ear</text>
+    <text class="s" x="812" y="341">anti-noise cancels in air</text>
+    <text class="s" x="812" y="360">before the eardrum</text>
+
+    <!-- lane A closes its loop -->
+    <path class="e a dash" d="M890,376 L890,442 L319,442 L319,400" marker-end="url(#arA)"/>
+    <text class="el a" x="470" y="436">Mic 3 measures what is left — the loop corrects itself from that</text>
+
+    <!-- the separation that matters -->
+    <text class="hd" x="460" y="215" fill="var(--text-3)">THE TWO LANES NEVER MEET. DIFFERENT PHYSICS, BUDGETS AND METRICS.</text>
+    <line class="e dash" x1="460" y1="228" x2="980" y2="228"/>
+  </svg>
+  </div>
+  <figcaption><b>Read it left to right.</b> Sound arrives, three microphones transduce it, and two independent systems act on it. Lane&nbsp;A never touches the transmitted voice; Lane&nbsp;B never touches what the wearer hears. Mic&nbsp;2 is the only sensor both use, which is why the red path — the wearer's own voice leaking into Mic&nbsp;2 — breaks both lanes at once and cannot be repaired in software.</figcaption>
+</figure>
 
 <nav class="toc" aria-label="Contents">
   <ol>

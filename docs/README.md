@@ -17,7 +17,7 @@ SIH 2026, PS 26052 (DRDO) — AI/ML adaptive noise cancellation for defence.
 | [`workflow.md`](01-system/workflow.md) | **The whole system.** All 14 sources, every gap we build on, architecture, hardware, dataset, model, training, evaluation, deployment, what is genuinely ours |
 | [`placement.md`](01-system/placement.md) | **Where everything goes.** Each paper mapped to its block — hardware, on-device, or offline. Which five sources actually ship code |
 | [`two-mic-capture-plan.md`](01-system/two-mic-capture-plan.md) | **The capture plan.** Two mics — one at the gun, one at the speaker. Take types, the look-ahead the geometry buys, and what must be verified before range day |
-| [`architecture.md`](01-system/architecture.md) | **The product's software architecture.** The 3-mic headset, all 11 signal blocks, every algorithm explained in plain language, and the innovations |
+| [`architecture.md`](01-system/architecture.md) | **The product's software architecture.** Organised around the two lanes: Lane A, the sub-millisecond FxLMS hearing-protection loop, and Lane B, the 11-block speech engine. The 3-mic headset, every algorithm in plain language, the timing budget, and the innovations |
 | [`tech-stack.md`](01-system/tech-stack.md) | **The stack.** C++ for the real-time path, Python for ML, the latency budget that fixes every other decision, and the parity test that keeps them honest |
 | [`order.md`](01-system/order.md) | **The sequence.** What each stage produces, what blocks what — plus what is missing from the research |
 
@@ -53,6 +53,18 @@ Research papers and notes: [`../our notes from research paper/`](../our%20notes%
 
 Regenerate: `python3 diagrams/make_diagrams.py` and
 `python3 diagrams/make_arch_diagrams.py` from this directory.
+
+## The evaluator-facing pages
+
+Single self-contained HTML files in [`../handbook/`](../handbook/), written to be
+handed to someone outside the team. They summarise these documents; where the two
+disagree, `docs/` is authoritative.
+
+| Page | What it is |
+|---|---|
+| [`zeit-handbook.html`](../handbook/zeit-handbook.html) | **The whole project in one page**, with ten figures carrying the architecture and hover definitions on every technical term |
+| [`zeit-bench-3d.html`](../handbook/zeit-bench-3d.html) | **Interactive 3D model of the prototype**, both lanes modelled, earcup cut away, with a lane filter and a simulated shot |
+| [`zeit-audit.html`](../handbook/zeit-audit.html) | **The design review** — thirteen ranked findings, each traced to a source |
 
 ## Code
 

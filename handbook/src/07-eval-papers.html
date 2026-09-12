@@ -61,6 +61,55 @@
     <h4>Why our own two metrics are worth the fifty lines</h4>
     <p>PESQ and STOI average over an utterance. A gunshot destroys about 200 ms; in a ten-second clip the average barely moves. <strong>The standard metrics hide exactly the damage this problem statement is about.</strong> IRT measures how fast intelligibility comes back; WLPS measures how many words a shot costs. The narrative — <em>"we showed the standard metrics under-report impulsive damage, so we propose two that don't"</em> — is a genuine measurement contribution of exactly the kind DRDO respects, and it needs no hardware, no range data and no trained model.</p>
 
+  </div>
+<figure>
+  <span class="fignum">Figure 9 &middot; Where the metrics are measured, and where they should be</span>
+  <div class="figbox">
+  <svg class="dg" viewBox="0 0 1000 300" role="img"
+       aria-label="Metrics are normally measured at the denoiser output, but the listener hears the vocoder output, so every figure should be reported at both points.">
+    <rect class="box" x="20" y="110" width="150" height="66" rx="8"/>
+    <text class="t sm" x="34" y="138">Noisy mixture</text>
+    <text class="s" x="34" y="156">at a known SNR</text>
+
+    <line class="e" x1="170" y1="143" x2="216" y2="143" marker-end="url(#ar)"/>
+
+    <rect class="box b" x="220" y="110" width="200" height="66" rx="8"/>
+    <text class="t sm" x="234" y="138">Lane B engine</text>
+    <text class="s" x="234" y="156">the 11 blocks</text>
+
+    <line class="e b" x1="420" y1="143" x2="486" y2="143" marker-end="url(#arB)"/>
+
+    <rect class="band" x="490" y="110" width="220" height="66" rx="8"/>
+    <text class="t sm" x="504" y="138">MELPe vocoder</text>
+    <text class="s" x="504" y="156">2400 / 1200 / 600 bps</text>
+
+    <line class="e" x1="710" y1="143" x2="776" y2="143" marker-end="url(#ar)"/>
+
+    <rect class="box" x="780" y="110" width="200" height="66" rx="8"/>
+    <text class="t sm" x="794" y="138">The listener</text>
+    <text class="s" x="794" y="156">what is actually heard</text>
+
+    <!-- measurement point 1 -->
+    <line class="e dash" x1="455" y1="110" x2="455" y2="62" />
+    <circle class="fillB" cx="455" cy="143" r="5"/>
+    <rect class="box b" x="300" y="18" width="310" height="44" rx="8"/>
+    <text class="t sm" x="314" y="46">MEASURED HERE &mdash; PESQ, STOI, SI-SNR</text>
+
+    <!-- measurement point 2 -->
+    <line class="e dash" x1="745" y1="176" x2="745" y2="228" />
+    <circle class="fillT" cx="745" cy="143" r="5"/>
+    <rect class="box hi" x="590" y="230" width="310" height="44" rx="8"/>
+    <text class="t sm" x="604" y="258">SHOULD ALSO BE MEASURED HERE</text>
+
+    <text class="el" x="20" y="240">Artefacts PESQ barely notices &mdash; musical noise,</text>
+    <text class="el" x="20" y="256">smeared harmonics, a mis-tracked pitch across an</text>
+    <text class="el" x="20" y="272">interpolated gap &mdash; corrupt exactly the parameters</text>
+    <text class="el" x="20" y="288">MELPe transmits: pitch, voicing, spectral envelope.</text>
+  </svg>
+  </div>
+  <figcaption><b>The cheapest original experiment available.</b> Put a vocoder into the evaluation chain &mdash; an open MELPe or Codec2 build is enough &mdash; and report every metric twice. If the ranking of two methods flips across the vocoder, that single table is a more original contribution than anything else in the plan, and it is the first question a DRDO communications evaluator asks.</figcaption>
+</figure>
+  <div class="col">
     <h3>The evaluation grid — the core experiment</h3>
   </div>
 
