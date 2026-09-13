@@ -10,7 +10,7 @@ will be challenged by a technical judge.
 ## Phase 0 — Foundations
 
 ### 0a. Data collection toolkit
-- [x] 21 CLI tools built — *before 6 Sep 2026*
+- [x] 16 CLI tools built (+ `dsp`, `wavio`, `provenance` modules) — *before 6 Sep 2026*
 - [x] `selftest.py` prints ALL CHECKS PASSED — *6 Sep 2026*
 - [x] All pinned deps installed (numpy 2.4.3, scipy 1.17.1, sounddevice 0.5.6, matplotlib 3.10.6)
 - [x] Aggregate 2-channel input device working (`Zeit Range Array`) — *7 Sep 2026*
@@ -53,7 +53,7 @@ will be challenged by a technical judge.
 - [ ] EARS
 - [ ] Common Voice Hindi / IndicTTS / SPRING-INX
 - [x] ✅ **Lombard GRID — DOWNLOADED**, 5,390 files (audio + alignment + metadata), *10 Sep 2026*. 54 talkers x (50 Lombard + 50 plain), paired.
-- [ ] ⚠️ "Lombard" still appears **zero times** in `docs/01-system/` — the data is here, the docs have not caught up
+- [x] Lombard GRID now named in `docs/01-system/` (`workflow.md` §5.5, `architecture.md` §10, `order.md`, `placement.md`) — *13 Sep 2026*
 - [ ] Use the alignment files: they carry word-level timings, so **WLPS needs no ASR on this corpus**
 
 ---
@@ -157,8 +157,8 @@ not survive.
 - [ ] Report PESQ / STOI / SNR as **curves vs input SNR**, state where you cross
 - [ ] Settle whether "SNR > 15 dB" is output SNR or ΔSNR; report both
 - [ ] Re-anchor DNSMOS targets — SIG 4.1 / BAK 4.2 came from a Notes screenshot; GTCRN's own blind test is SIG 3.00
-- [x] Restore the **two-lane split** — done in `handbook/` (Lane A ≤1 ms, Lane B 25.3 ms; present across 14 source files)
-- [ ] Fix the block-[10] wiring — Mic 3 is an in-ear error sensor, it cannot feed the radio uplink
+- [x] Restore the **two-lane split** — done in `handbook/` and in `docs/01-system/architecture.md`, which is now organised around Lane A (FxLMS, < 1 ms) and Lane B (25.3 ms)
+- [x] Fix the block-[10] wiring — Mic 3 is an in-ear error sensor, it cannot feed the radio uplink. Done in `architecture.md` §5 (residual LMS driven by Mic 2) and `tech-stack.md` §6 — *13 Sep 2026*
 - [x] Rewrite the look-ahead claim — done in `handbook/`: crack 45.2 ms vs blast 87.5 ms = **42.3 ms** genuine look-ahead; Mic1↔Mic2 is 0.58 ms
 - [ ] Narrow BMRI's claimed job — validated on white Cauchy for film restoration, and it degrades transients
 - [ ] Add the **MELPe / Codec2 vocoder** to the evaluation chain; report metrics before *and* after

@@ -1,0 +1,19 @@
+# Training machine (GPU). Install PyTorch first, matching your CUDA version:
+#   https://pytorch.org/get-started/locally/
+# Use Python 3.11 or 3.12.
+torch>=2.4
+torchaudio>=2.4
+numpy>=1.26
+scipy>=1.11
+soundfile>=0.12
+pyyaml>=6.0
+tensorboard>=2.15
+pystoi>=0.4
+pesq>=0.0.4          # needs a C compiler to build on Windows; Linux/Kaggle install it directly
+onnx>=1.16
+onnxruntime>=1.18    # onnxruntime-gpu on the training box is fine too
+onnxscript>=0.1
+
+# Jetson only (JetPack already ships TensorRT and CUDA):
+#   onnxruntime-gpu wheel for your JetPack version (from NVIDIA's Jetson AI Lab / Jetson Zoo)
+#   sounddevice, numpy, scipy, onnx

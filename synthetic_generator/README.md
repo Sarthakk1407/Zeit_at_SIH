@@ -27,13 +27,14 @@ events. Phase 1 (real reference), Phase 2.1 (robust normalisation) and Phase 7
 | **`HARDWARE.md`** | The bench: 3-mic headset, Behringer UMC202HD, Pi 5, sensor positions, the 42.3 ms look-ahead timing |
 | **`STORAGE.md`** | How much is downloaded vs generated, and how big an SSD you need |
 | **`DOWNLOAD.md`** | Every dataset's download URL, in priority order |
-| **`DATA_SOURCES.md`** | Auto-generated: what is actually on the drive right now, and where each piece came from |
+| **`DATA_SOURCES.md`** | Auto-generated: what is on the drive and where each piece came from. ⚠️ Last generated 11 Sep, when only LibriSpeech was on disk — rerun `make_manifest.py` with the drive attached. `STORAGE.md` Part 0 has the current inventory |
 
 ## Tools
 
 | Script | What it does |
 |---|---|
-| **`download.py`** | Downloads the corpora that have direct URLs. Resumable, parallel, pause/resume keys, auto-extract, rename-proof folder lookup |
+| **`download.py`** | Downloads the corpora that have direct URLs. Resumable, parallel, pause/resume keys, auto-extract, rename-proof folder lookup. **macOS / Linux only** — it uses `termios` for the keys, so on Windows run it under WSL |
+| `fetch_all.sh` | The earlier bash/curl downloader (`zeit-corpora/` layout, `--core` flag, macOS `df -g`). Superseded by `download.py`; kept for reference |
 | **`unpack_manual.py`** | Extracts whatever you downloaded by hand; flattens nesting, files the archive under `_archive/` |
 | **`mat_to_wav.py`** | NOISEX-92 ships as MATLAB `.mat` — this turns it into WAV |
 | **`make_manifest.py`** | Scans the drive and regenerates `DATA_SOURCES.md` |

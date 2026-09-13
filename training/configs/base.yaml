@@ -1,0 +1,85 @@
+# ZEIT — GTCRN dual-mic, the main training config.
+# Override anything from the command line:  python train.py configs/base.yaml train.batch_size=16
+
+run:
+  name: gtcrn_dualmic
+  out_dir: runs
+  seed: 1234
+
+audio:
+  sample_rate: 16000        # GTCRN's native rate; a radio vocoder is narrowband anyway
+  segment_s: 4.0            # 32 ms window / 16 ms hop is fixed in zeit/audio.py
+
+model:
+  mics: 2                   # 2 = Mic 1 + Mic 2 reference. 1 = classic single-channel GTCRN
+
+data:
+  # Folder names are the ones on the ZEIT drive (synthetic_generator/STORAGE.md).
+  root: "/Volumes/ZEIT V.1.0/zeit-data"
+  index: data_index.jsonl   # written by build_index.py, relative to training/
+  val_items: 800            # fixed, seeded — identical in every run
+  test_items: 2000
+  sources:
+    # ---- clean speech ------------------------------------------------------
+    - name: librispeech
+      role: speech
+      path: LibriSpeech_OpenSLR
+      split: {train: [train-clean-100, train-clean-360], val: [dev-clean], test: [test-clean]}
+    - name: lombard          # people shouting in noise — the speech a soldier actually produces
+      role: speech
+      path: LombardGRID_Sheffield
+      split: hash
+    # ---- impulsive noise -----------------------------------------------------
+    - {name: zenodo_guns, role: noise, cls: impulsive, path: ZenodoGuns_Zenodo, split: hash}
+    - {name: cadre,       role: noise, cls: impulsive, path: Cadre_GunshotForensics, split: hash}
+    # our own 44 range events: kept to test only, they are the reference, never training data
+    - {name: zeit_range,  role: noise, cls: impulsive, path: "@repo/data for training/REFERENCE_REAL/events_impulse",
+       split: {test: [""]}}
+    # ---- military ------------------------------------------------------------
+    - {name: mad,         role: noise, cls: military, path: MAD_Kaggle, split: hash,
+       exclude: [communication]}          # radio speech is not noise
+    - {name: noisex,      role: noise, cls: military, path: NOISEX92_SPIB, split: hash}
+    # ---- stationary / environmental -----------------------------------------
+    - {name: demand,      role: noise, cls: stationary, path: DEMAND_Zenodo, split: hash}
+    - {name: musan,       role: noise, cls: stationary, path: MUSAN_OpenSLR, split: hash,
+       exclude: [speech, music]}
+    - {name: urbansound,  role: noise, cls: urban, path: UrbanSound8K_NYU, split: hash}
+    - {name: esc50,       role: noise, cls: urban, path: ESC50_GitHub, split: hash}
+    # ---- room impulse responses ---------------------------------------------
+    - {name: rirs,        role: rir, path: OpenSLR28_RIRs, split: hash,
+       exclude: [noise]}                  # the pointsource/isotropic noise files are not RIRs
+
+mix:
+  speech_weights: {librispeech: 0.8, lombard: 0.2}     # >= 20 % Lombard
+  noise_class_weights: {impulsive: 0.40, military: 0.30, stationary: 0.20, urban: 0.10}
+  synthetic_burst_prob: 0.25       # α-stable structured bursts instead of a file
+  alpha: [0.4, 1.8]                # includes the sub-0.5 range the α-stable paper excluded
+  n_noise_sources: [1, 3]
+  snr_db: {low: [-15, 0], high: [0, 20], p_low: 0.5}   # half the time in the gunfire regime
+  mic2_gain_db: [-3, 6]
+  mic2_delay_ms: [-0.6, 0.6]       # ~20 cm between boom and outer earcup
+  head_shadow_db: [-10, 0]
+  speech_leak_db: [-45, -25]       # Mic 2 must barely hear the voice
+  rir_prob: 0.5
+  clip_prob: 0.25
+  clip_over_db: [0, 12]
+  level_dbfs: [-35, -3]
+
+loss:
+  w_complex: 30.0
+  w_mag: 70.0
+  w_sisnr: 1.0
+  w_mrstft: 1.0
+
+train:
+  epochs: 150
+  items_per_epoch: 20000           # mixtures are fresh every epoch
+  batch_size: 24
+  num_workers: 8
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  warmup_epochs: 2
+  grad_clip: 5.0
+  amp: true                        # mixed precision on CUDA
+  early_stop_patience: 20
+  eval_pesq_every: 5               # PESQ/STOI are slow; SI-SNR runs every epoch

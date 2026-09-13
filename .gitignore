@@ -7,3 +7,8 @@ VALIDATION_SET/
 real shots/
 data_collection/testdata/
 data for training/
+training/runs/
+training/data_index.jsonl
+training/jetson/trt_cache/
+*.onnx
+*.engine

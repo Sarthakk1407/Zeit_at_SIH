@@ -35,10 +35,24 @@ SIH 2026, PS 26052 (DRDO) — AI/ML adaptive noise cancellation for defence.
 
 | Doc | Covers |
 |---|---|
-| [`problem-statement.txt`](03-source-material/problem-statement.txt) | PS 26052 in full |
+| [`ps-26052.md`](03-source-material/ps-26052.md) | **PS 26052 in full** — title, background, description, expected solution, verbatim |
+| [`problem-statement.txt`](03-source-material/problem-statement.txt) | Despite the name, a pasted planning chat (range toolkit prompt), not the PS |
 | [`project-plan-v0.md`](03-source-material/project-plan-v0.md) | The earlier project plan, kept for history |
 
-Research papers and notes: [`../our notes from research paper/`](../our%20notes%20from%20research%20paper/)
+## research — the sources
+
+| Folder | Holds |
+|---|---|
+| [`research/`](research/) | The papers themselves, converted to Markdown (Widrow, NOISEX-92, BMRI, Deep ANC, dual-mic DC-CRN, GTCRN, H-GTCRN, DeepFilterNet2, α-stable, IS³, SDR, DNSMOS …) |
+| [`research-summary/`](research-summary/) | The team's reading notes and gap analysis (`PS26052_paper_gap_analysis.docx` and friends) that `workflow.md` is built on |
+
+## Beyond `docs/`
+
+| Folder | What it is |
+|---|---|
+| [`../synthetic_generator/`](../synthetic_generator/) | **The dataset pipeline and current status.** Downloaded corpora (11 datasets, ~229k files), the real reference (44 impulsive events from the 7 Sep 2026 range trip), the phase plan and checklist, IRT / WLPS metrics and the normalisation experiment. Its `PHASES.md` and `CHECKLIST.md` are the live progress tracker; the stage statuses in `order.md` are the original plan |
+| [`../handbook/`](../handbook/) | The evaluator-facing pages, below |
+| `../presentation/` | The SIH idea-submission deck, built by script from the official template (not tracked in git) |
 
 ## diagrams
 
@@ -62,8 +76,8 @@ disagree, `docs/` is authoritative.
 
 | Page | What it is |
 |---|---|
-| [`zeit-handbook.html`](../handbook/zeit-handbook.html) | **The whole project in one page**, with ten figures carrying the architecture and hover definitions on every technical term |
-| [`zeit-bench-3d.html`](../handbook/zeit-bench-3d.html) | **Interactive 3D model of the prototype**, both lanes modelled, earcup cut away, with a lane filter and a simulated shot |
+| [`index.html`](../handbook/index.html) | **The whole project in one page** (live at <https://zeit-handbook.netlify.app/>), with ten figures carrying the architecture and hover definitions on every technical term |
+| [`zeit-bench-3d.html`](../handbook/zeit-bench-3d.html) | **Interactive 3D model of the prototype** (live at <https://zeit-handbook.netlify.app/zeit-bench-3d>), both lanes modelled, earcup cut away, with a lane filter and a simulated shot |
 | [`zeit-audit.html`](../handbook/zeit-audit.html) | **The design review** — thirteen ranked findings, each traced to a source |
 
 ## Code

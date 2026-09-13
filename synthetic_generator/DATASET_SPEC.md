@@ -233,9 +233,8 @@ level normalisation.
 **Lombard GRID is downloaded** — 5,390 files, 54 talkers, 50 Lombard + 50 plain
 each, paired. Target ≥ 20 % Lombard content in every training mix.
 
-Two things still to do:
-- The word "Lombard" still appears **zero times** in `docs/01-system/`. The data
-  arrived before the documents did.
+Still to do:
+- ~~The word "Lombard" appears zero times in `docs/01-system/`~~ — fixed 13 Sep 2026.
 - The corpus ships **alignment files with word-level timings**, which means WLPS
   can be run on it **without any ASR**.
 

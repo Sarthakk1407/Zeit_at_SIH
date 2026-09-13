@@ -476,11 +476,18 @@ template:
 6. **Wide room-response spread** (2.8) — near-anechoic through hard-walled, reported separately.
 7. **HRTF-based head shadow** (2.8) instead of a flat scalar.
 
-### 5.5 Clean speech — still undecided
+### 5.5 Clean speech — English on disk, Hindi open
 
-The PS implies Hindi and English. Nothing has been chosen. **This directly
-determines training-set size and is the largest open item in the dataset
-plan.**
+The PS implies Hindi and English. **This directly determines training-set size
+and was the largest open item in the dataset plan.**
+
+Update 12 Sep 2026: **LibriSpeech** (137,876 files) and **Lombard GRID**
+(5,390 files, 54 talkers, paired plain / Lombard speech) are downloaded, so
+English training can proceed. Lombard GRID matters because people shouting over
+gunfire do not speak like people reading in quiet; target ≥ 20 % Lombard content
+per mix. Hindi is still open — SPRING-INX is an access request, Common Voice
+Hindi the fallback. Detail in
+[`../../synthetic_generator/DATASET_SPEC.md`](../../synthetic_generator/DATASET_SPEC.md) §3.
 
 ### 5.6 SNR range
 
@@ -594,7 +601,7 @@ no chatbot and no weekend can reproduce.
 
 | Phase | What | Depends on |
 |---|---|---|
-| **P0** | Real data collection at the range | — **built, waiting on hardware** |
+| **P0** | Real data collection at the range | — **done 7 Sep 2026** (44 impulsive events, uncalibrated; see below) |
 | **P1** | Robust normalisation + the impulsive evaluation grid | public corpora only |
 | **P2** | Latency vs prediction-horizon chart | P1 baseline |
 | **P3** | Synthetic generator, validated against the real reference | P0 |
@@ -606,6 +613,14 @@ no chatbot and no weekend can reproduce.
 **P1 and P2 need no hardware and no range data.** They can start immediately,
 and they produce the baseline-collapse result and the latency chart — the two
 findings the whole story rests on.
+
+> **Status, 12 Sep 2026.** This table is the original plan. Live progress is
+> tracked in [`../../synthetic_generator/PHASES.md`](../../synthetic_generator/PHASES.md),
+> which numbers the same work by `order.md`'s stages. In short: the range trip
+> is done (air gun, uncalibrated, channel 2 degraded), robust normalisation is
+> measured (`experiments/p1_normalisation.py`), IRT and WLPS are built, and
+> 11 public corpora (~100 GB) including LibriSpeech and Lombard GRID are
+> downloaded. The synthetic generator is next.
 
 ---
 
@@ -628,8 +643,8 @@ findings the whole story rests on.
 > worth checking before committing weeks.
 
 **Open decisions:**
-1. Clean speech corpus — undecided, and it sets the training-set size
-2. Target board — unnamed
+1. Clean speech corpus — English on disk (LibriSpeech + Lombard GRID); Hindi still open
+2. Target board — Raspberry Pi 5 for Lane B on the bench (`architecture.md` §9); Lane A's DSP / microcontroller unnamed
 3. Mic models and exact headset geometry — with the hardware team
 4. Whether Aux-IVA (H-GTCRN's first stage) is worth its cost on our geometry
 
@@ -637,7 +652,8 @@ findings the whole story rests on.
 
 ## Sources
 
-Source notes are in [`../our notes from research paper/`](../../our%20notes%20from%20research%20paper/):
+Source notes are in [`../research-summary/`](../research-summary/), and the
+papers themselves, converted to Markdown, in [`../research/`](../research/):
 `PS26052_paper_gap_analysis.docx` (Deep ANC, dual-mic DC-CRN, α-stable — the
 gap analysis §2 is built on), `Combined_Research_Papers_GTCRN_IS3_NOISEX92.docx`,
 `Speech_Enhancement_Literature_Review.docx` (H-GTCRN, DeepFilterNet2),

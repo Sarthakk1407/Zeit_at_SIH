@@ -11,7 +11,7 @@ Status: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 ## Phase 0 — Foundations
 
 ### 0a. Real-data collection toolkit ✅
-21 CLI tools, self-test green, calibration to Pascals, range IR, nine quality
+16 CLI tools (plus 3 support modules: `dsp`, `wavio`, `provenance`), self-test green, calibration to Pascals, range IR, nine quality
 checks, session freeze with checksums of data **and** measurement engine.
 → **Unblocks:** Phase 1
 
@@ -76,7 +76,7 @@ Range trip done 7 Sep 2026. Air gun, target impact as the impulsive source.
 
 ---
 
-## Phase 2 — Baseline collapse ⬜
+## Phase 2 — Baseline collapse 🟡 (2.1 done)
 
 The two findings the whole story rests on. No hardware, no range data needed.
 
@@ -108,7 +108,7 @@ circular).
 
 ---
 
-## Phase 4 — Training data 🔴 (blocked by 0d)
+## Phase 4 — Training data ⬜ (English unblocked; Hindi waits on 0d)
 
 | Step | What |
 |---|---|

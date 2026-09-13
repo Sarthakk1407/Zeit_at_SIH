@@ -37,7 +37,7 @@ question, and you should be able to say why in one sentence.
 | **Mic type** | Dynamic (moving-coil) for the blast path — no active electronics to overload | **Gap 1.5** — Deep ANC models loudspeaker saturation but nothing models the mic overloading. 140 dB blast vs 110–120 dB capsule limit |
 | **Mic spacing** | Our real headset geometry, and tested for robustness to it | **Gap 2.4** — Tan et al. fixed 10 cm and never varied it. A model that works at one spacing fails the first time someone adjusts the headset |
 | **ADC** | 48 kHz / 24-bit minimum | Digitek gives an honest 24 kHz bandwidth |
-| **Board** | Undecided | **DeepFilterNet2** proves Raspberry Pi 4 real-time. **GTCRN** at tens of thousands of parameters means a Jetson is probably unnecessary |
+| **Board** | Raspberry Pi 5 for Lane B on the bench (`architecture.md` §9); Lane A's DSP still undecided | **DeepFilterNet2** proves Raspberry Pi 4 real-time. **GTCRN** at tens of thousands of parameters means a Jetson is probably unnecessary |
 | **Power meter** | A USB power meter, on the bench | **Gap 2.3** — nobody in the literature reports watts. Free differentiator |
 
 **Hardware team owns rows 1–3 and 5.** Those are mechanical decisions software
@@ -128,7 +128,7 @@ None of this runs on the device. All of it shapes the weights that do.
 | **Feature** | Log-power beats full complex for the IVA branch | **H-GTCRN ablation** |
 | **Loss** | SI-SNR + L1 on real/imag/magnitude + multi-resolution spectrogram loss | **Tan et al.**, **DeepFilterNet2** |
 | **Loss (stretch)** | Fractional lower-order moments | **Cross-finding C** — squared error is ML-optimal for Gaussian residuals; under heavy tails one impulsive sample drags the gradient more than a second of speech. **Stretch goal, must not block anything** |
-| **Speech corpus** | **UNDECIDED** | Blocks this whole stage |
+| **Speech corpus** | **LibriSpeech + Lombard GRID on disk**; Hindi (SPRING-INX) pending | English no longer blocks this stage — `synthetic_generator/DATASET_SPEC.md` §3 |
 
 ---
 

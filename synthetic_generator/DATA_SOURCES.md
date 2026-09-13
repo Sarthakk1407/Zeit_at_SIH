@@ -1,5 +1,10 @@
 # Data and its source
 
+> ⚠️ **Stale snapshot.** This scan ran on 11 Sep, before most downloads finished.
+> As of 12 Sep the drive holds **11 datasets, ~229,000 audio files, ~100 GB** —
+> see `STORAGE.md` Part 0. Rerun `make_manifest.py` with the drive attached to
+> refresh this file (the rerun replaces this note).
+
 Scanned `/Volumes/ZEIT V.1.0/zeit-data` on 2026-09-11.
 
 Regenerate with:

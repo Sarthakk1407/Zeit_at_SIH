@@ -1,0 +1,21 @@
+# Step 1 of the training order: prove the code is right before trusting it.
+# Train single-channel GTCRN on VoiceBank-DEMAND and check PESQ lands near the
+# paper's 2.87. If it does not, something in this framework is wrong.
+inherit: base.yaml
+
+run:
+  name: sanity_voicebank_mono
+
+model:
+  mics: 1
+
+pairs:                               # prepared noisy/clean folders, 16 kHz after resampling
+  train_noisy: /path/to/VoiceBank-DEMAND/noisy_trainset_28spk_wav
+  train_clean: /path/to/VoiceBank-DEMAND/clean_trainset_28spk_wav
+  test_noisy:  /path/to/VoiceBank-DEMAND/noisy_testset_wav
+  test_clean:  /path/to/VoiceBank-DEMAND/clean_testset_wav
+
+train:
+  epochs: 200
+  items_per_epoch: null              # use the whole folder each epoch
+  batch_size: 16

@@ -6,7 +6,7 @@ step, no bundler, no local server. Open it in a browser, or publish it.
 
 | File | What it is |
 |---|---|
-| [`zeit-handbook.html`](zeit-handbook.html) | **The whole project in one page.** Written so that nobody has to read `docs/` to understand the system — architecture, capture rig, measurement engine, offline pipeline, evaluation, papers, competition. Ten numbered figures carry the architecture; technical terms are marked and explained on hover. |
+| [`index.html`](index.html) | **The whole project in one page** — the System Handbook. Named `index.html` so it is the site root on the deployment. Written so that nobody has to read `docs/` to understand the system — architecture, capture rig, measurement engine, offline pipeline, evaluation, papers, competition. Ten numbered figures carry the architecture; technical terms are marked and explained on hover. |
 | [`zeit-audit.html`](zeit-audit.html) | **The design review.** Thirteen ranked findings, each traced to a specific paper, document or reproduced result. |
 | [`zeit-bench-3d.html`](zeit-bench-3d.html) | **Interactive 3D model of the whole prototype**, with **both lanes modelled**. Headset, UMC202HD, Raspberry Pi 5 and the communication unit, wired as they actually connect. The earcup is cut away so the driver, the error microphone and the Lane A module are visible. Fires a simulated shot, writes every event to a timestamped log, and shows a four-channel signal monitor. |
 
@@ -65,7 +65,7 @@ the theme, and they are searchable text rather than pictures of text.
 
 | Page | Loads |
 |---|---|
-| `zeit-handbook.html` | Nothing |
+| `index.html` | Nothing |
 | `zeit-audit.html` | Nothing |
 | `zeit-bench-3d.html` | `three.js` r128 (UMD, global `THREE`) from cdnjs |
 
@@ -126,12 +126,12 @@ Open the file, edit, reload. Both pages are assembled from parts.
 **The handbook** — edit `src/`, then rebuild:
 
 ```bash
-cat src/01-head.html src/02-body-a.html src/03-blocks.html src/04-capture.html src/05-measure.html src/06-offline.html src/07-eval-papers.html src/08-gaps-ps.html src/09-drdo-comp.html src/10-build-open.html src/11-terms-a.html src/12-terms-b.html src/12b-terms-c.html src/13-script.html > zeit-handbook.html
+cat src/01-head.html src/02-body-a.html src/03-blocks.html src/04-capture.html src/05-measure.html src/06-offline.html src/07-eval-papers.html src/08-gaps-ps.html src/09-drdo-comp.html src/10-build-open.html src/11-terms-a.html src/12-terms-b.html src/12b-terms-c.html src/13-script.html > index.html
 ```
 
 - **Hover terms** are generated at runtime from the `TERMS` object in
   `src/11-terms-a.html`, `src/12-terms-b.html` and `src/12b-terms-c.html`
-  (181 entries). Add an entry and every occurrence of that word in the prose is
+  (166 unique entries). Add an entry and every occurrence of that word in the prose is
   marked automatically — the copy is never touched. Each entry is
   `["definition", "how it is used here"]`.
 - The term walker **deliberately skips anything inside an `<svg>`**. An HTML
@@ -170,9 +170,28 @@ continuous `<script>`, so `03` must not close it and `06` must.
   `outAt` functions in `src3d/05`. They are a physical simulation, not
   recordings, and the page says so.
 
+## Maintenance scripts
+
+One-off patchers kept for reproducibility. Both have already been applied to
+the sources; rerunning them is only needed if the sources are rolled back.
+
+| Script | What it did |
+|---|---|
+| `src/restyle_audit.py` | Replaced `zeit-audit.html`'s stylesheet with the neutral document theme, aliasing the old token names so its inline SVG charts keep resolving |
+| `src3d/patch_radio.py` | Replaced the bench monitor in the 3D model with the communication unit and the headphone return path |
+
 ## Publishing
 
-Republishing the same file path keeps the same URL.
+The folder is deployed as a static site on Netlify:
+
+| Page | Live URL |
+|---|---|
+| `index.html` | <https://zeit-handbook.netlify.app/> |
+| `zeit-bench-3d.html` | <https://zeit-handbook.netlify.app/zeit-bench-3d> |
+
+These URLs are printed on the idea-submission deck, so **do not rename either
+file** without updating `presentation/build_deck.py`. The hardware renders on
+the deck (`presentation/hw/hw-*.png`) are captured from the 3D page.
 
 ## Source of truth
 

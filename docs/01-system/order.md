@@ -6,6 +6,21 @@ start until it exists.
 
 Status is honest: **BUILT**, **READY TO START**, **BLOCKED**, or **NOT STARTED**.
 
+> **Status as of 12 Sep 2026** — the statuses below were written before the
+> range trip. Live progress lives in
+> [`../../synthetic_generator/PHASES.md`](../../synthetic_generator/PHASES.md)
+> and [`CHECKLIST.md`](../../synthetic_generator/CHECKLIST.md). What has moved:
+>
+> | Stage | Now |
+> |---|---|
+> | 0a toolkit | BUILT, and used at the range |
+> | 0c noise corpora | **DONE** — 11 datasets, ~229,000 files, ~100 GB |
+> | 0d speech corpus | **English on disk** (LibriSpeech, Lombard GRID); Hindi open |
+> | 1 real reference | **DONE 7 Sep 2026** — 15 takes, 44 impulsive events. Air gun, **uncalibrated** (dBFS), no range IR, channel 2 clipped |
+> | 2.1 normalisation | **DONE 9 Sep 2026** — `synthetic_generator/experiments/p1_normalisation.py` |
+> | 2.2, 2.3 | NOT STARTED |
+> | 3 synthetic generator | **next** |
+
 ---
 
 ## The loop, in one picture
@@ -318,7 +333,11 @@ method.
 
 *Blocks:* Stage 4.6.
 
-### 4. Clean speech corpus, and Hindi — **nothing**
+### 4. Clean speech corpus, and Hindi — **English closed, Hindi open**
+
+*Update 12 Sep 2026:* LibriSpeech and Lombard GRID are downloaded (which also
+closes §6 on the data side); SPRING-INX (Hindi) is an access request. See
+`synthetic_generator/DATASET_SPEC.md` §3. Original note:
 
 The PS implies Hindi and English. Your notes mention TIMIT only in passing, as
 what someone else used. No corpus is chosen and no Indian-language source is

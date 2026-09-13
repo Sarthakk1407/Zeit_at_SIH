@@ -180,6 +180,10 @@ Two threads for the signal, one for everything else. The processing thread is
 separated from the callback so that a single slow frame stretches a buffer
 rather than dropping audio outright.
 
+**None of this is Lane A.** The FxLMS hearing-protection loop has a sub-ms
+budget and runs on its own DSP / microcontroller, not on these threads — see
+[`architecture.md`](architecture.md) §4 and §6. This document covers Lane B.
+
 ---
 
 ## 4. Python — everything offline
@@ -229,9 +233,11 @@ everywhere else.
 ## 6. Repository layout
 
 ```
-V_1/
+Zeit_at_SIH/
   data_collection/          Python — range toolkit (built)
+  synthetic_generator/      Python — corpus download, metrics (IRT, WLPS), experiments (built)
   docs/                     documentation
+  handbook/                 evaluator-facing HTML pages (built, deployed)
   DATA/                     recordings (gitignored)
 
   training/                 Python — new
@@ -258,7 +264,7 @@ V_1/
           02_analysis/
               normalise.cpp     percentile / FLOM — replaces RMS
               stft.cpp          PFFFT wrapper, window, overlap-add
-              erb.cpp           ~32 perceptual bands
+              erb.cpp           GTCRN map: 192 high bins -> 64 ERB, 65 low bins kept
           03_separation/
               auxiva.cpp        3-mic blind source separation
           04_decide/
@@ -269,7 +275,7 @@ V_1/
               deepfilter.cpp    harmonic detail rebuild
           06_protect/
               guard.cpp         spectral correction — intelligibility
-              lms.cpp           residual, driven by the in-ear mic
+              lms.cpp           residual, driven by Mic 2 (the reference) — never Mic 3
           07_pipeline/
               pipeline.cpp      wires 00–06 together
       tests/

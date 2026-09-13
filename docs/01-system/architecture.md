@@ -550,7 +550,8 @@ The demonstrated chain contains **no development computer**:
 | **microSD 128 GB A2 ×2** | Two identical images. One is the demonstration card and is never experimented on |
 | **Communication unit** | The PS asks for integration with headphones or communication units, so the chain terminates at a radio rather than a screen |
 
-Interactive model: [`../../handbook/zeit-bench-3d.html`](../../handbook/zeit-bench-3d.html).
+Interactive model: [`../../handbook/zeit-bench-3d.html`](../../handbook/zeit-bench-3d.html),
+live at <https://zeit-handbook.netlify.app/zeit-bench-3d>.
 
 ---
 
@@ -563,6 +564,6 @@ Interactive model: [`../../handbook/zeit-bench-3d.html`](../../handbook/zeit-ben
 | **Mic models** | Unknown. Their maximum SPL decides whether Mic 2 survives a close blast |
 | **Aux-IVA cost on our geometry** | Cheap in principle; on three channels at 48 kHz that has to be proved |
 | **Frame size conflict** | 20/10 ms at 48 kHz versus GTCRN's published 32/16 ms at 16 kHz. Pick one and re-derive every figure |
-| **Clean speech corpus** | Undecided. Blocks training |
+| **Clean speech corpus** | English on disk — LibriSpeech plus **Lombard GRID**, because a soldier shouting over gunfire produces Lombard speech, not read speech. Hindi (SPRING-INX) pending access |
 | **Whether the residual LMS earns its latency** | Measure it, then decide |
 | **Watts on the board** | Nobody in the literature reports it. We should |
