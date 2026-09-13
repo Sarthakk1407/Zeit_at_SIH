@@ -1,0 +1,227 @@
+
+Yes, and I need to correct something I said earlier.
+
+The PS says "ONNX / TensorRT conversion". The slash most naturally means either one. Running the ONNX file with ONNX Runtime can reasonably count as meeting that clause, so the Pi 5 is not ruled out. I was too strict when I dropped it. The Jetson is the safest literal match, but it isn't the only valid choice.
+
+Your options
+Option	How the model runs	Cost	Meets the PS?	Difficulty
+1. Jetson Orin Nano Super	ONNX, then TensorRT	Highest	Yes, word for word (NVIDIA, TensorRT)	Easy
+2. Raspberry Pi 5	ONNX Runtime on the CPU	Cheapest	Yes, via ONNX. Pitch it as "the model is so small it doesn't need a Jetson"	Easy
+3. Board with a built-in AI chip (Orange Pi 5 / Rock 5 with an RK3588, or Pi 5 plus a Hailo AI HAT)	ONNX converted to that chip's own format	Medium	Yes ("AI-enabled SoC")	Risky. These chips often don't support the GRU memory layers GTCRN uses. Check before buying
+4. Microcontroller or DSP (STM32N6, NXP i.MX RT, Analog Devices SHARC)	Model converted to C for the chip	Very low	Yes ("DSPs")	Hard. Strongest size/power story, but weeks of extra work
+Laptop	—	—	No, not embedded hardware	—
+My recommendation
+Want zero argument with judges? Take option 1, the Jetson. It's what the PS names, and TensorRT is covered literally.
+Tight budget? Take option 2, the Pi 5. GTCRN is small enough to run in real time on its CPU. Say clearly on the deck that you used ONNX Runtime, and show the latency and watts.
+The good news: the training is identical for options 1 and 2. Both start from the same ONNX file, so you can train now and decide the board later. Option 3 needs the chip's support checked first, and option 4 should wait until after SIH.
+
+Which way are you leaning, and does the team already own either board?
+
+okay so with the jetson thing.. write the whole framework here
+
+That's a substantial build, so first let me check what Python versions this machine has, so I can actually run and test the code as I write it.
+
+
+Ran 2 commands (1 failed), created 3 files
++127
+-0
+Listed Python installs and repo root
+Failed to create venv with CPU torch and ONNX tools
+Created
+__init__.py
++5
+-0
+Created
+config.py
++54
+-0
+Created
+audio.py
++68
+-0
+I'll write the core GTCRN model, built so the same weights work in both full-clip training mode and frame-by-frame streaming mode for the Jetson, then test that both modes produce matching output.
+
+
+Created 11 files, edited 3 files, read a file, ran 2 commands
++1264
+-7
+Created
+model.py
++251
+-0
+Created
+augment.py
++98
+-0
+Created
+data.py
++214
+-0
+Edited
+data.py
++6
+-4
+Created
+losses.py
++63
+-0
+Created
+metrics.py
++63
+-0
+Created
+base.yaml
++85
+-0
+Created
+sanity_voicebank.yaml
++21
+-0
+Created
+build_index.py
++43
+-0
+Edited
+data.py
++5
+-1
+Edited
+base.yaml
++1
+-1
+Created
+train.py
++193
+-0
+Edited
+train.py
++1
+-1
+Created
+evaluate.py
++99
+-0
+
+Background command failed
+· Create venv with CPU torch and ONNX tools
+Created
+export_onnx.py
++121
+-0
+Read
+bhwokw4ou.output
+Installed remaining deps without pesq
+Smoke test model, streaming parity, ONNX export
+Both checks pass: the single-mic model has 23,669 parameters, matching the paper's 23.7K, and streaming/ONNX outputs match PyTorch to 1e-7, with ONNX Runtime taking ~3.9ms per frame against a 16ms budget. Next I'll build the remaining tools: offline enhancement, pruning, INT8 quantization, and the Jetson runtime.
+
+
+Created 7 files, edited a file, ran a command
++599
+-1
+Created
+streaming.py
++48
+-0
+Created
+enhance.py
++72
+-0
+Created
+prune.py
++62
+-0
+Created
+quantize_onnx.py
++86
+-0
+Created
+build_engine.sh
++34
+-0
+Created
+realtime.py
++139
+-0
+Created
+selftest.py
++157
+-0
+Edited
+selftest.py
++1
+-1
+Ran the end-to-end self-test
+10 of 12 tests pass. One fails because printing "Δ" crashes on the Windows console, and the other because ONNX Runtime's quantiser can't handle grouped transposed convolutions—I'll keep those two layers in floating point instead.
+
+
+Ran 3 commands, searched code, edited 6 files, created 2 files, read a file
++239
+-5
+I've written the full training framework in a new training/ folder, about 1,900 lines. It runs end to end: prepare data → train in PyTorch → export ONNX → build a TensorRT engine → run live on the Jetson.
+
+Tested on this laptop's CPU. python selftest.py runs the whole pipeline on generated fake audio in under a minute and printed ALL CHECKS PASSED (12/12). It does not show the model learns or reaches the PS targets; only training on your real data will show that.
+
+The model's size matches the paper: 23,669 parameters single-mic against the published 23.7 K, and 24,389 with Mic 2 added. The exported ONNX file gives the same output as PyTorch (differences around 0.0000001), and runs one frame in about 4 ms on this CPU against a 16 ms budget.
+
+Not tested:
+
+Jetson side: build_engine.sh (TensorRT) and realtime.py with a real mic interface. There's no Jetson here, so only the resampler in realtime.py was checked.
+GPU training: everything ran on CPU only.
+PESQ: the metric library won't build on Windows, so PESQ shows as blank here. It installs normally on Linux or Kaggle.
+What's in the folder
+Step	File	What it does
+0	selftest.py	Checks everything works. Run first
+1	configs/sanity_voicebank.yaml	Trains plain GTCRN on a public benchmark. PESQ should come out near the paper's 2.87; if not, the code has a bug
+2	build_index.py	Scans your data drive once and lists every usable file
+3	train.py	Trains the model and saves the best checkpoint
+4	evaluate.py	SNR, PESQ and STOI at each input noise level, and where each PS target is first met
+5	prune.py, quantize_onnx.py	Shrinks the model (the PS's pruning and quantisation)
+6	export_onnx.py	Makes the ONNX file, and refuses to finish unless it matches PyTorch
+7	jetson/build_engine.sh	On the Jetson: ONNX → TensorRT engine, plus a latency benchmark
+8	jetson/realtime.py	On the Jetson: live mics in, clean voice out. Press ENTER to switch the model on/off for the demo
+All settings are in one file, configs/base.yaml. That includes your dataset folders, noise mix, SNR range, loss weights and training settings.
+
+Commands, in order
+python selftest.py
+python build_index.py configs/base.yaml
+python train.py configs/base.yaml
+python evaluate.py runs/gtcrn_dualmic-XXXX/best.pt
+python export_onnx.py runs/gtcrn_dualmic-XXXX/best.pt
+Then on the Jetson:
+
+bash build_engine.sh gtcrn_stream.onnx fp16
+python3 realtime.py --onnx gtcrn_stream.onnx --device "UMC404HD" --trt-fp16
+Things to know
+You need a GPU machine (a lab PC, Kaggle, or cloud) with Python 3.11 or 3.12. This laptop has no NVIDIA GPU.
+Mic 2 is simulated during training. Your datasets have one microphone each, so the data loader creates the second mic's signal (delay, head shadow, a tiny speech leak) for every training example.
+Your own 44 range recordings are used for testing only, never for training.
+Latency is now 32 ms, not 25.3 ms. I used GTCRN's own settings (16 kHz, 32 ms frames) so its published size stays valid. architecture.md, MODEL_VALUES.md and the deck still say 25.3 ms; I haven't changed them.
+Only the neural network is here. The hand-written blocks (IVA source separation, the gunshot classifier, BMRI, the voice guard) belong to the C++ engine and aren't written yet. realtime.py runs the model alone.
+I added training/runs/, *.onnx and *.engine to .gitignore. Nothing is committed.
+Want me to update the docs and deck to the 32 ms figure?
+
+Edited 24 files
+
+__init__.py
++5
+-0
+
+config.py
++54
+-0
+
+audio.py
++68
+-0
+
+model.py
++251
+-0
+
+augment.py
++98
+-0
+
+Show 19 more
+
+
