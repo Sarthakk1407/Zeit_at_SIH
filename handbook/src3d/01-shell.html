@@ -93,6 +93,48 @@ body{background:var(--bg);color:var(--text);margin:0;
   font-size:12.5px;color:var(--text-3);z-index:5}
 #loading[hidden]{display:none}
 
+/* ---------- the staged shot: clock, cards, tags and the caption bar over the viewport ---------- */
+#seq{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .5s}
+#seq.on{opacity:1}
+#seq[hidden]{display:none}
+#seqClock{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--bg);border-radius:10px;
+  box-shadow:var(--shadow);padding:7px 16px 8px;text-align:center;white-space:nowrap}
+#seqClock b{display:block;font:700 17px/1.15 var(--mono);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+#seqClock span{display:block;font-size:10.5px;color:var(--text-3);font-weight:600;margin-top:2px;
+  font-variant-numeric:tabular-nums}
+.seqtag{position:absolute;transform:translate(-50%,-50%);font-size:10.5px;font-weight:600;white-space:nowrap;
+  padding:3px 8px;background:var(--bg);border-radius:6px;border:1px solid var(--rule);color:var(--text-2);
+  opacity:0;transition:opacity .3s}
+.seqtag.on{opacity:1}
+.seqtag.crack{color:var(--src);border-color:var(--src)}
+.seqtag.blast{color:var(--m2);border-color:var(--m2)}
+#seqCards{position:absolute;right:14px;top:52px;width:min(244px,44%);display:grid;gap:8px}
+.seqcard{background:var(--bg);border-radius:10px;box-shadow:var(--shadow);padding:9px 12px 8px;
+  border-left:4px solid var(--c);opacity:0;transform:translateX(16px);transition:opacity .4s,transform .4s}
+.seqcard.on{opacity:1;transform:none}
+.seqcard.crack{--c:var(--src)} .seqcard.blast{--c:var(--m2)}
+.seqcard h5{margin:0 0 4px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c)}
+.seqcard div{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:1px 0}
+.seqcard div span{color:var(--text-3)}
+.seqcard div b{font:600 11px var(--mono);font-variant-numeric:tabular-nums}
+#seqFoot{position:absolute;left:14px;right:14px;bottom:12px;background:var(--bg);border-radius:10px;
+  box-shadow:var(--shadow);padding:20px 16px 9px}
+#seqBar{position:relative;height:6px;border-radius:3px;background:var(--rule-soft);margin:0 0 22px}
+#seqFill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--text);width:0}
+#seqGap{position:absolute;top:-4px;height:14px;border-radius:2px;background:var(--warn);opacity:.2}
+#seqGapL{position:absolute;top:11px;transform:translateX(-50%);font:600 9.5px var(--mono);color:var(--warn);white-space:nowrap}
+#seqBar u{position:absolute;top:-4px;width:2px;height:14px;background:var(--src);text-decoration:none}
+#seqBar u#mkPass{background:var(--text-3)}
+#seqBar u#mkBlast{background:var(--m2)}
+#seqBar u span{position:absolute;left:1px;transform:translateX(-50%);font:600 9.5px var(--mono);white-space:nowrap}
+#mkPassL{top:15px;color:var(--text-3);transform:translateX(-92%) !important}
+#mkCrackL{bottom:15px;color:var(--src)}
+#mkBlastL{bottom:15px;color:var(--m2)}
+#seqCap{margin:0;font-size:13px;line-height:1.42;color:var(--text);min-height:2.84em}
+#seqCap b{font-weight:700}
+#seqScale{display:block;font-size:10.5px;color:var(--text-3);margin-top:3px}
+@media(max-width:700px){#seqCards{display:none}#seqCap{font-size:12px}#seqClock{top:52px}#mkPassL{display:none}}
+
 /* ---------- buttons ---------- */
 .btn{display:block;width:100%;text-align:left;padding:8px 11px;margin-bottom:5px;font-family:inherit;
   font-size:13.5px;font-weight:500;background:var(--bg);color:var(--text);border:1px solid var(--rule-soft);
@@ -293,6 +335,27 @@ footer p{margin:0 0 12px;max-width:82ch}
       <div id="stagelab">Whole bench</div>
       <div id="modelab"><i style="background:var(--laneA)"></i><span id="modeTxt">QUIET</span></div>
       <div id="hint">drag to orbit · scroll to zoom · right-drag to pan · click a part · click the earcup to open it</div>
+      <div id="seq" hidden>
+        <div class="seqtag" id="tgShooter"></div>
+        <div class="seqtag" id="tgRound"></div>
+        <div class="seqtag blast" id="tgBlast"></div>
+        <div class="seqtag crack" id="tgCrack"></div>
+        <div class="seqtag" id="tgMiss"></div>
+        <div class="seqtag crack" id="tgEar"></div>
+        <div id="seqClock"><b id="seqT">Fire a shot</b><span id="seqNext"></span></div>
+        <div id="seqCards"></div>
+        <div id="seqFoot">
+          <div id="seqBar">
+            <i id="seqGap"></i><i id="seqFill"></i>
+            <u id="mkPass"><span id="mkPassL"></span></u>
+            <u id="mkCrack"><span id="mkCrackL"></span></u>
+            <u id="mkBlast"><span id="mkBlastL"></span></u>
+            <span id="seqGapL"></span>
+          </div>
+          <p id="seqCap"></p>
+          <small id="seqScale">Range to scale: one grid square is 1 m. The headset (10×), the rifle and the round are drawn oversize so they stay visible.</small>
+        </div>
+      </div>
     </div>
 
     <div class="scope">

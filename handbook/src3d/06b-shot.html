@@ -312,9 +312,12 @@ function shotLit(id, t) {
 /* ---------- playback ---------- */
 function fireShot() {
   document.getElementById('scopenote').textContent = 'computing the shot…';
+  if (typeof seqAbort === 'function') seqAbort();
   setTimeout(() => {
     SHOT.data = runShot();
     SHOT.active = true; SHOT.playing = true; SHOT.t = 0; SHOT.shown = 0;
+    // the viewport stages the shot first (06c-range); the instruments wait at T+0 until it is ready
+    SHOT.hold = typeof seqStart === 'function' ? seqStart() : false;
     document.getElementById('liveBtn').hidden = false;
     document.getElementById('shotCard').hidden = false;
     document.getElementById('scopeTitle').textContent = 'Signal monitor — one shot, 0 to 200 ms, every sample';
@@ -323,7 +326,7 @@ function fireShot() {
   }, 30);
 }
 function stepShot(dt) {
-  if (!SHOT.active || !SHOT.playing) return;
+  if (!SHOT.active || !SHOT.playing || SHOT.hold) return;
   const rate = SHOT.RATES[SHOT.rate].k;
   SHOT.t += dt * 1000 / rate;
   if (SHOT.t >= SHOT.WINDOW) { SHOT.t = SHOT.WINDOW; SHOT.playing = false; }
@@ -332,13 +335,15 @@ function stepShot(dt) {
   const until = SHOT.playing ? SHOT.t : Infinity;       // at the end of the window, list the rest at once
   while (SHOT.shown < evs.length && evs[SHOT.shown].t <= until) {
     const e = evs[SHOT.shown++];
-    if (e.parts.length) setHot(e.parts, []);
+    // while the viewport is staging the shot the bench parts are folded away: nothing to outline
+    if (e.parts.length && !(typeof SEQ !== 'undefined' && SEQ.on)) setHot(e.parts, []);
     changed = true;
   }
   if (changed) { logStamp = -1; renderShotCard(); }
 }
 function endShot() {
-  SHOT.active = false; SHOT.playing = false;
+  SHOT.active = false; SHOT.playing = false; SHOT.hold = false;
+  if (typeof seqAbort === 'function') seqAbort();
   document.getElementById('liveBtn').hidden = true;
   document.getElementById('shotCard').hidden = true;
   document.getElementById('scopeTitle').textContent = 'Signal monitor — the last 0.6 s, decibel axis';

@@ -93,6 +93,48 @@ body{background:var(--bg);color:var(--text);margin:0;
   font-size:12.5px;color:var(--text-3);z-index:5}
 #loading[hidden]{display:none}
 
+/* ---------- the staged shot: clock, cards, tags and the caption bar over the viewport ---------- */
+#seq{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .5s}
+#seq.on{opacity:1}
+#seq[hidden]{display:none}
+#seqClock{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--bg);border-radius:10px;
+  box-shadow:var(--shadow);padding:7px 16px 8px;text-align:center;white-space:nowrap}
+#seqClock b{display:block;font:700 17px/1.15 var(--mono);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+#seqClock span{display:block;font-size:10.5px;color:var(--text-3);font-weight:600;margin-top:2px;
+  font-variant-numeric:tabular-nums}
+.seqtag{position:absolute;transform:translate(-50%,-50%);font-size:10.5px;font-weight:600;white-space:nowrap;
+  padding:3px 8px;background:var(--bg);border-radius:6px;border:1px solid var(--rule);color:var(--text-2);
+  opacity:0;transition:opacity .3s}
+.seqtag.on{opacity:1}
+.seqtag.crack{color:var(--src);border-color:var(--src)}
+.seqtag.blast{color:var(--m2);border-color:var(--m2)}
+#seqCards{position:absolute;right:14px;top:52px;width:min(244px,44%);display:grid;gap:8px}
+.seqcard{background:var(--bg);border-radius:10px;box-shadow:var(--shadow);padding:9px 12px 8px;
+  border-left:4px solid var(--c);opacity:0;transform:translateX(16px);transition:opacity .4s,transform .4s}
+.seqcard.on{opacity:1;transform:none}
+.seqcard.crack{--c:var(--src)} .seqcard.blast{--c:var(--m2)}
+.seqcard h5{margin:0 0 4px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c)}
+.seqcard div{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:1px 0}
+.seqcard div span{color:var(--text-3)}
+.seqcard div b{font:600 11px var(--mono);font-variant-numeric:tabular-nums}
+#seqFoot{position:absolute;left:14px;right:14px;bottom:12px;background:var(--bg);border-radius:10px;
+  box-shadow:var(--shadow);padding:20px 16px 9px}
+#seqBar{position:relative;height:6px;border-radius:3px;background:var(--rule-soft);margin:0 0 22px}
+#seqFill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--text);width:0}
+#seqGap{position:absolute;top:-4px;height:14px;border-radius:2px;background:var(--warn);opacity:.2}
+#seqGapL{position:absolute;top:11px;transform:translateX(-50%);font:600 9.5px var(--mono);color:var(--warn);white-space:nowrap}
+#seqBar u{position:absolute;top:-4px;width:2px;height:14px;background:var(--src);text-decoration:none}
+#seqBar u#mkPass{background:var(--text-3)}
+#seqBar u#mkBlast{background:var(--m2)}
+#seqBar u span{position:absolute;left:1px;transform:translateX(-50%);font:600 9.5px var(--mono);white-space:nowrap}
+#mkPassL{top:15px;color:var(--text-3);transform:translateX(-92%) !important}
+#mkCrackL{bottom:15px;color:var(--src)}
+#mkBlastL{bottom:15px;color:var(--m2)}
+#seqCap{margin:0;font-size:13px;line-height:1.42;color:var(--text);min-height:2.84em}
+#seqCap b{font-weight:700}
+#seqScale{display:block;font-size:10.5px;color:var(--text-3);margin-top:3px}
+@media(max-width:700px){#seqCards{display:none}#seqCap{font-size:12px}#seqClock{top:52px}#mkPassL{display:none}}
+
 /* ---------- buttons ---------- */
 .btn{display:block;width:100%;text-align:left;padding:8px 11px;margin-bottom:5px;font-family:inherit;
   font-size:13.5px;font-weight:500;background:var(--bg);color:var(--text);border:1px solid var(--rule-soft);
@@ -293,6 +335,27 @@ footer p{margin:0 0 12px;max-width:82ch}
       <div id="stagelab">Whole bench</div>
       <div id="modelab"><i style="background:var(--laneA)"></i><span id="modeTxt">QUIET</span></div>
       <div id="hint">drag to orbit · scroll to zoom · right-drag to pan · click a part · click the earcup to open it</div>
+      <div id="seq" hidden>
+        <div class="seqtag" id="tgShooter"></div>
+        <div class="seqtag" id="tgRound"></div>
+        <div class="seqtag blast" id="tgBlast"></div>
+        <div class="seqtag crack" id="tgCrack"></div>
+        <div class="seqtag" id="tgMiss"></div>
+        <div class="seqtag crack" id="tgEar"></div>
+        <div id="seqClock"><b id="seqT">Fire a shot</b><span id="seqNext"></span></div>
+        <div id="seqCards"></div>
+        <div id="seqFoot">
+          <div id="seqBar">
+            <i id="seqGap"></i><i id="seqFill"></i>
+            <u id="mkPass"><span id="mkPassL"></span></u>
+            <u id="mkCrack"><span id="mkCrackL"></span></u>
+            <u id="mkBlast"><span id="mkBlastL"></span></u>
+            <span id="seqGapL"></span>
+          </div>
+          <p id="seqCap"></p>
+          <small id="seqScale">Range to scale: one grid square is 1 m. The headset (10×), the rifle and the round are drawn oversize so they stay visible.</small>
+        </div>
+      </div>
     </div>
 
     <div class="scope">
@@ -1453,7 +1516,13 @@ const ctxBuild = { cutaway: true };
 const labelHost = document.getElementById('labels');
 
 for (const def of PARTS) {
-  const g = (BUILDERS[def.build] || BUILDERS.none)(def, ctxBuild);
+  // A builder may return a group that already sits at its place on the headset (the
+  // outside and inside microphones, the drivers). Setting the part's bench position on
+  // that same group would throw the offset away and leave the part at the foot of the
+  // stand, so such a group is nested inside the one that carries the bench position.
+  const built = (BUILDERS[def.build] || BUILDERS.none)(def, ctxBuild);
+  let g = built;
+  if (built.position.lengthSq() > 0) { g = new THREE.Group(); g.add(built); }
   g.position.set(def.pos[0], def.pos[1], def.pos[2]);
   if (def.rotY) g.rotation.y = def.rotY * DEG;
   g.traverse(o => { if (o.isMesh) o.userData.partId = def.id; });
@@ -1538,6 +1607,7 @@ function stepTweens(dt) {
 }
 
 canvas.addEventListener('pointerdown', e => {
+  if (SEQ.on) return;                                    // the staged shot owns the viewport while it plays
   const r = canvas.getBoundingClientRect();
   pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(pointer, camera);
@@ -2601,9 +2671,12 @@ function shotLit(id, t) {
 /* ---------- playback ---------- */
 function fireShot() {
   document.getElementById('scopenote').textContent = 'computing the shot…';
+  if (typeof seqAbort === 'function') seqAbort();
   setTimeout(() => {
     SHOT.data = runShot();
     SHOT.active = true; SHOT.playing = true; SHOT.t = 0; SHOT.shown = 0;
+    // the viewport stages the shot first (06c-range); the instruments wait at T+0 until it is ready
+    SHOT.hold = typeof seqStart === 'function' ? seqStart() : false;
     document.getElementById('liveBtn').hidden = false;
     document.getElementById('shotCard').hidden = false;
     document.getElementById('scopeTitle').textContent = 'Signal monitor — one shot, 0 to 200 ms, every sample';
@@ -2612,7 +2685,7 @@ function fireShot() {
   }, 30);
 }
 function stepShot(dt) {
-  if (!SHOT.active || !SHOT.playing) return;
+  if (!SHOT.active || !SHOT.playing || SHOT.hold) return;
   const rate = SHOT.RATES[SHOT.rate].k;
   SHOT.t += dt * 1000 / rate;
   if (SHOT.t >= SHOT.WINDOW) { SHOT.t = SHOT.WINDOW; SHOT.playing = false; }
@@ -2621,18 +2694,637 @@ function stepShot(dt) {
   const until = SHOT.playing ? SHOT.t : Infinity;       // at the end of the window, list the rest at once
   while (SHOT.shown < evs.length && evs[SHOT.shown].t <= until) {
     const e = evs[SHOT.shown++];
-    if (e.parts.length) setHot(e.parts, []);
+    // while the viewport is staging the shot the bench parts are folded away: nothing to outline
+    if (e.parts.length && !(typeof SEQ !== 'undefined' && SEQ.on)) setHot(e.parts, []);
     changed = true;
   }
   if (changed) { logStamp = -1; renderShotCard(); }
 }
 function endShot() {
-  SHOT.active = false; SHOT.playing = false;
+  SHOT.active = false; SHOT.playing = false; SHOT.hold = false;
+  if (typeof seqAbort === 'function') seqAbort();
   document.getElementById('liveBtn').hidden = true;
   document.getElementById('shotCard').hidden = true;
   document.getElementById('scopeTitle').textContent = 'Signal monitor — the last 0.6 s, decibel axis';
   clearHot();
   logStamp = -1;
+}
+
+/* ============================================================
+   THE SHOT, STAGED — what the viewport does when "Fire a shot"
+   is pressed.
+
+     1  gather    the bench parts fold into the headset, cables reel in
+     2  reveal    the bench gives way to a range, drawn to scale
+     3  run       the round, its crack and the muzzle blast, on the
+                  same clock as the instruments (SHOT.t)
+     4  restore   everything returns to the bench
+
+   Nothing here is a second simulation. The geometry is the
+   scenario in SHOT (range, miss distance, round speed), the
+   arrivals are SHOT.T_BULLET / T_CRACK / T_BLAST, and every
+   figure in a caption or a card is read from the run's results.
+
+   Scale. On the range 1 unit is 1 cm, so the 30 m and the 3 m are
+   to scale and one grid square is 1 m. The headset keeps its bench
+   size, ten times too large for the range, because at true size it
+   would be a speck. The viewport says so.
+
+   The crack. The run takes the crack as leaving the round's path
+   at closest approach and crossing the miss distance at the speed
+   of sound. That is a cone of half-angle atan(c/v) = 22.7 degrees;
+   the textbook Mach cone, asin(c/v), is 24.7 degrees and would
+   arrive 0.8 ms sooner. The cone is drawn to the run's arrival
+   time so the picture and the instruments agree.
+   ============================================================ */
+
+const RK = 100;                                   // range units per metre
+const HEADSET_IDS = ['head', 'muff', 'mic1', 'mic2R', 'mic2L', 'mic3R', 'mic3L', 'spkR', 'spkL', 'mic4'];
+const SEQ = { phase: 'idle', on: false, u: 0, built: false };
+
+const sEase = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const sClamp = x => Math.min(1, Math.max(0, x));
+const sStep = (a, b, x) => { const t = sClamp((x - a) / (b - a)); return t * t * t * (t * (t * 6 - 15) + 10); };
+const sCol = name => new THREE.Color(cssVar(name) || '#888888');
+
+/* ---------- the range: ground, wave shells, the round, the shooter ---------- */
+const GROUND_VS = `
+varying vec3 vW;
+void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+
+const GROUND_FS = `
+varying vec3 vW;
+uniform float uT, uFade, uWaves, uCrack, uTrack, uDim, uC, uV, uRange, uMissQ;
+uniform vec2 uM, uDir, uCen, uHalf;
+uniform vec3 cGround, cGrid, cCrack, cBlast, cInk;
+
+float gridLines(float x, float stepSize) {
+  float f = x / stepSize, w = fwidth(f);
+  float l = 1.0 - min(abs(fract(f - 0.5) - 0.5) / max(w, 1e-5), 1.0);
+  return l * (1.0 - smoothstep(0.12, 0.42, w));          // fades out before it can shimmer
+}
+void main() {
+  vec2 p = vW.xz, rel = p - uM;
+  float s = dot(rel, uDir);                               // distance along the round's path
+  float q = rel.x * uDir.y - rel.y * uDir.x;              // distance to the side of it
+  float r = length(rel);
+  vec3 col = cGround;
+
+  float g = (gridLines(p.x, 100.0) + gridLines(p.y, 100.0)) * 0.30
+          + (gridLines(p.x, 500.0) + gridLines(p.y, 500.0)) * 0.55;
+  col = mix(col, cGrid, clamp(g, 0.0, 1.0));
+
+  // the round's path in plan: dashed ahead of the round, solid behind it
+  float sb = uV * uT;
+  float onPath = 1.0 - smoothstep(1.6, 1.6 + fwidth(q) * 1.5, abs(q));
+  float drawn = step(0.0, s) * step(s, uTrack);
+  float dash = step(0.5, fract(s / 60.0));
+  col = mix(col, cInk, onPath * drawn * mix(dash * 0.5, 0.9, step(s, sb)) * 0.8);
+
+  // the miss distance, as a dimension line from the path to the point under the microphone
+  float across = 1.0 - smoothstep(1.3, 1.3 + fwidth(s) * 1.5, abs(s - uRange));
+  float span = step(min(0.0, uMissQ), q) * step(q, max(0.0, uMissQ));
+  float tick = (1.0 - smoothstep(1.3, 1.3 + fwidth(q) * 1.5, min(abs(q), abs(q - uMissQ)))) * step(abs(s - uRange), 14.0);
+  col = mix(col, cInk, clamp(across * span + tick, 0.0, 1.0) * 0.7 * uDim);
+
+  // wavefronts are lines of equal arrival time; behind each front a short tail of pressure
+  float tb = r / uC;
+  float tc = s / uV + abs(q) / uC;
+  float db = (uT - tb) * uC, dc = (uT - tc) * uC;
+  float fall = clamp(700.0 / max(r, 1.0), 0.5, 1.0);     // the blast weakens as it spreads
+  float blast = (1.0 - smoothstep(5.0, 5.0 + fwidth(db) * 1.5, abs(db))) + step(0.0, db) * exp(-db / 230.0) * 0.36;
+  float crack = (1.0 - smoothstep(3.5, 3.5 + fwidth(dc) * 1.5, abs(dc))) + step(0.0, dc) * exp(-dc / 70.0) * 0.30;
+  crack *= step(0.0, s) * step(tc, tb);                   // where the blast got there first there is no crack front
+  col = mix(col, cBlast, clamp(blast, 0.0, 1.0) * fall * uWaves);
+  col = mix(col, cCrack, clamp(crack, 0.0, 1.0) * uWaves * uCrack);
+
+  vec2 e = abs(p - uCen) / uHalf;
+  float edge = 1.0 - smoothstep(0.70, 1.0, max(e.x, e.y));
+  gl_FragColor = vec4(col, uFade * edge);
+  #include <colorspace_fragment>
+}`;
+
+const SHELL_VS = `
+varying vec3 vN, vV, vW, vL;
+void main() {
+  vL = position;
+  vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz;
+  vec4 mv = viewMatrix * w; vV = -mv.xyz;
+  vN = normalMatrix * normal;
+  gl_Position = projectionMatrix * mv;
+}`;
+
+const SHELL_FS = `
+varying vec3 vN, vV, vW, vL;
+uniform vec3 uCol;
+uniform float uOp, uGround, uKind;
+uniform vec2 uM, uDir;
+float hair(float f) { float w = fwidth(f); return (1.0 - min(abs(fract(f - 0.5) - 0.5) / max(w, 1e-5), 1.0)) * (1.0 - smoothstep(0.15, 0.5, w)); }
+void main() {
+  if (vW.y < uGround) discard;
+  float rim = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+  float a = 0.04 + 0.46 * pow(rim, 2.2);
+  vec3 d = normalize(vL);
+  float around = abs(atan(d.y, d.x)) / 0.2617994;         // a hairline every 15 degrees round the path
+  float lines = hair(around);
+  if (uKind < 0.5) {
+    lines += hair(acos(clamp(d.z, -1.0, 1.0)) / 0.1745329);  // and every 10 degrees away from it
+  } else {
+    // on the cone, rings stay where they were shed: every 1.5 m of the round's path
+    // sends out a ring that only grows, which is what makes the cone
+    lines += hair(dot(vW.xz - uM, uDir) / 150.0);
+  }
+  a += clamp(lines, 0.0, 1.0) * 0.20;
+  gl_FragColor = vec4(uCol, a * uOp);
+  #include <colorspace_fragment>
+}`;
+
+function seqBuild() {
+  if (SEQ.built) return;
+  SEQ.built = true;
+  const cms = SHOT.C / 1000 * RK, vms = SHOT.V_BULLET / 1000 * RK, k = SHOT.C / SHOT.V_BULLET;
+  Object.assign(SEQ, { cms, vms, Tb: SHOT.T_BULLET, Tc: SHOT.T_CRACK, Tl: SHOT.T_BLAST });
+
+  const root = SEQ.root = new THREE.Group(); root.visible = false; scene.add(root);
+
+  // ground
+  const U = SEQ.gu = {
+    uT: { value: 0 }, uFade: { value: 0 }, uWaves: { value: 0 }, uCrack: { value: 1 }, uTrack: { value: 0 }, uDim: { value: 0 },
+    uC: { value: cms }, uV: { value: vms }, uRange: { value: SHOT.RANGE * RK }, uMissQ: { value: 0 },
+    uM: { value: new THREE.Vector2() }, uDir: { value: new THREE.Vector2() },
+    uCen: { value: new THREE.Vector2() }, uHalf: { value: new THREE.Vector2() },
+    cGround: { value: new THREE.Color() }, cGrid: { value: new THREE.Color() }, cCrack: { value: new THREE.Color() },
+    cBlast: { value: new THREE.Color() }, cInk: { value: new THREE.Color() },
+  };
+  const geo = new THREE.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2);
+  SEQ.ground = new THREE.Mesh(geo, new THREE.ShaderMaterial({
+    uniforms: U, vertexShader: GROUND_VS, fragmentShader: GROUND_FS, transparent: true }));
+  SEQ.ground.renderOrder = -3; root.add(SEQ.ground);
+  SEQ.shadow = new THREE.Mesh(geo, new THREE.ShadowMaterial({ opacity: 0 }));
+  SEQ.shadow.receiveShadow = true; SEQ.shadow.renderOrder = -2; root.add(SEQ.shadow);
+
+  // the two wave shells live in one group at the muzzle; the pair is self-similar, so the
+  // group's scale is simply the time since the shot, in milliseconds
+  const shell = (kind, col) => new THREE.ShaderMaterial({
+    uniforms: { uCol: { value: new THREE.Color() }, uOp: { value: 0 }, uGround: { value: 0.4 }, uKind: { value: kind },
+                uM: U.uM, uDir: U.uDir },
+    vertexShader: SHELL_VS, fragmentShader: SHELL_FS, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  SEQ.waves = new THREE.Group(); root.add(SEQ.waves);
+  SEQ.sphere = new THREE.Mesh(new THREE.SphereGeometry(cms, 96, 56), shell(0));
+  SEQ.sphere.geometry.rotateX(Math.PI / 2);                       // poles on the round's path
+  SEQ.sphere.renderOrder = 4; SEQ.waves.add(SEQ.sphere);
+  // the cone runs from the round back to where it meets the blast sphere
+  const s1 = 2 * k / (1 + k * k) * cms, r1 = cms - s1 * k, h = vms - s1;
+  const cg = new THREE.CylinderGeometry(0, r1, h, 96, 1, true);
+  cg.rotateX(Math.PI / 2); cg.translate(0, 0, s1 + h / 2);
+  SEQ.cone = new THREE.Mesh(cg, shell(1)); SEQ.cone.renderOrder = 5; SEQ.waves.add(SEQ.cone);
+  SEQ.s1 = s1;
+
+  // the round and the line it has drawn
+  const bg = new THREE.CapsuleGeometry(4.2, 15, 6, 14); bg.rotateX(Math.PI / 2);
+  SEQ.round = new THREE.Mesh(bg, M(0xa9834a, .38, .85)); SEQ.round.castShadow = true; root.add(SEQ.round);
+  SEQ.trailGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+  SEQ.trail = new THREE.Line(SEQ.trailGeo, new THREE.LineBasicMaterial({ color: 0x444444, transparent: true, opacity: .75 }));
+  root.add(SEQ.trail);
+
+  // the shooter: a rifle on a stand, drawn oversize like the headset so it reads from 30 m.
+  // The group's origin is the muzzle; the rifle runs back from it, away from the wearer.
+  const sh = SEQ.shooter = new THREE.Group(), dark = M(0x2a2e35, .8, .1), steel = M(0x1b1e23, .55, .5);
+  const barrel = add(sh, cyl(6.5, 6.5, 170, steel, 16), 0, 0, 85); barrel.rotation.x = Math.PI / 2;
+  add(sh, box(24, 40, 150, dark, 5), 0, -9, 235);                 // receiver
+  add(sh, box(20, 46, 96, dark, 6), 0, -17, 350);                 // stock
+  add(sh, box(15, 56, 30, dark, 4), 0, -52, 252);                 // magazine
+  SEQ.post = add(sh, cyl(8, 8, 1, dark, 16), 0, 0, 200);
+  SEQ.foot = add(sh, cyl(58, 66, 10, dark, 32), 0, 0, 200);
+  root.add(sh);
+
+  // a ring that opens once where a front meets the headset
+  const ring = () => {
+    const m = new THREE.Mesh(new THREE.RingGeometry(.88, 1, 72),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, side: THREE.DoubleSide, toneMapped: false }));
+    m.renderOrder = 9; m.visible = false; m.userData.age = 9; root.add(m); return m;
+  };
+  SEQ.rings = [ring(), ring(), ring()];
+
+  // overlay
+  const $id = id => document.getElementById(id);
+  SEQ.el = { box: $id('seq'), t: $id('seqT'), next: $id('seqNext'), cap: $id('seqCap'), fill: $id('seqFill'), foot: $id('seqFoot'),
+             cards: $id('seqCards'), tags: {} };
+  for (const id of ['tgShooter', 'tgRound', 'tgBlast', 'tgCrack', 'tgMiss', 'tgEar']) SEQ.el.tags[id] = $id(id);
+  const BAR = SEQ.BAR = SHOT.T_BLAST + 25;
+  const pct = t => (t / BAR * 100).toFixed(2) + '%';
+  $id('mkPass').style.left = pct(SHOT.T_BULLET); $id('mkCrack').style.left = pct(SHOT.T_CRACK); $id('mkBlast').style.left = pct(SHOT.T_BLAST);
+  $id('mkPassL').textContent = 'round passes · ' + SHOT.T_BULLET.toFixed(1);
+  $id('mkCrackL').textContent = 'crack · ' + SHOT.T_CRACK.toFixed(1);
+  $id('mkBlastL').textContent = 'blast · ' + SHOT.T_BLAST.toFixed(1) + ' ms';
+  const gap = $id('seqGap');
+  gap.style.left = pct(SHOT.T_CRACK); gap.style.width = pct(SHOT.T_BLAST - SHOT.T_CRACK);
+  // the gap between the two arrivals as they are printed on this bar, which is the figure the handbook quotes
+  $id('seqGapL').textContent = (+SHOT.T_BLAST.toFixed(1) - +SHOT.T_CRACK.toFixed(1)).toFixed(1) + ' ms of warning';
+  $id('seqGapL').style.left = pct((SHOT.T_CRACK + SHOT.T_BLAST) / 2);
+  SEQ.el.tags.tgShooter.textContent = `Shooter · ${SHOT.RANGE} m`;
+  SEQ.el.tags.tgRound.textContent = `Round · ${SHOT.V_BULLET} m/s · Mach ${(SHOT.V_BULLET / SHOT.C).toFixed(1)}`;
+  SEQ.el.tags.tgBlast.textContent = `Muzzle blast · ${SHOT.C} m/s`;
+  SEQ.el.tags.tgCrack.textContent = 'Crack · the round’s shock wave';
+  SEQ.el.tags.tgMiss.textContent = `${SHOT.MISS} m`;
+  SEQ.el.tags.tgEar.textContent = 'both ears ducked 30 dB';
+}
+
+/* ---------- where things are, for this run ---------- */
+function seqLayout() {
+  const hp = PART.get('head').def.pos;
+  SEQ.H = new THREE.Vector3(hp[0], 246, hp[2] + 4);
+  SEQ.mic = new THREE.Box3().setFromObject(PART.get('mic2R').group).getCenter(new THREE.Vector3());
+  SEQ.cupR = new THREE.Vector3(hp[0] + CUP_X, CUP_Y, hp[2] + 4);
+  SEQ.cupL = new THREE.Vector3(hp[0] - CUP_X, CUP_Y, hp[2] + 4);
+  SEQ.top = new THREE.Vector3(hp[0], 352, hp[2] - 14);
+  SEQ.P = SEQ.mic.clone().add(new THREE.Vector3(SHOT.MISS * RK, 0, 0));          // closest approach
+  SEQ.M = SEQ.P.clone().add(new THREE.Vector3(0, 0, SHOT.RANGE * RK));           // the muzzle
+  SEQ.dir = new THREE.Vector3(0, 0, -1);
+
+  const U = SEQ.gu;
+  U.uM.value.set(SEQ.M.x, SEQ.M.z); U.uDir.value.set(SEQ.dir.x, SEQ.dir.z);
+  const rel = new THREE.Vector2(SEQ.mic.x - SEQ.M.x, SEQ.mic.z - SEQ.M.z);
+  U.uMissQ.value = rel.x * SEQ.dir.z - rel.y * SEQ.dir.x;
+  const cx = SEQ.P.x - 200, cz = SEQ.mic.z + SHOT.RANGE * RK * .5, hx = 2000, hz = SHOT.RANGE * RK * .5 + 1300;
+  U.uCen.value.set(cx, cz); U.uHalf.value.set(hx, hz);
+  SEQ.ground.position.set(cx, 0.3, cz); SEQ.ground.scale.set(hx * 2, 1, hz * 2);
+  SEQ.shadow.position.set(cx, 0.5, cz); SEQ.shadow.scale.set(hx * 2, 1, hz * 2);
+
+  SEQ.waves.position.copy(SEQ.M); SEQ.waves.rotation.set(0, Math.PI, 0);          // local +Z down the path
+  SEQ.shooter.position.copy(SEQ.M);
+  SEQ.post.scale.y = SEQ.M.y - 30; SEQ.post.position.y = -(SEQ.M.y - 30) / 2 - 26;
+  SEQ.foot.position.y = 5 - SEQ.M.y;
+
+  // colours follow the page theme
+  const dark = isDark();
+  U.cGround.value.copy(sCol('--bench')); U.cInk.value.copy(sCol('--text-2'));
+  U.cGrid.value.copy(sCol('--bench')).lerp(sCol('--text'), dark ? .22 : .34);
+  U.cCrack.value.copy(sCol('--src')); U.cBlast.value.copy(sCol('--m2'));
+  SEQ.sphere.material.uniforms.uCol.value.copy(sCol('--m2'));
+  SEQ.cone.material.uniforms.uCol.value.copy(sCol('--src'));
+  SEQ.trail.material.color.copy(sCol('--text-2'));
+  SEQ.rings[0].material.color.copy(sCol('--src'));
+  SEQ.rings[1].material.color.copy(sCol('--m2')); SEQ.rings[2].material.color.copy(sCol('--m2'));
+}
+
+/* ---------- camera: every phase names a pose; the camera follows it, damped ---------- */
+function seqPose(target, dir, span) {
+  const asp = vp.clientWidth / Math.max(1, vp.clientHeight), tv = Math.tan(camera.fov * DEG / 2);
+  const d = Math.max(span / (2 * tv * asp), span * .6 / (2 * tv));
+  const t = target.clone(); t.y -= span * .075;                  // the caption bar covers the bottom of the view
+  return { p: t.clone().addScaledVector(new THREE.Vector3(...dir).normalize(), d), t };
+}
+function seqBlend(a, b, w) {
+  return { p: a.p.clone().lerp(b.p, w), t: a.t.clone().lerp(b.t, w) };
+}
+function seqRunPose(t) {
+  const S = SEQ, R = SHOT.RANGE * RK;
+  const round = S.M.clone().addScaledVector(S.dir, S.vms * t);
+  const beside = S.H.clone().lerp(S.P, .45);
+  const gapToBlast = Math.max(0, R - S.cms * t);
+  // The wide shots keep both ends of the range clear of the frame's edge. While the headset
+  // waits for the blast it stays mid-frame, clear of the cards on the right, and the view is
+  // only as wide as it takes to show the front coming in from the left.
+  const K = [
+    [0,           S.H.clone().lerp(S.M, .5),      [1, .62, .10],   R * 1.5],
+    [5,           S.H.clone().lerp(S.M, .5),      [1, .60, .12],   R * 1.46],
+    [S.Tb * .72,  S.H.clone().lerp(round, .5),    [1, .50, .30],   1900],
+    [S.Tb + 1.5,  beside,                         [.86, .42, .74], 1000],
+    [S.Tc + 7,    beside,                         [.90, .42, .66], 1000],
+    [S.Tc + 16,   beside,                         [1, .55, .22],   Math.min(3000, Math.max(1150, gapToBlast * 2.9))],
+    [S.Tl - 9,    beside,                         [1, .42, .46],   1150],
+    [S.Tl + 40,   beside,                         [.94, .42, .56], 1100],
+  ];
+  let i = 0;
+  while (i < K.length - 2 && t >= K[i + 1][0]) i++;
+  const a = K[i], b = K[i + 1], w = sStep(a[0], b[0], t);
+  const dir = a[2].map((v, j) => v + (b[2][j] - v) * w);
+  return seqPose(a[1].clone().lerp(b[1], w), dir, Math.exp(Math.log(a[3]) + (Math.log(b[3]) - Math.log(a[3])) * w));
+}
+function seqCamera(pose, dt, rate = 4.6) {
+  const k = 1 - Math.exp(-dt * rate);
+  camera.position.lerp(pose.p, k); controls.target.lerp(pose.t, k);
+}
+
+/* ---------- start, and the clean way out ---------- */
+function seqStart() {
+  seqAbort();
+  seqBuild();
+
+  // a known bench: whole view, cup closed, nothing lifted, nothing selected
+  if (cupOpen) openCup(false);
+  exploded = false; orbiting = false; view = 'all';
+  applyView();
+  tweens.length = 0;
+  for (const [, p] of PART) { p.group.position.set(p.def.pos[0], p.homeY, p.def.pos[2]); p.group.scale.setScalar(1); }
+  selected = null; clearHot(); renderInfo(null);
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === 'all'));
+  document.querySelectorAll('[data-disp="explode"],[data-disp="spin"]').forEach(b => b.classList.remove('on'));
+
+  seqLayout();
+
+  // what folds in, nearest the headset first
+  SEQ.parts = [];
+  for (const [id, p] of PART) {
+    if (HEADSET_IDS.includes(id)) continue;
+    const home = new THREE.Vector3(p.def.pos[0], p.homeY, p.def.pos[2]);
+    const lane = p.def.lane || [];
+    const to = (lane.includes('A') ? SEQ.cupR : lane.includes('B') ? SEQ.cupL : SEQ.top).clone();
+    const off = p.box.isEmpty() ? new THREE.Vector3() : p.box.getCenter(new THREE.Vector3()).sub(home);
+    const from = home.clone().add(off), mid = from.clone().lerp(to, .5);
+    mid.y += 150 + from.distanceTo(to) * .22;
+    SEQ.parts.push({ p, home, off, from, to, mid, d: from.distanceTo(SEQ.H), done: false });
+  }
+  SEQ.parts.sort((a, b) => a.d - b.d);
+  SEQ.parts.forEach((q, i) => { q.delay = .25 + i * .058; });
+  SEQ.partDur = .86;
+  SEQ.gatherLen = .25 + SEQ.parts.length * .058 + SEQ.partDur + .3;
+
+  SEQ.wires = [...WIRES.values()].filter(w => w.visible).map((w, i) => ({ w, n: w.tube.geometry.index.count, i }));
+  for (const { w } of SEQ.wires) { w.setHot(null); w.bits.forEach(b => b.visible = false); }
+
+  for (const m of [benchTopMat, benchSideMat]) { m.transparent = true; m.needsUpdate = true; }
+
+  SEQ.saved = { labels: showLabels, maxD: controls.maxDistance, far: camera.far, home: homeFor('all') };
+  showLabels = false;
+  controls.enabled = false; controls.maxDistance = 30000;
+  camera.far = 40000; camera.updateProjectionMatrix();
+
+  const U = SEQ.gu;
+  U.uT.value = 0; U.uFade.value = 0; U.uWaves.value = 0; U.uCrack.value = 1; U.uTrack.value = 0; U.uDim.value = 0;
+  SEQ.root.visible = true; SEQ.waves.visible = false; SEQ.round.visible = false; SEQ.trail.visible = false;
+  SEQ.shooter.scale.setScalar(.001); SEQ.shadow.material.opacity = 0;
+  for (const r of SEQ.rings) { r.visible = false; r.userData.age = 9; }
+
+  SEQ.el.cards.innerHTML = '';
+  SEQ.el.box.hidden = false;
+  requestAnimationFrame(() => SEQ.el.box.classList.add('on'));
+  for (const t of Object.values(SEQ.el.tags)) t.classList.remove('on');
+  SEQ.el.fill.style.width = '0%';
+  document.getElementById('hint').style.visibility = 'hidden';
+  document.getElementById('stagelab').textContent = 'Fire a shot';
+
+  Object.assign(SEQ, { on: true, phase: 'gather', u: 0, pulse: 0, capKey: '', hitCrack: false, hitBlast: false, sinceBlast: 0 });
+  seqCaption('gather');
+  return true;
+}
+
+/* put the bench back exactly as it was, at once */
+function seqAbort() {
+  if (!SEQ.on) return;
+  SEQ.on = false; SEQ.phase = 'idle';
+  SHOT.hold = false;
+  for (const q of SEQ.parts) {
+    q.p.group.visible = true; q.p.group.position.copy(q.home); q.p.group.scale.setScalar(1);
+  }
+  for (const id of HEADSET_IDS) { const p = PART.get(id); if (p) p.group.scale.setScalar(1); }
+  for (const { w } of SEQ.wires) { w.tube.geometry.setDrawRange(0, Infinity); }
+  bench.visible = true;
+  for (const m of [benchTopMat, benchSideMat]) { m.opacity = 1; m.transparent = false; m.needsUpdate = true; }
+  SEQ.root.visible = false;
+  showLabels = SEQ.saved.labels;
+  controls.enabled = true; controls.maxDistance = SEQ.saved.maxD;
+  camera.far = SEQ.saved.far; camera.updateProjectionMatrix();
+  applyView();
+  SEQ.el.box.classList.remove('on'); SEQ.el.box.hidden = true;
+  document.getElementById('hint').style.visibility = '';
+  document.getElementById('stagelab').textContent = VIEW_LABEL[view] || 'Whole bench';
+  const [hp, ht] = homeFor(view);
+  tween(camera.position, hp, 700); tween(controls.target, ht, 700);
+}
+
+/* ---------- words ---------- */
+function seqCaption(key) {
+  if (SEQ.capKey === key) return;
+  SEQ.capKey = key;
+  const S = SHOT, R = (S.data && S.data.R) || {}, n = (x, d = 1) => (x == null || !isFinite(x)) ? '—' : x.toFixed(d);
+  const text = {
+    gather: `<b>The bench folds into the headset.</b> Every board and cable here is what the headset carries with it.`,
+    reveal: `<b>On the range.</b> The shooter is ${S.RANGE} m away, and the round will pass ${S.MISS} m from the right earcup.`,
+    fired:  `<b>The shot is fired.</b> The round leaves at ${S.V_BULLET} m/s. The muzzle blast spreads at the speed of sound, ${S.C} m/s.`,
+    outrun: `<b>The round outruns its own blast.</b> Its shock wave, the crack, trails behind it as a cone.`,
+    pass:   `<b>T+${n(S.T_BULLET)} ms. The round passes ${S.MISS} m from the head.</b> The crack still has ${S.MISS} m to cross at the speed of sound.`,
+    crack:  `<b>T+${n(S.T_CRACK)} ms. The crack arrives:</b> ${n(R.crackField)} dB at the outside microphone. The crack guard fires ${n(R.guardDelay, 2)} ms later, both ears duck by 30 dB and adaptation freezes.`,
+    wait:   `<b>The headset is ready and the blast is still on its way.</b> Hear-through went down ${n(R.lead)} ms ahead of it.`,
+    blast:  `<b>T+${n(S.T_BLAST)} ms. The muzzle blast arrives:</b> ${n(R.blastField)} dB outside. Hear-through was already down, so the system plays ${n(R.playBlast)} dB into the ear. Peak at the ear over the whole shot: ${n(R.earPeak)} dBP, against a 140 dBP limit.`,
+    restore:`<b>Back to the bench.</b> The instruments below keep the whole run: every trace and every figure.`,
+  }[key];
+  SEQ.el.cap.innerHTML = text || '';
+}
+function seqCard(kind) {
+  const S = SHOT, R = S.data.R, n = (x, d = 1) => (x == null || !isFinite(x)) ? '—' : x.toFixed(d);
+  const rows = kind === 'crack'
+    ? [['outside, at Mic 2', n(R.crackField) + ' dB'], ['crack guard fired', '+' + n(R.guardDelay, 2) + ' ms'],
+       ['hear-through', 'down 30 dB'], ['adaptation', 'frozen']]
+    : [['outside, at Mic 2', n(R.blastField) + ' dB'], ['ducked ahead of it by', n(R.lead) + ' ms'],
+       ['played into the ear', n(R.playBlast) + ' dB'], ['peak at the ear', n(R.earPeak) + ' / 140 dBP']];
+  const el = document.createElement('div');
+  el.className = 'seqcard ' + kind;
+  el.innerHTML = `<h5>${kind === 'crack' ? 'Crack' : 'Muzzle blast'} · T+${n(kind === 'crack' ? S.T_CRACK : S.T_BLAST)} ms</h5>` +
+    rows.map(r => `<div><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
+  SEQ.el.cards.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('on'));
+}
+function seqHit(i, at) {
+  const r = SEQ.rings[i]; r.position.copy(at); r.userData.age = 0; r.visible = true;
+}
+
+/* ---------- one rendered frame ---------- */
+function stepSeq(dt) {
+  if (!SEQ.on) return;
+  const S = SEQ, U = S.gu;
+  S.u += dt;
+  const u = S.u;
+
+  if (S.phase === 'gather') {
+    // cables reel in toward where they start, the bench thins out, parts arc into the headset
+    for (const { w, n, i } of S.wires) {
+      const f = 1 - sEase(sClamp((u - i * .018) / .6));
+      w.tube.geometry.setDrawRange(0, Math.floor(n * f / 3) * 3);
+      if (f <= 0) w.tube.visible = false;
+    }
+    for (const q of S.parts) {
+      const x = sClamp((u - q.delay) / S.partDur);
+      if (x <= 0 || q.done) continue;
+      const e = sEase(x), sc = 1 - .97 * sStep(.45, 1, x), i1 = 1 - e;
+      const cx = i1 * i1 * q.from.x + 2 * i1 * e * q.mid.x + e * e * q.to.x;
+      const cy = i1 * i1 * q.from.y + 2 * i1 * e * q.mid.y + e * e * q.to.y;
+      const cz = i1 * i1 * q.from.z + 2 * i1 * e * q.mid.z + e * e * q.to.z;
+      q.p.group.scale.setScalar(sc);
+      q.p.group.position.set(cx - q.off.x * sc, cy - q.off.y * sc, cz - q.off.z * sc);
+      if (x >= 1) { q.done = true; q.p.group.visible = false; S.pulse = 1; }
+    }
+    const fade = sStep(.35, .9, u / S.gatherLen);
+    benchTopMat.opacity = benchSideMat.opacity = 1 - fade;
+    U.uFade.value = fade; S.shadow.material.opacity = .2 * fade;
+    const close = seqPose(S.H.clone().add(new THREE.Vector3(60, -10, 0)), [.74, .36, .9], 820);
+    const home = { p: S.saved.home[0], t: S.saved.home[1] };
+    seqCamera(seqBlend(home, close, sStep(.3, 1, u / S.gatherLen)), dt, 3.4);
+    if (u >= S.gatherLen) {
+      bench.visible = false;
+      S.phase = 'reveal'; S.u = 0;
+      document.getElementById('stagelab').textContent = 'On the range';
+      seqCaption('reveal');
+    }
+  } else if (S.phase === 'reveal') {
+    const LEN = 2.7, x = u / LEN;
+    U.uFade.value = 1;
+    U.uTrack.value = sEase(sClamp((x - .25) / .6)) * (SHOT.RANGE * RK + 950);
+    U.uDim.value = sStep(.7, 1, x);
+    const k = sClamp((x - .1) / .35), back = 1 + 1.9 * Math.pow(k - 1, 3) + .9 * Math.pow(k - 1, 2);
+    S.shooter.scale.setScalar(Math.max(.001, back));
+    const close = seqPose(S.H.clone().add(new THREE.Vector3(60, -10, 0)), [.74, .36, .9], 820);
+    seqCamera(seqBlend(close, seqRunPose(0), sStep(0, .6, x)), dt, 4.4);   // settled with time left to read the range
+    S.el.tags.tgShooter.classList.toggle('on', x > .45);
+    S.el.tags.tgMiss.classList.toggle('on', x > .7);
+    if (u >= LEN) {
+      S.phase = 'run'; S.u = 0;
+      SHOT.hold = false;                                       // the instruments start now
+      S.waves.visible = true; S.round.visible = true; S.trail.visible = true;
+      U.uWaves.value = 1; U.uTrack.value = SHOT.RANGE * RK + 950; U.uDim.value = 1;
+    }
+  } else if (S.phase === 'run') {
+    const t = SHOT.t;
+    U.uT.value = t;
+    S.waves.scale.setScalar(Math.max(t, 1e-3));
+    const crackOn = 1 - sStep(S.Tc + 7, S.Tc + 17, t);       // once past the head the crack leaves the picture
+    U.uCrack.value = crackOn;
+    S.cone.material.uniforms.uOp.value = crackOn;
+    S.cone.visible = crackOn > .002;
+    S.sphere.material.uniforms.uOp.value = Math.min(1, Math.max(.42, 900 / Math.max(1, S.cms * t)));
+    const sb = S.vms * t;
+    S.round.position.copy(S.M).addScaledVector(S.dir, sb);
+    S.round.visible = sb < SHOT.RANGE * RK + 1100;
+    S.round.scale.setScalar(Math.max(1, camera.position.distanceTo(S.round.position) / 950));   // a marker: never smaller than a few pixels
+    S.trailGeo.attributes.position.setXYZ(0, S.M.x, S.M.y, S.M.z);
+    S.trailGeo.attributes.position.setXYZ(1, S.round.position.x, S.round.position.y, S.round.position.z);
+    S.trailGeo.attributes.position.needsUpdate = true;
+    S.trail.material.opacity = .75 * crackOn + .25;
+
+    if (!S.hitCrack && t >= S.Tc) { S.hitCrack = true; seqCard('crack'); seqHit(0, S.mic); S.pulse = .8; }
+    if (!S.hitBlast && t >= S.Tl) { S.hitBlast = true; seqCard('blast'); seqHit(1, S.mic); seqHit(2, S.cupL.clone().add(new THREE.Vector3(-26, 26, 22))); S.pulse = 1; }
+    if (S.hitBlast) S.sinceBlast += dt;
+
+    seqCaption(t < 7 ? 'fired' : t < S.Tb - 4 ? 'outrun' : t < S.Tc ? 'pass' : t < S.Tc + 11 ? 'crack'
+             : t < S.Tl ? 'wait' : 'blast');
+    seqCamera(seqRunPose(t), dt);
+
+    const tg = S.el.tags;
+    tg.tgShooter.classList.toggle('on', t < S.Tb - 6);
+    tg.tgRound.classList.toggle('on', t > 1.5 && S.round.visible && t < S.Tc + 5);
+    tg.tgCrack.classList.toggle('on', t > 9 && t < S.Tc + 7);
+    tg.tgBlast.classList.toggle('on', t > 3 && t < S.Tl + 5);
+    tg.tgMiss.classList.toggle('on', t < S.Tc + 8);
+    tg.tgEar.classList.toggle('on', t >= S.Tc + .2);
+
+    const done = (S.hitBlast && S.sinceBlast > 3.0 && t > S.Tl + 9) || !SHOT.playing || !SHOT.active;
+    if (done) {
+      S.phase = 'restore'; S.u = 0;
+      bench.visible = true;
+      for (const q of S.parts) q.done = false;
+      S.parts.forEach((q, i) => { q.delay = .7 + (S.parts.length - 1 - i) * .05; });
+      S.restoreLen = .7 + S.parts.length * .05 + S.partDur + .75;
+      for (const t of Object.values(tg)) t.classList.remove('on');
+      document.getElementById('stagelab').textContent = 'Back to the bench';
+      seqCaption('restore');
+    }
+  } else if (S.phase === 'restore') {
+    const x = u / S.restoreLen;
+    const out = 1 - sStep(0, .3, x);
+    U.uFade.value = out; U.uWaves.value = out; S.shadow.material.opacity = .2 * out;
+    S.sphere.material.uniforms.uOp.value *= out; S.cone.visible = false; S.round.visible = false; S.trail.visible = false;
+    S.shooter.scale.setScalar(Math.max(.001, out));
+    if (out <= 0) S.waves.visible = false;
+    benchTopMat.opacity = benchSideMat.opacity = sStep(.1, .5, x);
+    for (const q of S.parts) {
+      const y = sClamp((u - q.delay) / S.partDur);
+      if (y <= 0 || q.done) continue;
+      q.p.group.visible = true;
+      const e = sEase(y), sc = .03 + .97 * sStep(0, .55, y), i1 = 1 - e;
+      const cx = i1 * i1 * q.to.x + 2 * i1 * e * q.mid.x + e * e * q.from.x;
+      const cy = i1 * i1 * q.to.y + 2 * i1 * e * q.mid.y + e * e * q.from.y;
+      const cz = i1 * i1 * q.to.z + 2 * i1 * e * q.mid.z + e * e * q.from.z;
+      q.p.group.scale.setScalar(sc);
+      q.p.group.position.set(cx - q.off.x * sc, cy - q.off.y * sc, cz - q.off.z * sc);
+      if (y >= 1) { q.done = true; q.p.group.position.copy(q.home); q.p.group.scale.setScalar(1); }
+    }
+    const w0 = S.restoreLen - .95;
+    for (const { w, n, i } of S.wires) {
+      const f = sEase(sClamp((u - w0 - i * .016) / .6));
+      if (f > 0) w.tube.visible = true;
+      w.tube.geometry.setDrawRange(0, Math.floor(n * f / 3) * 3);
+      if (f >= 1) w.bits.forEach(b => b.visible = true);
+    }
+    seqCamera({ p: S.saved.home[0], t: S.saved.home[1] }, dt, 3.2);
+    if (x > .55) S.el.box.classList.remove('on');
+    if (u >= S.restoreLen) seqAbort();
+  }
+
+  // the headset takes each part with a small breath; the rings open once and are gone
+  S.pulse *= Math.exp(-dt * 8);
+  const hs = 1 + .02 * S.pulse;
+  for (const id of HEADSET_IDS) { const p = PART.get(id); if (p) p.group.scale.setScalar(hs); }
+  for (const r of S.rings) {
+    if (!r.visible) continue;
+    r.userData.age += dt;
+    const a = r.userData.age / .7;
+    if (a >= 1) { r.visible = false; continue; }
+    r.scale.setScalar(16 + 90 * (1 - Math.pow(1 - a, 3)));
+    r.material.opacity = .85 * (1 - a) * (1 - a);
+    r.quaternion.copy(camera.quaternion);
+  }
+}
+
+/* after the camera has settled for this frame: the clock, the bar, the tags */
+const sv = new THREE.Vector3();
+function seqPlace(el, x, y, z) {
+  sv.set(x, y, z).project(camera);
+  // a tag is shown whole or not at all: one cut off by the edge points at nothing
+  const W = vp.clientWidth, H = vp.clientHeight, px = (sv.x * .5 + .5) * W, py = (-sv.y * .5 + .5) * H;
+  if (!el._hw && el.offsetWidth) el._hw = el.offsetWidth / 2 + 8;
+  const hw = el._hw || 70, foot = SEQ.el.foot.offsetHeight + 24;
+  const underClock = py < 70 && Math.abs(px - W / 2) < 100 + hw;
+  const underCards = px + hw > SEQ.cardL && py < SEQ.cardB + 14;
+  if (!(sv.z < 1 && px > hw && px < W - hw && py > 18 && py < H - foot) || underClock || underCards) { el.style.visibility = 'hidden'; return; }
+  el.style.visibility = '';
+  el.style.left = px.toFixed(1) + 'px';
+  el.style.top = py.toFixed(1) + 'px';
+}
+function seqOverlay() {
+  if (!SEQ.on) return;
+  const S = SEQ, tg = S.el.tags, t = S.phase === 'run' || S.phase === 'restore' ? SHOT.t : 0;
+  S.el.t.textContent = S.phase === 'gather' ? 'Fire a shot' : 'T + ' + Math.min(t, SHOT.WINDOW).toFixed(1) + ' ms';
+  S.el.next.textContent = S.phase === 'gather' ? 'folding the bench into the headset'
+    : S.phase === 'reveal' ? `shooter at ${SHOT.RANGE} m · slowed ${SHOT.RATES[SHOT.rate].k}×`
+    : t < S.Tc ? `crack arrives in ${(S.Tc - t).toFixed(1)} ms`
+    : t < S.Tl ? `blast arrives in ${(S.Tl - t).toFixed(1)} ms`
+    : `blast passed ${(t - S.Tl).toFixed(1)} ms ago`;
+  S.el.fill.style.width = (sClamp(t / S.BAR) * 100).toFixed(2) + '%';
+
+  const cb = S.el.cards, shown = cb.childElementCount > 0 && cb.offsetWidth > 0;
+  S.cardL = shown ? cb.offsetLeft : Infinity; S.cardB = shown ? cb.offsetTop + cb.offsetHeight : 0;
+  seqPlace(tg.tgShooter, S.M.x, S.M.y + 96, S.M.z + 120);
+  seqPlace(tg.tgMiss, (S.P.x + S.mic.x) / 2, 14, S.P.z + 46);
+  seqPlace(tg.tgEar, S.cupR.x + 96, 118, S.cupR.z + 46);          // beside the stand, under the right cup
+  if (S.phase === 'run') {
+    // the round's tag hangs under it, the crack's sits on the cone above it, and the blast's
+    // rides the upper front of the sphere, so the three stay apart even in the wide shot
+    const sb = S.vms * t, r = S.cms * t, h = Math.min(r * .75, 260);
+    seqPlace(tg.tgRound, S.M.x, S.M.y - 50, S.M.z - sb);
+    seqPlace(tg.tgBlast, S.M.x, S.M.y + h + 34, S.M.z - Math.sqrt(Math.max(0, r * r - h * h)));
+    const back = Math.min(300, (sb - S.s1 * t) * .5), s = sb - back, rad = S.cms * (t - s / S.vms);
+    seqPlace(tg.tgCrack, S.M.x - rad * .72, S.M.y + rad * .72 + 26, S.M.z - s);
+  }
+  // two tags never share a place: the later one in this list gives way
+  const kept = [];
+  for (const id of ['tgEar', 'tgRound', 'tgCrack', 'tgBlast', 'tgMiss', 'tgShooter']) {
+    const el = tg[id];
+    if (!el.classList.contains('on') || el.style.visibility === 'hidden') continue;
+    const x = parseFloat(el.style.left), y = parseFloat(el.style.top), w = el._hw || 70;
+    if (kept.some(k => Math.abs(k.x - x) < k.w + w - 6 && Math.abs(k.y - y) < 26)) { el.style.visibility = 'hidden'; continue; }
+    kept.push({ x, y, w });
+  }
 }
 
 /* ============================================================
@@ -3168,6 +3860,7 @@ addEventListener('pointerup', () => { if (SIM.s.ptt) { SIM.set({ ptt: 0 }); pttB
 pttBtn.addEventListener('pointerleave', () => { if (SIM.s.ptt) { SIM.set({ ptt: 0 }); pttBtn.classList.remove('on'); } });
 
 document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  seqAbort();
   const v = b.dataset.view;
   markGroup('[data-view]', b);
   if (v === 'cup') { openCup(true); return; }
@@ -3180,6 +3873,7 @@ document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click'
 }));
 
 document.querySelectorAll('[data-disp]').forEach(b => b.addEventListener('click', () => {
+  seqAbort();
   const k = b.dataset.disp;
   if (k === 'labels') { showLabels = !showLabels; b.classList.toggle('on', showLabels); }
   if (k === 'allwires') { showAllWires = !showAllWires; b.classList.toggle('on', showAllWires); applyView(); }
@@ -3198,7 +3892,7 @@ function syncControls() {
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
-  if (k === 'e') { openCup(!cupOpen); }
+  if (k === 'e') { seqAbort(); openCup(!cupOpen); }
   else if (k === 'l') document.querySelector('[data-disp="labels"]').click();
   else if (k === 'w') document.querySelector('[data-disp="allwires"]').click();
   else if (k === 'x') document.querySelector('[data-disp="explode"]').click();
@@ -3259,6 +3953,7 @@ function animate() {
   if (simAcc > 0.2) simAcc = 0;
 
   stepTweens(dt);
+  stepSeq(dt);
   controls.autoRotate = orbiting; controls.autoRotateSpeed = .4;
   controls.update();
   if (fanBlades) fanBlades.rotation.y += dt * 14;
@@ -3268,6 +3963,7 @@ function animate() {
     if (!b.isEmpty()) outline.box.copy(b);
   }
   updateLabels();
+  seqOverlay();
   stepShot(dt);
   drawScope();
   if (SHOT.active && SHOT.playing) { drawChains(); drawLog(); }   // the run needs every frame
@@ -3302,7 +3998,12 @@ function init() {
   tween(camera.position, HOME.clone(), 1600);
   tween(controls.target, ht, 1600);
 
-  window.ZEIT = { THREE, scene, camera, controls, PART, WIRES, STEPS, SIM, SHOT, runShot, fireShot, select, traceWire, openCup, showStep, homeFor };
+  window.ZEIT = { THREE, scene, camera, controls, PART, WIRES, STEPS, SIM, SHOT, SEQ, runShot, fireShot, select, traceWire, openCup, showStep, homeFor };
+  // for testing from the console: advance the viewport by hand, n steps of dt seconds, and draw
+  window.ZEIT.tick = (dt = 1 / 60, n = 1) => {
+    for (let i = 0; i < n; i++) { stepTweens(dt); stepSeq(dt); controls.update(); stepShot(dt); }
+    updateLabels(); seqOverlay(); renderer.render(scene, camera);
+  };
   animate();
   setTimeout(() => { const l = document.getElementById('loading'); if (l) l.hidden = true; }, 300);
 }
@@ -3370,6 +4071,18 @@ try {
   spread over 20 seconds at the default rate — while the monitor, the chain strips, the log and the results card
   follow it. It is the same code as the live bench: a second copy of the machine is given four seconds of street noise
   to let the canceller settle, then the shot, all with a fixed random seed so the figures repeat run after run.</p>
+
+  <h3>What the viewport shows during the run</h3>
+  <p>The bench folds into the headset — every board and cable is something the headset carries — and the view moves
+  to a range drawn to scale, with one grid square to the metre. The round leaves the rifle, its shock wave trails
+  behind it as a cone, and the muzzle blast spreads as a sphere at the speed of sound. Both fronts are drawn from the
+  same clock as the monitor, so the cone reaches the right earcup at 45.2 ms and the sphere at 87.5 ms, exactly when
+  the traces below move. A card appears at each arrival with the figures measured in that run, and then the bench
+  unfolds again. Any view button, or <em>Back to the live bench</em>, ends the sequence at once.</p>
+  <p>The range is to scale; the objects on it are not. The headset keeps its bench size, which is ten times too large
+  for a 30 m range, and the rifle and the round are drawn oversize for the same reason. The crack is drawn as the run
+  computes it: leaving the round's path at closest approach and crossing the 3 m at the speed of sound. That is a cone
+  of 22.7°. The textbook Mach cone for this round is 24.7° and would arrive 0.8 ms sooner.</p>
 
   <h3>The scenario — the only inputs</h3>
   <div class="tblwrap"><table>

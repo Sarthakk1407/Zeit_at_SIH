@@ -53,6 +53,7 @@ function animate() {
   if (simAcc > 0.2) simAcc = 0;
 
   stepTweens(dt);
+  stepSeq(dt);
   controls.autoRotate = orbiting; controls.autoRotateSpeed = .4;
   controls.update();
   if (fanBlades) fanBlades.rotation.y += dt * 14;
@@ -62,6 +63,7 @@ function animate() {
     if (!b.isEmpty()) outline.box.copy(b);
   }
   updateLabels();
+  seqOverlay();
   stepShot(dt);
   drawScope();
   if (SHOT.active && SHOT.playing) { drawChains(); drawLog(); }   // the run needs every frame
@@ -96,7 +98,12 @@ function init() {
   tween(camera.position, HOME.clone(), 1600);
   tween(controls.target, ht, 1600);
 
-  window.ZEIT = { THREE, scene, camera, controls, PART, WIRES, STEPS, SIM, SHOT, runShot, fireShot, select, traceWire, openCup, showStep, homeFor };
+  window.ZEIT = { THREE, scene, camera, controls, PART, WIRES, STEPS, SIM, SHOT, SEQ, runShot, fireShot, select, traceWire, openCup, showStep, homeFor };
+  // for testing from the console: advance the viewport by hand, n steps of dt seconds, and draw
+  window.ZEIT.tick = (dt = 1 / 60, n = 1) => {
+    for (let i = 0; i < n; i++) { stepTweens(dt); stepSeq(dt); controls.update(); stepShot(dt); }
+    updateLabels(); seqOverlay(); renderer.render(scene, camera);
+  };
   animate();
   setTimeout(() => { const l = document.getElementById('loading'); if (l) l.hidden = true; }, 300);
 }
@@ -164,6 +171,18 @@ try {
   spread over 20 seconds at the default rate — while the monitor, the chain strips, the log and the results card
   follow it. It is the same code as the live bench: a second copy of the machine is given four seconds of street noise
   to let the canceller settle, then the shot, all with a fixed random seed so the figures repeat run after run.</p>
+
+  <h3>What the viewport shows during the run</h3>
+  <p>The bench folds into the headset — every board and cable is something the headset carries — and the view moves
+  to a range drawn to scale, with one grid square to the metre. The round leaves the rifle, its shock wave trails
+  behind it as a cone, and the muzzle blast spreads as a sphere at the speed of sound. Both fronts are drawn from the
+  same clock as the monitor, so the cone reaches the right earcup at 45.2 ms and the sphere at 87.5 ms, exactly when
+  the traces below move. A card appears at each arrival with the figures measured in that run, and then the bench
+  unfolds again. Any view button, or <em>Back to the live bench</em>, ends the sequence at once.</p>
+  <p>The range is to scale; the objects on it are not. The headset keeps its bench size, which is ten times too large
+  for a 30 m range, and the rifle and the round are drawn oversize for the same reason. The crack is drawn as the run
+  computes it: leaving the round's path at closest approach and crossing the 3 m at the speed of sound. That is a cone
+  of 22.7°. The textbook Mach cone for this round is 24.7° and would arrive 0.8 ms sooner.</p>
 
   <h3>The scenario — the only inputs</h3>
   <div class="tblwrap"><table>

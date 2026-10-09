@@ -182,6 +182,7 @@ addEventListener('pointerup', () => { if (SIM.s.ptt) { SIM.set({ ptt: 0 }); pttB
 pttBtn.addEventListener('pointerleave', () => { if (SIM.s.ptt) { SIM.set({ ptt: 0 }); pttBtn.classList.remove('on'); } });
 
 document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  seqAbort();
   const v = b.dataset.view;
   markGroup('[data-view]', b);
   if (v === 'cup') { openCup(true); return; }
@@ -194,6 +195,7 @@ document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click'
 }));
 
 document.querySelectorAll('[data-disp]').forEach(b => b.addEventListener('click', () => {
+  seqAbort();
   const k = b.dataset.disp;
   if (k === 'labels') { showLabels = !showLabels; b.classList.toggle('on', showLabels); }
   if (k === 'allwires') { showAllWires = !showAllWires; b.classList.toggle('on', showAllWires); applyView(); }
@@ -212,7 +214,7 @@ function syncControls() {
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
-  if (k === 'e') { openCup(!cupOpen); }
+  if (k === 'e') { seqAbort(); openCup(!cupOpen); }
   else if (k === 'l') document.querySelector('[data-disp="labels"]').click();
   else if (k === 'w') document.querySelector('[data-disp="allwires"]').click();
   else if (k === 'x') document.querySelector('[data-disp="explode"]').click();

@@ -8,7 +8,7 @@ is the site root of the deployment at
 | Page | What it is |
 |---|---|
 | [`index.html`](index.html) | **The System Handbook.** The whole project on one page: the problem, the two lanes, the headset, both signal chains, training, the measured proof, one gunshot traced through both lanes, how each clause of the problem statement is met, fail-safe behaviour and cost. |
-| [`zeit-bench-3d.html`](zeit-bench-3d.html) | **The prototype bench in 3D, with both lanes running.** Every part at its datasheet size, the signal spine wired between them, the earcup opens on a click, and underneath Lane A and Lane B run as real DSP code at 16 kHz with a four-trace scope, sound-pressure meters and the Jetson to STM32 firmware link. "Fire a shot" traces one gunshot through both lanes in slow motion. |
+| [`zeit-bench-3d.html`](zeit-bench-3d.html) | **The prototype bench in 3D, with both lanes running.** Every part at its datasheet size, the signal spine wired between them, the earcup opens on a click, and underneath Lane A and Lane B run as real DSP code at 16 kHz with a four-trace scope, sound-pressure meters and the Jetson to STM32 firmware link. "Fire a shot" folds the bench into the headset, moves to a range drawn to scale, and shows the round, its crack and the muzzle blast reaching the headset on the same clock as the instruments, then unfolds the bench again. |
 | [`zeit-audit.html`](zeit-audit.html) | **The design review.** The team's audit of its own first design: thirteen findings, each traced to a paper, a document or a reproduced result, with what the locked architecture did about every one and where to check it. |
 
 ## The proof is real output
@@ -32,7 +32,7 @@ the recorded result of `irt.py` on the team's own range recordings.
 
 ```
 python build_handbook.py                              # src/*.html + proof/ -> index.html, zeit-audit.html
-cat src3d/0*.html > zeit-bench-3d.html                # the 3D bench, from its ten source parts
+cat src3d/0*.html > zeit-bench-3d.html                # the 3D bench, from its eleven source parts
 ```
 
 To refresh a terminal panel, re-run its command, save the output over the file in
@@ -80,5 +80,16 @@ throat-microphone voice guard, the scene classifier and the firmware link. The
 trained GTCRN network itself runs on the Jetson through TensorRT; it cannot run in
 a browser.
 
-`window.ZEIT` exposes the scene, the parts, the simulation (`ZEIT.SIM`) and
-`ZEIT.fireShot()` for testing from the console.
+### The staged shot
+
+`src3d/06c-range.html` is what the viewport does when "Fire a shot" is pressed. It
+is not a second simulation: the geometry is the scenario in `SHOT` (30 m, 822 m/s,
+a 3 m miss), the two wavefronts are drawn from `SHOT.t`, and every figure in a
+caption or a card is read from that run's results. The range is to scale, one grid
+square to the metre; the headset, the rifle and the round are drawn oversize and the
+viewport says so. Any view button, the `E` key or "Back to the live bench" ends the
+sequence and puts the bench back at once.
+
+`window.ZEIT` exposes the scene, the parts, the simulation (`ZEIT.SIM`),
+`ZEIT.fireShot()`, the sequence state (`ZEIT.SEQ`) and `ZEIT.tick(dt, n)`, which
+advances the viewport by hand when a browser is throttling animation frames.

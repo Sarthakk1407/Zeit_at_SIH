@@ -110,7 +110,13 @@ const ctxBuild = { cutaway: true };
 const labelHost = document.getElementById('labels');
 
 for (const def of PARTS) {
-  const g = (BUILDERS[def.build] || BUILDERS.none)(def, ctxBuild);
+  // A builder may return a group that already sits at its place on the headset (the
+  // outside and inside microphones, the drivers). Setting the part's bench position on
+  // that same group would throw the offset away and leave the part at the foot of the
+  // stand, so such a group is nested inside the one that carries the bench position.
+  const built = (BUILDERS[def.build] || BUILDERS.none)(def, ctxBuild);
+  let g = built;
+  if (built.position.lengthSq() > 0) { g = new THREE.Group(); g.add(built); }
   g.position.set(def.pos[0], def.pos[1], def.pos[2]);
   if (def.rotY) g.rotation.y = def.rotY * DEG;
   g.traverse(o => { if (o.isMesh) o.userData.partId = def.id; });
@@ -195,6 +201,7 @@ function stepTweens(dt) {
 }
 
 canvas.addEventListener('pointerdown', e => {
+  if (SEQ.on) return;                                    // the staged shot owns the viewport while it plays
   const r = canvas.getBoundingClientRect();
   pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(pointer, camera);
