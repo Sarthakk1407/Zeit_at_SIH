@@ -1,7 +1,8 @@
 # Every value the ML model needs
 
-Sourced from `workflow.md` §6–7, `tech-stack.md` §2, `architecture.md`, and the
-reference measured on 7 Sep 2026.
+Follows the locked architecture in `docs/01-system/architecture.md` (§6 is the
+neural network), the hardware in `HARDWARE.md`, and the reference measured on
+7 Sep 2026. The code that uses these values is `training/`.
 
 ---
 
@@ -9,28 +10,29 @@ reference measured on 7 Sep 2026.
 
 | Value | Setting | Source / note |
 |---|---|---|
-| Engine sample rate | 48 000 Hz | `tech-stack.md` §2 |
-| Neural core rate | **16 000 Hz** | GTCRN / H-GTCRN as published |
-| Frame length | 20 ms (engine) / **32 ms (GTCRN)** | ⚠️ these disagree — see §6 |
-| Hop | 10 ms (engine) / 16 ms (GTCRN) | |
-| Window | Hann, √-Hann analysis/synthesis | overlap-add, phase preserved |
+| Capture rate | 48 000 Hz, 768-sample blocks | UMC404HD (H14) |
+| Model rate | **16 000 Hz** | GTCRN native; 3:1 stateful FIR resampling |
+| Frame length | **32 ms** (512 samples) | Locked |
+| Hop | **16 ms** (256 samples) | Locked |
+| Window | √-Hann (periodic) analysis and synthesis | overlap-add, phase preserved |
 | FFT size | 512 @ 16 kHz → 257 bins | GTCRN's published arithmetic |
 | ERB bands | **64** from 192 high bins, **65** low bins unaltered → 129 features | GTCRN band merging |
 | Domain | **Complex** STFT — magnitude *and* phase | DCCRN |
-| Capture rate (ours) | 96 kHz spec / **48 kHz actual** | field constraint |
+| Inputs (locked order) | 0 = Mic 1 boom · 1 = reference (Mic 2R, or 2L for left-handed) · 2 = Mic 4 throat | UMC in 1 / 2 / 3 |
 
 ## 2. Model architecture
 
 | Value | Setting | Source |
 |---|---|---|
-| Backbone | GTCRN-class | `workflow.md` §6 |
-| Parameters | **23.7 K** | GTCRN published |
-| Compute | **39.6 MMAC/s** | GTCRN published |
+| Backbone | GTCRN, re-implemented, 3 microphone inputs | `training/zeit/model.py` |
+| Parameters | **25,109** (3 inputs) · 24,389 (2) · 23,669 (1) | MEASURED; paper reports 23.7 K for 1 input |
+| Compute | ≈ 33–40 MMAC/s class (paper: 39.6; official code: 33.0) | Published, single-channel |
 | Structure | Full-band + sub-band branches | FullSubNet |
 | Efficiency blocks | Grouped conv, grouped RNN, SFE, TRA | GTCRN |
 | Output | Mask applied to the **noisy input**, not to a pre-separated estimate | H-GTCRN ablation |
-| Dual-channel input | Feed **both** separated-speech and separated-noise channels | H-GTCRN — largest single gain |
-| Front separation | Aux-IVA | +0.20 MMAC/s per iteration |
+| Extra inputs | Reference mic (noise, little voice) and throat mic (voice, little noise) as additional channels | H-GTCRN idea; INVISIO body-conducted voice principle |
+| Throat dropout | Input 2 zeroed for ≈ 30 % of training examples | One model works with or without the throat mic |
+| Front separation | **None** — Aux-IVA removed (underdetermined with 2–3 mics) | Architecture §5.3 |
 | Transient path | BMRI-style AR detect + interpolate | AR order 16–32 |
 | Adaptive control | Kurtosis classifier → γ, β | ours |
 
@@ -75,25 +77,20 @@ closest prior system and it is the highest return-on-effort item in the project.
 | 7 | HRTF head shadow | CIPIC / KEMAR, not a flat scalar |
 | 8 | Reverberation, random gain, clipping | PS names these explicitly |
 
-## 6. ⚠️ The rate conflict that must be resolved before training
+## 6. Rate chain — resolved
 
-| Component | Rate | Frame / hop | STFT latency |
+The earlier conflict (48 kHz / 20 ms engine vs GTCRN's 16 kHz / 32 ms) is
+resolved in favour of **GTCRN's native settings**, so its band layout and
+published size stay valid.
+
+| Stage | Rate | Frame / hop | Delay |
 |---|---|---|---|
-| Our recordings | 48 kHz | — | — |
-| `tech-stack.md` engine | 48 kHz | 20 / 10 ms | 25.3 ms budget |
-| GTCRN / H-GTCRN as published | **16 kHz** | **32 / 16 ms** | **~48 ms** |
-
-GTCRN's 129-feature band map assumes 257 bins from a 512-point FFT at 16 kHz.
-Change the frame size or rate and the published 23.7 K parameters and
-39.6 MMAC/s **stop applying** and the model must be retrained from scratch.
-
-**Decide and write it down:** retrain at 20/10 ms (costs the published numbers,
-buys the budget) **or** adopt 32/16 ms (keeps the numbers, costs ~23 ms).
-Claiming both silently will not survive questioning.
-
-Also write down the rate chain: 48 kHz capture → 16 kHz core → mask upsampled
-back. Name the anti-alias filters; their latency is part of the budget and is
-currently uncounted.
+| Capture (UMC404HD) | 48 kHz | 768-sample blocks | ≈ 16 ms buffer |
+| Decimation 48 → 16 kHz | 96-tap FIR, cut-off 7.2 kHz, stateful | — | ≈ 1 ms |
+| Model | 16 kHz | 32 / 16 ms | 32 ms window |
+| Interpolation 16 → 48 kHz | same FIR | — | ≈ 1 ms |
+| Output buffer | 48 kHz | 768 samples | ≈ 16 ms |
+| **Mouth to radio** | | | **≈ 70–85 ms** (ESTIMATE; ITU-T G.114 limit 150 ms) |
 
 ## 7. Evaluation targets
 
@@ -140,19 +137,19 @@ the real data and then comparing to it is circular.
 
 | Value | Setting |
 |---|---|
-| Target | Jetson AGX Orin (PS names it) or DSP / AI SoC |
-| Export | PyTorch → **ONNX** (the only Python↔C++ boundary) |
-| Runtime | ONNX Runtime / TensorRT |
+| Target | **Jetson Orin Nano Super** (Lane B); ADAU1787 DSP (Lane A, no neural network) |
+| Export | PyTorch → streaming **ONNX** (the only training ↔ device boundary) |
+| Runtime | **TensorRT** FP16, then INT8; ONNX Runtime CUDA as fallback |
 | Quantisation | INT8 post-training, per-channel |
 | Pruning | structured; α-stable training yields sparser models — nobody pruned them |
-| Algorithmic latency | **25.3 ms** budget |
-| Compute per hop | **10 ms** |
-| I/O buffer | 128 samples |
+| Algorithmic latency | **32 ms** (STFT window); ≈ 70–85 ms mouth to radio |
+| Compute per hop | **16 ms** deadline, worst case |
+| I/O buffer | 768 samples at 48 kHz |
 | Threads | RT audio callback / high-prio processing / normal control |
 | RT rules | no allocation, no locks, no exceptions, no logging in the callback |
 | FFT | PFFFT (not FFTW — GPL) |
 
-## 10. Two-lane split — restore this
+## 10. Two-lane split — now the architecture
 
 Deep ANC is **active control**: anti-noise through a loudspeaker, NMSE at an
 error mic. GTCRN outputs enhanced speech, not an anti-noise waveform. They are
@@ -161,13 +158,11 @@ not interchangeable.
 | Lane | Path | Budget | Algorithm | Metric |
 |---|---|---|---|---|
 | **A — hearing protection** | reference mic → speaker → ear | **sub-millisecond** | FxLMS + secondary-path estimation | NMSE / in-ear attenuation |
-| **B — radio uplink** | boom mic → denoiser → radio | 20–40 ms | GTCRN-class DNN | PESQ / STOI / SI-SNR |
+| **B — radio voice** | boom + reference + throat mics → GTCRN → radio; radio receive → cleaning → ears | ≈ 70–85 ms | GTCRN (3 inputs) + classical blocks | PESQ / STOI / SI-SNR / IRT / WLPS |
 
-A neural network cannot live in Lane A: anti-noise must be emitted before the
-wave physically reaches the ear — microseconds of headroom, not milliseconds.
-The current 25.3 ms budget is 40–80× too slow for true ANC.
-
-`project-plan-v0.md` §1.1 had this right and it was dropped in the rewrite.
+Lane A runs on the ADAU1787 with no neural network: anti-noise must reach the
+ear within ≈ 0.3–0.6 ms. Apple runs ML in its ear path on custom silicon, so it
+is not physically impossible, but no DSP available to us offers that.
 
 ## 11. Missing from the chain — the vocoder
 

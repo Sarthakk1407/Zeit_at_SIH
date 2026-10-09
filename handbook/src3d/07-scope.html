@@ -1,0 +1,350 @@
+
+/* ============================================================
+   THE INSTRUMENTS — signal monitor, readouts, firmware log,
+   chain strips, and the same picture on the bench monitor.
+   ============================================================ */
+
+const scopeCv = document.getElementById('scopecv');
+const sctx = scopeCv.getContext('2d');
+
+function tok(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+const ROWS = [
+  { k: 'mic2', t: 'Mic 2 · outside the cup',        fs: 160, c: '--m2' },
+  { k: 'ear',  t: 'Mic 3 · at the ear',             fs: 140, c: '--spk', ghost: 'pass', line: 82 },
+  { k: 'boom', t: 'Mic 1 · boom, into Lane B',      fs: 140, c: '--text-3' },
+  { k: 'tx',   t: 'Lane B out · to the radio',      fs: 140, c: '--m1' },
+];
+
+function prepScope() {
+  const dpr = Math.min(devicePixelRatio, 2);
+  const w = scopeCv.clientWidth, h = scopeCv.clientHeight;
+  if (!w || !h) return null;
+  if (scopeCv.width !== (w * dpr | 0) || scopeCv.height !== (h * dpr | 0)) {
+    scopeCv.width = w * dpr | 0; scopeCv.height = h * dpr | 0;
+  }
+  sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  sctx.clearRect(0, 0, w, h);
+  return { w, h };
+}
+
+/* ---------- the gunshot run: 0 to 200 ms, full sample rate ---------- */
+const SHOT_ROWS = [
+  { t: 'Mic 2 · outside  (faint: true pressure)', k: 'mic2', ghost: 'field', fs: 160, c: '--m2', ghostC: '--m2', line: 135, ll: '135 dB · capsule overload' },
+  { t: 'At the ear  (red: earmuff alone)', k: 'ear', ghost: 'passive', fs: 150, c: '--spk', ghostC: '--src', line: 140, ll: '140 dBP · limit' },
+  { t: 'Mic 1 · boom, into Lane B', k: 'boom', fs: 150, c: '--text-3' },
+  { t: 'Lane B out · to the radio  (ticks: 16 ms frames)', k: 'tx', fs: 150, c: '--m1', frames: true },
+];
+function drawShotScope() {
+  const g = prepScope(); if (!g) return;
+  const { w, h } = g, d = SHOT.data, S = SHOT;
+  const TOP = 15, AX = 16, H = h - AX, rh = (H - TOP) / SHOT_ROWS.length;
+  const X = tms => tms / S.WINDOW * w;
+  const i0 = d.iOf(0), i1 = d.iOf(S.WINDOW), spp = (i1 - i0) / w;
+  const reveal = Math.min(w, X(S.t));
+  const rule = tok('--rule-soft'), ink = tok('--text-3'), bg = tok('--bg');
+  const tag = (text, x, y, color) => {                 // a label with a backing, so it never sits on a trace
+    const tw = sctx.measureText(text).width;
+    sctx.fillStyle = bg; sctx.globalAlpha = .85; sctx.fillRect(x - 2, y - 9, tw + 4, 12); sctx.globalAlpha = 1;
+    sctx.fillStyle = color; sctx.fillText(text, x, y);
+  };
+
+  // hear-through ducked: shaded across the first two rows
+  if (d.R.guardT != null && S.t > d.R.guardT) {
+    const a = X(d.R.guardT), b = Math.min(X(Math.min(S.WINDOW, d.R.duckEndT)), reveal);
+    sctx.fillStyle = tok('--laneA'); sctx.globalAlpha = .09;
+    sctx.fillRect(a, TOP, Math.max(0, b - a), rh * 2);
+    sctx.globalAlpha = 1;
+    sctx.font = '9px ' + MONO;
+    tag('hear-through ducked by the crack guard', a + 4, TOP + rh * 2 - 4, tok('--laneA'));
+  }
+
+  SHOT_ROWS.forEach((row, ri) => {
+    const y0 = TOP + ri * rh, mid = y0 + rh / 2, FLOOR = 35, amp = rh * .40;
+    sctx.strokeStyle = rule; sctx.lineWidth = 1;
+    if (ri) { sctx.beginPath(); sctx.moveTo(0, y0 + .5); sctx.lineTo(w, y0 + .5); sctx.stroke(); }
+    sctx.beginPath(); sctx.moveTo(0, mid); sctx.lineTo(w, mid); sctx.stroke();
+    const yOf = v => {
+      const db = paToDb(Math.abs(v)), n = Math.max(0, Math.min(1, (db - FLOOR) / (row.fs - FLOOR)));
+      return mid - Math.sign(v) * n * amp;
+    };
+    // one vertical stroke per pixel, from the lowest to the highest sample it covers
+    const plot = (arr, style, width, alpha = 1) => {
+      sctx.strokeStyle = style; sctx.lineWidth = width; sctx.globalAlpha = alpha; sctx.beginPath();
+      for (let px = 0; px < reveal; px++) {
+        const a = Math.floor(i0 + px * spp), b = Math.max(a + 1, Math.floor(i0 + (px + 1) * spp));
+        let lo = Infinity, hi = -Infinity;
+        for (let k = a; k < b; k++) { const y = yOf(arr[k]); if (y < lo) lo = y; if (y > hi) hi = y; }
+        sctx.moveTo(px + .5, lo); sctx.lineTo(px + .5, Math.max(hi, lo + 1));
+      }
+      sctx.stroke(); sctx.globalAlpha = 1;
+    };
+    if (row.ghost) plot(d[row.ghost], tok(row.ghostC), 1, row.k === 'mic2' ? .3 : .75);
+    plot(d[row.k], tok(row.c), 1.1);
+
+    if (row.line) {
+      const y = yOf(dbToPa(row.line));
+      sctx.strokeStyle = tok('--src'); sctx.globalAlpha = .6; sctx.setLineDash([4, 4]);
+      sctx.beginPath(); sctx.moveTo(0, y); sctx.lineTo(w, y); sctx.stroke();
+      sctx.beginPath(); sctx.moveTo(0, 2 * mid - y); sctx.lineTo(w, 2 * mid - y); sctx.stroke();
+      sctx.setLineDash([]); sctx.globalAlpha = 1;
+      sctx.font = '9px ' + MONO;
+      tag(row.ll, w - sctx.measureText(row.ll).width - 6, y - 3, tok('--src'));
+    }
+    if (row.frames) {
+      sctx.strokeStyle = ink; sctx.globalAlpha = .45;
+      for (const f of d.frames) if (f.t1 > 0 && f.t1 < S.WINDOW) {
+        const x = X(f.t1); sctx.beginPath(); sctx.moveTo(x, y0 + rh - 7); sctx.lineTo(x, y0 + rh); sctx.stroke();
+      }
+      sctx.globalAlpha = 1;
+    }
+    sctx.font = '10px ' + MONO;
+    tag(row.t, 8, y0 + 13, ink);
+  });
+
+  // the two arrivals, from the geometry — labelled in the strip above the rows
+  for (const [t, lab] of [[S.T_CRACK, 'CRACK · ' + S.T_CRACK.toFixed(1) + ' ms'], [S.T_BLAST, 'BLAST · ' + S.T_BLAST.toFixed(1) + ' ms']]) {
+    const x = X(t);
+    sctx.strokeStyle = tok('--src'); sctx.globalAlpha = .5; sctx.setLineDash([2, 3]);
+    sctx.beginPath(); sctx.moveTo(x, TOP - 2); sctx.lineTo(x, H); sctx.stroke();
+    sctx.setLineDash([]); sctx.globalAlpha = 1;
+    sctx.fillStyle = tok('--src'); sctx.font = '600 9px ' + MONO;
+    sctx.fillText(lab, Math.min(x + 3, w - sctx.measureText(lab).width - 2), 10);
+  }
+  // cursor
+  if (S.playing) {
+    sctx.strokeStyle = tok('--text'); sctx.globalAlpha = .6;
+    sctx.beginPath(); sctx.moveTo(reveal, TOP); sctx.lineTo(reveal, H); sctx.stroke();
+    sctx.globalAlpha = 1;
+  }
+  // time axis
+  sctx.fillStyle = ink; sctx.font = '9px ' + MONO;
+  for (let t = 0; t <= S.WINDOW; t += 20) {
+    const x = X(t);
+    sctx.fillRect(x, H, 1, 4);
+    const lab = t + (t === S.WINDOW ? ' ms' : '');
+    sctx.fillText(lab, Math.min(w - sctx.measureText(lab).width - 2, Math.max(0, x - 6)), h - 2);
+  }
+}
+
+function drawScope() {
+  if (SHOT.active && SHOT.data) { drawShotScope(); return; }
+  const g = prepScope(); if (!g) return;
+  const { w, h } = g;
+
+  const tr = SIM.trace, N = tr.mic2.length, rh = h / ROWS.length;
+  const rule = tok('--rule-soft'), ink = tok('--text-3');
+
+  ROWS.forEach((row, ri) => {
+    const y0 = ri * rh, mid = y0 + rh / 2;
+    sctx.strokeStyle = rule; sctx.lineWidth = 1;
+    if (ri) { sctx.beginPath(); sctx.moveTo(0, y0 + .5); sctx.lineTo(w, y0 + .5); sctx.stroke(); }
+    sctx.beginPath(); sctx.moveTo(0, mid); sctx.lineTo(w, mid); sctx.stroke();
+
+    // decibel axis: 35 dB on the centre line, the row's full scale at the edge,
+    // so a whisper and a gunshot both fit on the same trace
+    const FLOOR = 35, amp = rh * 0.40;
+    const yOf = v => {
+      const d = paToDb(Math.abs(v)), n = Math.max(0, Math.min(1, (d - FLOOR) / (row.fs - FLOOR)));
+      return mid - Math.sign(v) * n * amp;
+    };
+    const plot = (key, style, width) => {
+      sctx.strokeStyle = style; sctx.lineWidth = width; sctx.beginPath();
+      for (let i = 0; i < N; i++) {
+        const x = i / (N - 1) * w, y = yOf(tr[key][(tr.w + i) % N]);
+        i ? sctx.lineTo(x, y) : sctx.moveTo(x, y);
+      }
+      sctx.stroke();
+    };
+    if (row.ghost) plot(row.ghost, tok('--src'), 1);
+    plot(row.k, tok(row.c), 1.25);
+
+    if (row.line) {
+      const y = yOf(dbToPa(row.line));
+      sctx.strokeStyle = tok('--src'); sctx.globalAlpha = .55; sctx.setLineDash([5, 5]);
+      sctx.beginPath(); sctx.moveTo(0, y); sctx.lineTo(w, y); sctx.stroke();
+      sctx.beginPath(); sctx.moveTo(0, mid + (mid - y)); sctx.lineTo(w, mid + (mid - y)); sctx.stroke();
+      sctx.setLineDash([]); sctx.globalAlpha = 1;
+      sctx.fillStyle = tok('--src'); sctx.font = '9px ' + MONO;
+      sctx.fillText('82 dB ceiling at the ear', w - 130, y - 4);
+    }
+    sctx.fillStyle = ink; sctx.font = '10px ' + MONO;
+    sctx.fillText(row.t, 8, y0 + 13);
+
+    let why = '';
+    if (row.k === 'tx' && !SIM.s.ptt) why = 'push-to-talk is up — nothing is transmitted';
+    else if (row.k === 'boom' && !SIM.s.talk) why = 'nobody is talking';
+    else if (row.k === 'ear' && !SIM.s.anc && !SIM.s.hear) why = 'system off — passive earmuff only';
+    if (why) sctx.fillText(why, 190, y0 + 13);
+  });
+}
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+
+/* ---------- readouts ---------- */
+function put(id, text, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = cls || '';
+}
+function drawMeters() {
+  const m = SIM.m, s = SIM.s;
+  put('rEar', m.ear.toFixed(0) + ' dB', m.ear > 82 ? 'bad' : '');
+  put('rPlay', m.play.toFixed(0) + ' dB / 82 cap', m.play > 82 ? 'bad' : 'good');
+  put('rNoise', m.noiseEar.toFixed(0) + ' dB');
+  put('rPassive', m.passive.toFixed(0) + ' dB');
+  put('rAnc', s.anc ? m.ancDb.toFixed(1) + ' dB' : 'off', s.anc && m.ancDb > 6 ? 'good' : '');
+  put('rPeak', m.peak.toFixed(0) + ' dBP / 140', m.peak > 140 ? 'bad' : 'good');
+  const noVoice = !isFinite(m.snrIn);
+  put('rSnrIn', noVoice ? '—' : m.snrIn.toFixed(1) + ' dB');   // steady-noise frames only
+  put('rSnrOut', noVoice ? '—' : m.snrOut.toFixed(1) + ' dB' + (s.clean ? '' : ' (bypass)'),
+    !noVoice && m.snrOut - m.snrIn > 3 ? 'good' : '');
+  put('rShots', m.shots + (m.impulse ? ' · one now' : ''));
+  put('rMode', SCENE_NAME[m.mode] || m.mode);
+  put('rNorm', isFinite(m.normDb) ? m.normDb.toFixed(0) + ' dB · RMS ' + m.rmsDb.toFixed(0) + ' dB' : '—');
+  put('rFrame', m.frameMs.toFixed(2) + ' ms / 16', m.frameMs > 16 ? 'bad' : '');
+
+  const lab = document.getElementById('modelab');
+  const col = m.mode === 'COMBAT' ? '--src' : m.mode === 'VEHICLE' ? '--warn' : m.mode === 'RADIO' ? '--m1' : '--laneA';
+  lab.querySelector('i').style.background = tok(col);
+  document.getElementById('modeTxt').textContent = (SCENE_NAME[m.mode] || m.mode) + (s.ptt ? ' · TX' : '');
+  document.getElementById('scopenote').textContent =
+    SCENE[s.scene].label + (s.ptt ? ' · transmitting' : '') + (s.rx ? ' · radio speaking' : '');
+}
+
+/* ---------- firmware log ---------- */
+let logStamp = -1;
+const KIND = { u: 'UART', e: 'EVENT', k: 'PTT', h: 'HW' };
+const SHOT_CLS = { TRIG: 'k', PROP: 'k', RX: 'rx', A: 'a', B: 'u', OUT: 'ok', UART: 'u', WARN: 'w', END: 'h' };
+function drawLog() {
+  const el = document.getElementById('log');
+  if (!el) return;
+  if (SHOT.active && SHOT.data) {                    // the gunshot run: oldest first, as it happened
+    if (logStamp === 1e6 + SHOT.shown) return;
+    logStamp = 1e6 + SHOT.shown;
+    const evs = SHOT.data.events.slice(0, SHOT.shown);
+    el.innerHTML = evs.length ? evs.map(e => {
+      const t = 'T+' + (e.t < 100 ? (e.t < 10 ? '00' : '0') : '') + e.t.toFixed(1);
+      return `<div class="le ${SHOT_CLS[e.k] || 'h'}"><span class="t">${t}</span><span class="k">${e.k}</span><span class="m">${e.text}</span></div>`;
+    }).join('') : '<div class="le"><span class="m">waiting for the trigger…</span></div>';
+    el.scrollTop = el.scrollHeight;
+    return;
+  }
+  if (SIM.log.length === logStamp) return;
+  logStamp = SIM.log.length;
+  if (!SIM.log.length) { el.innerHTML = '<div class="le"><span class="m">nothing yet</span></div>'; return; }
+  el.innerHTML = SIM.log.slice(0, 26).map(L => {
+    const t = L.t.toFixed(2).padStart(7, ' ');
+    return `<div class="le ${L.kind}"><span class="t">${t}s</span><span class="k">${KIND[L.kind] || ''}</span><span class="m">${L.text}</span></div>`;
+  }).join('');
+}
+
+/* ---------- chain strips ---------- */
+const CHAIN_A = [
+  ['A1', 'Clip flag', m => m.clip], ['A2', 'Band filter', () => SIM.s.hear],
+  ['A3', 'Level gain', () => SIM.s.hear], ['A4', 'Crack guard', m => m.duck],
+  ['A5', 'HT limiter', m => m.limiting > 0], ['A6', 'Feed-forward', () => SIM.s.anc],
+  ['A7', 'Feedback', () => SIM.s.anc], ['A8', 'Adaptation', m => m.adapting],
+  ['A9', 'Playback out', () => SIM.s.anc], ['A10', 'Mixer', () => 1],
+  ['A11', 'Out limiter', m => m.ear > 79],
+];
+const CHAIN_B = [
+  ['B1', 'Capture', () => 1], ['B2', 'Impulse', m => m.impulse], ['B3', 'Normalise', () => SIM.s.clean],
+  ['B4', 'STFT', () => SIM.s.clean], ['B5', 'Scene', () => 1], ['B6', 'Repair', m => m.impulse],
+  ['B7', 'Network', () => SIM.s.clean ? 'ai' : 0], ['B8', 'Merge', m => m.impulse],
+  ['B9', 'Voice guard', m => m.voiced], ['B10', 'Residual LMS', () => 'off'],
+  ['B11', 'Out + PTT', () => SIM.s.ptt],
+];
+const CHAIN_R = [
+  ['R1', 'Detect', () => SIM.s.rx], ['R2', 'Hiss', () => SIM.s.rx], ['R3', 'AGC', () => SIM.s.rx],
+  ['R4', 'Speech EQ', () => SIM.s.rx], ['R5', 'Limiter', () => SIM.s.rx],
+];
+function buildChains() {
+  const mk = (host, list) => {
+    host.innerHTML = list.map(([id, t]) =>
+      `<div class="cb" data-step="${id}" title="click for what this block does"><span class="n">${id}</span><span class="t">${t}</span></div>`).join('');
+  };
+  mk(document.getElementById('cflowA'), CHAIN_A);
+  mk(document.getElementById('cflowB'), CHAIN_B);
+  mk(document.getElementById('cflowR'), CHAIN_R);
+  document.querySelectorAll('.cb').forEach(el => el.addEventListener('click', () => showStep(el.dataset.step)));
+}
+function drawChains() {
+  const m = SIM.m, shot = SHOT.active && SHOT.data;
+  const paint = (list) => {
+    for (const [id, , fn] of list.map(x => [x[0], x[1], x[2]])) {
+      const el = document.querySelector(`.cb[data-step="${id}"]`);
+      if (!el) continue;
+      const v = shot ? shotLit(id, SHOT.t) : fn(m);
+      el.classList.toggle('off', v === 'off');
+      el.classList.toggle('ai', v === 'ai');
+      el.classList.toggle('lit', !!v && v !== 'off');
+    }
+  };
+  paint(CHAIN_A); paint(CHAIN_B); paint(CHAIN_R);
+}
+
+/* ---------- the bench monitor shows the same thing ---------- */
+function drawMonitor() {
+  if (!SCREEN_TEX) return;
+  const c = SCREEN_TEX.userData.canvas, x = c.getContext('2d'), m = SIM.m;
+  x.fillStyle = '#0d0f12'; x.fillRect(0, 0, 512, 300);
+  x.fillStyle = '#8f99a8'; x.font = '600 15px ' + MONO;
+  x.fillText('ANVIL live display', 16, 26);
+  x.fillStyle = m.mode === 'COMBAT' ? '#c2607a' : m.mode === 'VEHICLE' ? '#b89334' : m.mode === 'RADIO' ? '#4f8ff7' : '#3fae7e';
+  x.font = '700 22px ' + MONO;
+  x.textAlign = 'right'; x.fillText(SCENE_NAME[m.mode] || m.mode, 496, 26); x.textAlign = 'left';
+  const bar = (y, label, val, max, col) => {
+    x.fillStyle = '#6f7885'; x.font = '12px ' + MONO; x.fillText(label, 16, y + 11);
+    x.fillStyle = '#1b1e23'; x.fillRect(170, y, 320, 13);
+    x.fillStyle = col; x.fillRect(170, y, Math.max(0, Math.min(1, val / max)) * 320, 13);
+  };
+  bar(48, 'ear now', Math.max(0, m.ear - 30), 70, m.ear > 82 ? '#d1534a' : '#3fae7e');
+  bar(70, 'earmuff alone', Math.max(0, m.passive - 30), 70, '#8f99a8');
+  bar(92, 'SNR out', Math.max(0, (isFinite(m.snrOut) ? m.snrOut : 0) + 5), 35, '#4f8ff7');
+  x.fillStyle = '#6f7885'; x.font = '12px ' + MONO;
+  x.fillText(`anti-noise ${m.ancDb.toFixed(1)} dB    peak ${m.peak.toFixed(0)} dBP / 140`, 16, 130);
+  x.fillText(`frame ${m.frameMs.toFixed(2)} ms of 16`, 16, 148);
+  const tr = SIM.trace, N = tr.ear.length;
+  const yMon = v => {
+    const d = paToDb(Math.abs(v)), n = Math.max(0, Math.min(1, (d - 35) / 105));
+    return 232 - Math.sign(v) * n * 54;
+  };
+  x.strokeStyle = '#3fae7e'; x.lineWidth = 1.4; x.beginPath();
+  for (let i = 0; i < N; i++) {
+    const px = 16 + i / (N - 1) * 480, py = yMon(tr.ear[(tr.w + i) % N]);
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  }
+  x.stroke();
+  x.strokeStyle = 'rgba(209,83,74,.7)'; x.setLineDash([5, 5]); x.beginPath();
+  const yl = yMon(dbToPa(82)); x.moveTo(16, yl); x.lineTo(496, yl); x.stroke(); x.setLineDash([]);
+  x.fillStyle = '#6f7885'; x.font = '11px ' + MONO;
+  x.fillText('at the ear · dashed line is the 82 dB ceiling', 16, 288);
+  SCREEN_TEX.needsUpdate = true;
+}
+
+/* ---------- the gunshot run: measured results, revealed as the run reaches them ---------- */
+function renderShotCard() { updateShotCard(); }
+function updateShotCard() {
+  if (!SHOT.active || !SHOT.data) return;
+  const R = SHOT.data.R, t = SHOT.playing ? SHOT.t : Infinity, S = SHOT;
+  const set = (id, show, text, cls) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = show ? text : '—';
+    el.className = show ? (cls || '') : '';
+  };
+  const tt = Math.min(SHOT.t, S.WINDOW);
+  set('sT', true, 'T+' + tt.toFixed(1) + ' ms' + (SHOT.playing ? '' : ' · done'));
+  set('sCrack', t >= S.T_CRACK, f1(R.crackField) + ' dB' + (R.crackClipMs > 0 ? ' · clipped ' + f2(R.crackClipMs) + ' ms' : ''),
+      R.crackClipMs > 0 ? 'warn' : '');
+  set('sGuard', R.guardT != null && t >= R.guardT, '+' + f2(R.guardDelay) + ' ms after the crack', 'good');
+  set('sLead', R.lead != null && t >= S.T_BLAST, f1(R.lead) + ' ms before the blast', 'good');
+  set('sPlay', t >= S.T_BLAST, f1(R.playBlast) + ' dB (was ' + f1(R.playBefore) + ')', 'good');
+  set('sAnc', t >= S.T_BLAST + 8, f1(R.ancBlast) + ' dB removed', R.ancBlast > 3 ? 'good' : '');
+  set('sPeak', t >= R.earPeakT, f1(R.earPeak) + ' dBP / 140', R.earPeak > 140 ? 'bad' : 'good');
+  set('sFrames', t >= S.WINDOW, String(R.impFrames));
+  set('sIrt', !SHOT.playing && R.irtRaw && R.irtOut, R.irtRaw ? f1(R.irtRaw.mean) + ' → ' + f1(R.irtOut.mean) + ' ms' : '',
+      R.irtOut && R.irtRaw && R.irtOut.mean < R.irtRaw.mean ? 'good' : '');
+  document.getElementById('scopenote').textContent =
+    `one shot · ${S.RANGE} m · T+${tt.toFixed(1)} ms · ${S.RATES[S.rate].l}`;
+}

@@ -1,336 +1,225 @@
 # Tech stack
 
-Two languages, one boundary. **C++ for anything with a deadline, Python for
-everything else.**
+Three places code runs, and one rule for each:
+
+| Where | Language / tool | Rule |
+|---|---|---|
+| **ADAU1787 DSP** (Lane A) | SigmaStudio graphical design, loaded by the STM32 | Everything that must beat sound to the ear |
+| **STM32** (Lane A manager) | C (STM32Cube) | Control, boot-loading, adaptation — never in the audio path |
+| **Jetson Orin Nano Super** (Lane B) | C++17 for the real-time engine, TensorRT for the model; Python for the first live runner | Everything with a tens-of-milliseconds deadline |
+| **Training machine** (college supercomputer) | Python + PyTorch | Everything offline; never runs on the device |
+
+**The boundary between training and the device is one ONNX file.** PyTorch
+produces it; TensorRT consumes it; nothing else crosses.
+
+The architecture these serve is in [`architecture.md`](architecture.md); the
+parts in [`../../synthetic_generator/HARDWARE.md`](../../synthetic_generator/HARDWARE.md).
 
 ---
 
-![Tech stack](../diagrams/6_tech_stack.png)
-
-## 0. The list
-
-### C++ — real-time path (runs on the device)
-
-| # | What | For | Licence | Status |
-|---|---|---|---|---|
-| 1 | **C++17** | The whole real-time signal path. No GC pause, no GIL, no allocator surprises | — | not started |
-| 2 | **CMake** | Build, and cross-compiling to ARM without a second build system | — | not started |
-| 3 | **PortAudio** | Audio in/out during development — same code on laptop and board | MIT | not started |
-| 4 | **ALSA** | Audio in/out on the target board, for lower buffer sizes than PortAudio allows | LGPL | not started |
-| 5 | **PFFFT** | The FFT inside STFT/ISTFT. **Not FFTW — that is GPL or paid, a problem for a DRDO deliverable** | BSD-style | not started |
-| 6 | **ONNX Runtime** | Running the trained model on the device. The PS names ONNX explicitly | MIT | not started |
-| 7 | **Eigen** | Linear algebra for the AR / Levinson-Durbin work in the BMRI path. Header-only, so cross-compiling stays simple | MPL2 | not started |
-| 8 | **doctest** or **Catch2** | Unit tests, including the parity test and the real-time safety test | MIT / BSL | not started |
-| 9 | **TensorRT** | *Only if* the board turns out to be Jetson. Benchmark against ONNX Runtime before committing | proprietary | conditional |
-
-### Hand-written C++ — no library does these
-
-| # | What | For |
-|---|---|---|
-| 10 | **Lock-free ring buffer** | Passing audio between the callback thread and the processing thread without a mutex |
-| 10b | **Aux-IVA** | Blind source separation across the 3 headset microphones. Splits voice / impulsive / background before the neural core, so the network can stay tiny |
-| 11 | **Robust normalisation** | Running percentile / FLOM over a sliding window. Replaces RMS, which is formally invalid for impulsive noise |
-| 12 | **BMRI impulsive path** | AR detect + interpolate. A few hundred lines; no library does exactly this |
-| 13 | **Transient classifier** | Kurtosis over a window → tunes γ and β. This is the "adaptive" the PS demands |
-| 14 | **LMS residual** | Optional final adaptive stage. Textbook, ~20 lines |
-| 15 | **Spectral-correction guard** | Removes regained low-frequency rumble after interpolation. The intelligibility safeguard |
-
-### Python — offline (never runs on the device)
+## 1. Lane A — ADAU1787 + STM32
 
 | # | What | For | Status |
 |---|---|---|---|
-| 16 | **Python 3.13** | Everything offline | installed |
-| 17 | **numpy** | All array maths, the whole DSP layer | installed |
-| 18 | **scipy** | Filters, Welch PSD, resampling, peak finding | installed |
-| 19 | **matplotlib** | Reports, quicklooks, the live monitor, the diagrams | installed |
-| 20 | **sounddevice** | Recording and the live monitor. The only extra dependency, and only for capture | installed |
-| 21 | **our `wavio.py`** | WAV read/write. No libsndfile, so a broken native library cannot strand you at the range. Bit-exact round-trip, verified in the self-test | built |
-| 22 | **PyTorch** | Model definition and training. GTCRN and DeepFilterNet reference code is PyTorch | not installed |
-| 23 | **torch.onnx** | Export to the ONNX file — the single boundary between Python and C++ | not installed |
-| 24 | **pesq** | PESQ metric — PS target > 2.5 | not installed |
-| 25 | **pystoi** | STOI metric — PS target > 0.85 | not installed |
-| 26 | **DNSMOS** | SIG and BAK separately, so over-suppression becomes visible. Targets SIG 4.1, BAK 4.2 | not installed |
+| 1 | **SigmaStudio** (Analog Devices, free) | Designing the DSP program graphically: filters, limiters, mixers, detectors (A1–A11) | Not started |
+| 2 | **FastDSP blocks** | Biquads, limiters, volume, mixing at up to 768 kHz — hear-through, ANC filters, limiters | Not started |
+| 3 | **SigmaDSP core** | Envelopes (A3), crack guard (A4), clip flags (A1), mode parameter sets | Not started |
+| 4 | **STM32CubeIDE, C** | STM32 firmware | Not started |
+| 5 | **Boot loader (STM32)** | Writes the SigmaStudio-exported program into the ADAU over I²C at power-on (unless the eval board self-boots — check UG-1532) | Not started |
+| 6 | **UART protocol (STM32 ↔ Jetson)** | Modes down, PTT state and crack events up — defined in `architecture.md` §8 | Defined; not coded |
+| 6b | **PTT (STM32)** | Reads the PTT button, drives the radio's PTT optocoupler | Not started |
+| 7 | **FxLMS (STM32)** | Phase 2 adaptation (A8), mic data over SAI (I²S/TDM) | Not started |
+
+Build order for Lane A: hear-through + limiters → fixed ANC in both ears →
+boot loading from the STM32 → modes over UART → adaptation.
+
+---
+
+## 2. Lane B — Jetson
+
+### 2.1 Libraries
+
+| # | What | For | Licence | Status |
+|---|---|---|---|---|
+| 8 | **JetPack** (NVIDIA) | Ubuntu, CUDA, cuDNN, **TensorRT** on the Jetson | NVIDIA | Install on arrival |
+| 9 | **TensorRT** | Runs the model: ONNX → engine, FP16 then INT8. The PS names it | proprietary (free) | Scripts built (`training/jetson/build_engine.sh`) |
+| 10 | **ONNX Runtime (GPU, Jetson build)** | Fallback runner, and the TensorRT execution provider used by the Python live runner | MIT | Runner built (`training/jetson/realtime.py`) |
+| 11 | **ALSA** | Audio in/out through the UMC404HD | LGPL | — |
+| 12 | **C++17 + CMake** | The real-time engine (blocks B1–B11, R1–R5) | — | Not started |
+| 13 | **PFFFT** | FFT for STFT/ISTFT in the C++ engine. **Not FFTW** — GPL or paid | BSD-style | Not started |
+| 14 | **Eigen** | AR / Levinson-Durbin for BMRI (B6) | MPL2 | Not started |
+| 15 | **doctest** | Unit tests, parity test, real-time safety test | MIT | Not started |
+
+### 2.2 Hand-written — no library does these
+
+| Block | What |
+|---|---|
+| B2 | Impulse detector (peak / kurtosis / high-frequency energy at 48 kHz) |
+| B3 | Robust normalisation (percentile / FLOM — never RMS) |
+| B5 | Scene classifier → modes and γ / β |
+| B6 | BMRI impulse repair |
+| B8, B9 | Merge and voice guard |
+| B10 | Residual LMS (optional) |
+| R1–R5 | Radio receive: voice detect, hiss removal, AGC, speech EQ, limiter |
+| — | Lock-free ring buffers, 48 ↔ 16 kHz resamplers, UART link to the STM32 (PTT is keyed by the STM32) |
+
+### 2.3 Two stages of the live runtime
+
+| Stage | What | Why |
+|---|---|---|
+| **1. Python runner** — `training/jetson/realtime.py` | ONNX Runtime with the TensorRT provider; capture → model → output | Exists now; proves the model, TensorRT and the audio path on the Jetson quickly |
+| **2. C++ engine** | Same blocks with strict real-time rules | Deterministic worst-case timing; the deliverable engine |
+
+The Python runner takes 3 input channels (boom, reference, throat; `--in-ch 1 2 3`)
+and passes the radio receive channel (`--rx-ch 4`) through to UMC output 2.
+
+---
+
+## 3. Training machine — Python (offline)
+
+| # | What | For | Status |
+|---|---|---|---|
+| 16 | **Python 3.11 / 3.12** | Everything offline (PyTorch does not yet support every newer Python) | — |
+| 17 | **PyTorch + torchaudio** | Model, training | Framework built (`training/`) |
+| 18 | **numpy, scipy** | Mixing, augmentation, resampling | Built |
+| 19 | **soundfile** | Reading WAV / FLAC corpora for training | Used by `training/` only |
+| 20 | **torch.onnx** | Streaming ONNX export with parity checks | Built (`export_onnx.py`) |
+| 21 | **onnxruntime (+ quantization tools)** | Parity checks, INT8 QDQ calibration | Built |
+| 22 | **pesq, pystoi** | PS metrics | Integrated; `pesq` needs a C compiler on Windows |
+| 23 | **DNSMOS** | SIG / BAK split so over-suppression is visible | To add |
+| 24 | **TensorBoard** | Training curves | Integrated |
+| 25 | **our `wavio.py`** | WAV I/O for the range toolkit (no native library, so nothing can fail in the field) | Built |
+
+The range toolkit (`data_collection/`) deliberately avoids `soundfile`; the
+training framework uses it because it reads FLAC corpora and never runs in the field.
 
 ### Not using, deliberately
 
-| # | What | Why not |
-|---|---|---|
-| 27 | **FFTW** | GPL or commercial licence. Replaced by PFFFT |
-| 28 | **libsndfile / soundfile** | A broken native library at the range kills the whole toolkit. Replaced by our own RIFF parser |
-| 29 | **librosa** | Heavy, and pulls in dependencies we do not need. numpy + scipy cover it |
-| 30 | **An experiment-tracking service** | Everything already writes JSON. Not worth the dependency at this scale |
-
-**Install what is missing:**
-
-```bash
-# Python side
-python3 -m pip install torch pesq pystoi
-
-# C++ side (macOS)
-brew install cmake portaudio eigen onnxruntime
-# PFFFT and doctest are single-file — vendor them into engine/third_party/
-```
-
----
-
-## 1. The split
-
-| Layer | Language | Why |
-|---|---|---|
-| Range data collection | **Python** | Offline. Already built — 16 tools, self-tested |
-| Dataset generation | **Python** | Offline, numpy/scipy heavy |
-| Model training | **Python** — PyTorch | The whole ecosystem lives here |
-| Export | **Python → ONNX** | The bridge. PS names ONNX explicitly |
-| **Real-time inference** | **C++17** | Hard deadline. No GC pause, no GIL, no allocator surprises |
-| Evaluation and plots | **Python** | Offline |
-
-**The boundary is the ONNX file.** Python produces it, C++ consumes it, and
-nothing else crosses. That single rule keeps the two halves from entangling.
-
-Everything on the Python side can be as heavy as it likes — it never runs on
-the device. This is the same distinction as in
-[`placement.md`](placement.md): off-device shapes the weights, on-device runs
-them.
-
----
-
-## 2. Latency budget — this fixes every other decision
-
-At 48 kHz:
-
-| frame | hop | STFT latency | I/O buffer | total algorithmic | compute budget |
-|---|---|---|---|---|---|
-| 32 ms | 16 ms | 32.0 ms | 10.7 ms | 42.7 ms | 16.0 ms/hop |
-| **20 ms** | **10 ms** | **20.0 ms** | **5.3 ms** | **25.3 ms** | **10.0 ms/hop** |
-| 10 ms | 5 ms | 10.0 ms | 5.3 ms | 15.3 ms | 5.0 ms/hop |
-| 8 ms | 4 ms | 8.0 ms | 2.7 ms | 10.7 ms | 4.0 ms/hop |
-
-**Chosen: 20 ms frame, 10 ms hop, 128-sample I/O buffer → 25.3 ms algorithmic
-latency, 10 ms of compute per hop.**
-
-Three reasons:
-
-1. **It matches Tan et al.'s frame size**, so latency and MMAC comparisons against the closest prior work are like-for-like rather than approximate
-2. **25 ms sits inside the radio-comms tolerance.** Own-voice sidetone would want lower, but that is a separate signal path and does not have to go through the denoiser
-3. **10 ms of compute is comfortable.** Tan et al. report 2.78 ms per 20 ms frame on an i7 — a real-time factor of 0.14. A GTCRN-class model is far smaller
-
-**The 10 ms compute budget is a hard deadline, not a target.** Overrun it and
-the audio callback underruns, which is heard as a click. Every optimisation
-decision downstream is measured against this number.
-
----
-
-## 3. C++ — the real-time path
-
-### 3.1 Libraries
-
-| Need | Choice | Licence | Why this one |
-|---|---|---|---|
-| **Audio I/O** | **PortAudio** for development, **ALSA** direct on the target | MIT / LGPL | PortAudio is cross-platform so the same code runs on the laptop and the board. Drop to ALSA on the target for lower buffer sizes |
-| **FFT** | **PFFFT** (or KissFFT) | BSD-style | **Deliberately not FFTW.** FFTW is GPL or paid — a licensing problem for a defence deliverable. PFFFT is single-file, BSD, SIMD-accelerated, and fast enough at these sizes |
-| **Neural inference** | **ONNX Runtime** | MIT | The PS names ONNX and TensorRT. ONNX Runtime runs everywhere including ARM; TensorRT only if the board turns out to be Jetson |
-| **Linear algebra** | **Eigen** (header-only) | MPL2 | For the AR/Levinson-Durbin work in the BMRI path. Header-only means no link-time headaches when cross-compiling |
-| **Build** | **CMake** | — | Cross-compilation to ARM without a second build system |
-| **Testing** | **Catch2** or **doctest** | BSL / MIT | Header-only, so the test build is not its own project |
-
-**Licence is a real constraint here, not a formality.** A GPL dependency in a
-DRDO deliverable is a conversation nobody wants. Everything above is
-permissive.
-
-### 3.2 What is hand-written, not a library
-
-| Block | Why no library |
+| What | Why not |
 |---|---|
-| **BMRI impulsive path** | AR modelling, Levinson-Durbin, interpolation. A few hundred lines, and no library does exactly this |
-| **Robust normalisation** | Running percentile / FLOM over a sliding window. Trivial, and it must be allocation-free |
-| **Transient classifier** | Kurtosis over a window plus a small decision rule. Tiny |
-| **LMS residual** | Textbook, twenty lines |
-| **Ring buffers** | Lock-free single-producer single-consumer. Must be exactly right; must not allocate |
-
-### 3.3 Real-time rules — non-negotiable in the audio callback
-
-- **No allocation.** Every buffer preallocated at start-up
-- **No locks.** Lock-free ring buffer between the audio thread and anything else
-- **No exceptions, no I/O, no logging** in the callback path
-- **No `std::vector` growth, no `std::string`, no `new`**
-- Fixed-size arrays and preallocated scratch space only
-
-Violating any of these produces a click that appears once every few minutes and
-is almost impossible to debug afterwards.
-
-### 3.4 Threading
-
-```
-  audio callback thread   ── real-time priority
-      reads 128 samples, writes 128 samples
-      pushes to / pops from lock-free ring buffers
-                │
-                ▼
-  processing thread       ── high priority, not real-time
-      accumulates a 20 ms frame
-      runs: normalise → STFT → classify → [neural | BMRI] → guard → ISTFT
-      must finish inside 10 ms
-                │
-                ▼
-  control thread          ── normal priority
-      metrics, logging, telemetry. Never touches the signal path
-```
-
-Two threads for the signal, one for everything else. The processing thread is
-separated from the callback so that a single slow frame stretches a buffer
-rather than dropping audio outright.
-
-**None of this is Lane A.** The FxLMS hearing-protection loop has a sub-ms
-budget and runs on its own DSP / microcontroller, not on these threads — see
-[`architecture.md`](architecture.md) §4 and §6. This document covers Lane B.
+| FFTW | GPL or commercial licence |
+| librosa | Heavy; numpy + scipy cover it |
+| An experiment-tracking service | Every run already writes JSON, CSV and TensorBoard logs |
+| Aux-IVA | Removed from the architecture: underdetermined with 2–3 mics; the throat mic does its job |
 
 ---
 
-## 4. Python — everything offline
+## 4. Audio settings — locked
 
-| Need | Choice | Notes |
+| Setting | Value | Why |
 |---|---|---|
-| **Training** | **PyTorch** | GTCRN and DeepFilterNet reference implementations are PyTorch |
-| **Export** | `torch.onnx.export` | Opset pinned; the pin is part of the build |
-| **Audio DSP** | **numpy + scipy** | Already the toolkit's only dependencies |
-| **WAV I/O** | **our `wavio.py`** | No libsndfile. Bit-exact round-trip, verified in the self-test |
-| **Recording** | **sounddevice** | Only for capture and the live monitor |
-| **Plots** | **matplotlib** | Reports and diagrams |
-| **Metrics** | `pesq`, `pystoi`, DNSMOS | Evaluation only |
-| **Experiment tracking** | plain JSON + CSV | Everything already writes JSON. A tracking service is not worth the dependency at this size |
+| Capture | 48 kHz, 24-bit, 768-sample blocks (16 ms) | UMC404HD native rate; clean 3:1 resampling |
+| Model rate | **16 kHz** | GTCRN's native rate; radio voice is narrowband anyway |
+| STFT | **512-point FFT, 256 hop, √Hann** (32 ms window, 16 ms hop) | Keeps GTCRN's band layout and published size valid |
+| Compute deadline | **16 ms per frame**, worst case | Miss it and the output underruns (a click) |
+| Mouth-to-radio | ≈ 70–85 ms (ESTIMATE) | ITU-T G.114: ≤ 150 ms one-way is transparent |
 
-The Python side already exists and passes its own self-test. It does not change.
+Report the **99th-percentile** frame time, not the mean. A mean of 3 ms with
+occasional 20 ms spikes fails a 16 ms deadline, and the mean hides it.
 
 ---
 
-## 5. The boundary — and the failure mode nobody plans for
+## 5. Real-time rules (C++ engine, audio thread)
+
+- No allocation — every buffer preallocated at start-up
+- No locks — lock-free ring buffer between the audio thread and processing
+- No exceptions, no I/O, no logging in the audio path
+- No `std::vector` growth, no `std::string`, no `new`
 
 ```
-   PyTorch model  ──torch.onnx.export──►  model.onnx  ──►  ONNX Runtime (C++)
+  audio thread        (real-time priority)   ALSA read/write, 768 samples, ring buffers
+        │
+  processing thread   (high priority)        B1–B11 and R1–R5, must finish inside 16 ms
+        │
+  control thread      (normal)               UART to STM32 (modes, PTT state), logging, live display
 ```
 
-**The silent failure:** the C++ implementation produces slightly different
-numbers from the Python one it was trained as. Different FFT scaling, a
-different window, a different ERB band edge, a mismatched normalisation
-constant. Nothing crashes. The model just quietly performs worse than it did in
-training, and you spend a week blaming the model.
-
-**The fix is a numerical parity test, built early and kept in CI:**
-
-1. Fix a small set of input WAVs
-2. Run the full Python pipeline, dump every intermediate — after normalisation, after STFT, after the model, after ISTFT
-3. Run the C++ pipeline on the same inputs, dump the same points
-4. Assert agreement to a stated tolerance at **every** stage, not just the output
-
-Stage-by-stage matters. If only the final output is compared, a normalisation
-error and an inverse-STFT error can cancel out on the test file and diverge
-everywhere else.
-
-**Build this before the C++ path is finished, not after.**
+Lane A is not on these threads at all — it runs on the ADAU1787.
 
 ---
 
-## 6. Repository layout
+## 6. The boundary — and the parity test
+
+```
+   PyTorch (train.py) ──export_onnx.py──► gtcrn_stream.onnx ──build_engine.sh──► TensorRT engine (Jetson)
+```
+
+The silent failure: the device computes slightly differently from training
+(FFT scaling, window, band edges, normalisation). Nothing crashes; the model
+just performs worse. The guard is a **stage-by-stage parity test**:
+
+| Check | Status |
+|---|---|
+| Streaming model = whole-clip model | MEASURED ≤ 6×10⁻⁸ (3-input) |
+| ONNX Runtime = PyTorch streaming | MEASURED ≤ 5×10⁻⁸ (3-input) |
+| Streaming STFT/ISTFT reconstruction | MEASURED 4.8×10⁻⁷ |
+| TensorRT FP16 / INT8 vs FP32 | On the Jetson — to do |
+| C++ engine vs Python, every stage | With the C++ engine — to do |
+
+---
+
+## 7. Repository layout
 
 ```
 Zeit_at_SIH/
-  data_collection/          Python — range toolkit (built)
-  synthetic_generator/      Python — corpus download, metrics (IRT, WLPS), experiments (built)
-  docs/                     documentation
-  handbook/                 evaluator-facing HTML pages (built, deployed)
-  DATA/                     recordings (gitignored)
-
-  training/                 Python — new
-      datasets/             mixing, augmentation, α-stable
-      models/               GTCRN-class definition
-      train.py
-      export_onnx.py
-      evaluate.py
-
-  engine/                   C++ — the real-time engine
-      CMakeLists.txt
-      third_party/          vendored single-file deps
-          pffft/            FFT (BSD)
-          doctest/          tests (MIT)
-      include/zeit/         public headers
-      src/
-          00_core/
-              ring_buffer.h     lock-free SPSC — no allocation, ever
-              scratch.h         preallocated working memory
-              config.h          frame 20 ms, hop 10 ms, 48 kHz — one place
-          01_io/
-              audio_io.cpp      PortAudio (dev) / ALSA (target)
-              mic_array.cpp     3-channel input, per-channel gain, alignment
-          02_analysis/
-              normalise.cpp     percentile / FLOM — replaces RMS
-              stft.cpp          PFFFT wrapper, window, overlap-add
-              erb.cpp           GTCRN map: 192 high bins -> 64 ERB, 65 low bins kept
-          03_separation/
-              auxiva.cpp        3-mic blind source separation
-          04_decide/
-              classifier.cpp    kurtosis → γ, β  (the adaptive element)
-          05_paths/
-              bmri.cpp          impulsive: AR detect + interpolate
-              inference.cpp     stationary: ONNX Runtime wrapper
-              deepfilter.cpp    harmonic detail rebuild
-          06_protect/
-              guard.cpp         spectral correction — intelligibility
-              lms.cpp           residual, driven by Mic 2 (the reference) — never Mic 3
-          07_pipeline/
-              pipeline.cpp      wires 00–06 together
-      tests/
-          parity_test.cpp   §5 — the stage-by-stage comparison
-          rt_safety_test.cpp   asserts no allocation in the callback
-
-  tools/
-      bench.cpp             per-block timing on the target board
+  data_collection/      Python — range toolkit (built)
+  synthetic_generator/  Python — corpus download, metrics (IRT, WLPS), experiments, HARDWARE.md
+  training/             Python — the neural network framework (built)
+      zeit/               model, data mixing, augmentation, losses, metrics, streaming
+      configs/            base.yaml (main run), sanity_voicebank.yaml
+      train.py  evaluate.py  export_onnx.py  quantize_onnx.py  prune.py  enhance.py  selftest.py
+      jetson/             build_engine.sh, realtime.py (live runner)
+  docs/                 documentation (this folder)
+  handbook/             evaluator-facing HTML pages
+  engine/               C++ — the real-time Lane B engine (to build)
+      src/  00_core/ ring_buffer.h, config.h (16 kHz, 512, 256)
+            01_io/   alsa_io.cpp, resample.cpp
+            02_lane_b/ detect.cpp, normalise.cpp, stft.cpp, classify.cpp, bmri.cpp,
+                       infer_trt.cpp, merge.cpp, guard.cpp, lms.cpp
+            03_rx/   rx_chain.cpp (R1–R5)
+            04_link/ uart_stm32.cpp  (PTT lives in the STM32 firmware)
+      tests/ parity_test.cpp, rt_safety_test.cpp
+  firmware/             C — STM32 (to build): boot loader, UART, modes, PTT, FxLMS
+  dsp/                  SigmaStudio projects for the ADAU1787 (to build)
 ```
 
 ---
 
-## 7. Measuring, on the actual board
-
-Three numbers, none of which the literature reports together:
+## 8. Measuring on the actual hardware
 
 | Number | How |
 |---|---|
-| **ms per frame** | `bench.cpp`, per block, worst case over a long run — not the mean. The 99th percentile is what causes clicks |
-| **MMAC/s** | Counted from the model graph, cross-checked against measured time |
-| **Watts** | USB power meter, idle vs running. **Nobody in the papers reports this** |
-
-Report the **worst-case** frame time, not the average. A mean of 3 ms with
-occasional 12 ms spikes fails a 10 ms deadline, and a mean hides that
-completely.
+| ms per frame (Lane B) | Worst case and 99th percentile over a long run; `realtime.py` prints both |
+| TensorRT engine latency | `build_engine.sh` (trtexec percentiles) |
+| **Watts** (Jetson) | `tegrastats` power rails; an inline DC meter if an independent figure is wanted |
+| ANC and hear-through (Lane A) | Mannequin ear mic (H22) on UMC in 4, system on vs off |
+| Peak at the ear | Mannequin + high-SPL measurement, against 140 dBP |
 
 ---
 
-## 8. Build order
+## 9. Build order
 
-| Step | What | Why this order |
+| Step | What | Needs |
 |---|---|---|
-| 1 | C++ skeleton: audio in → ring buffer → audio out, passthrough | Proves I/O, buffer sizes and the real deadline before any DSP exists |
-| 2 | `rt_safety_test` | Catch allocations in the callback while the code is still small |
-| 3 | STFT → ISTFT, perfect reconstruction | If this is not bit-accurate, nothing after it can be trusted |
-| 4 | Parity harness (§5) with just the STFT stage in it | Establishes the pattern before there is much to compare |
-| 5 | Robust normalisation, both sides | The one fix that must exist before any measurement means anything |
-| 6 | ONNX Runtime with a dummy model | Proves the export path and measures inference cost with a placeholder |
-| 7 | BMRI path in C++ | Independent of the model; can be built in parallel with training |
-| 8 | Real model, full parity, benchmark | Everything meets here |
-
-**Steps 1–4 need no trained model and no range data.** They can run in parallel
-with training and with the range trip, and they answer the riskiest question
-early: does the deadline hold on the real board at all.
+| 1 | VoiceBank-DEMAND sanity run (PESQ ≈ 2.87) | Supercomputer |
+| 2 | 3-input data path (done, simulated throat) + real throat pairs + B3 + full training | Step 1 |
+| 3 | Jetson: JetPack, UMC404HD recording, TensorRT engine, `realtime.py` | Hardware |
+| 4 | Headset build + tests | Hardware |
+| 5 | SigmaStudio: hear-through + limiters, then fixed ANC | ADAU board |
+| 6 | STM32: boot load, UART modes | Steps 3, 5 |
+| 7 | Radio receive chain R1–R5 and PTT | Steps 3, 4 |
+| 8 | C++ engine with parity tests | Step 3 |
+| 9 | Adaptive ANC (FxLMS) | Step 6 |
 
 ---
 
-## 9. The decisions, and what would change them
+## 10. Decisions, and what would change them
 
 | Decision | Reason | Revisit if |
 |---|---|---|
-| 20 ms / 10 ms frame | Matches Tan et al., fits radio comms | Own-voice monitoring turns out to need the denoised path |
-| C++17, not C | Eigen, RAII, `constexpr` — no runtime cost | Target toolchain is stuck on an older compiler |
-| PFFFT over FFTW | Licence | The board ships a vendor FFT that is much faster |
-| ONNX Runtime | PS names it; runs on ARM | The board is Jetson — then TensorRT is worth benchmarking |
-| PortAudio for dev | Same code on laptop and board | Buffer sizes on the target are not achievable through it — drop to ALSA |
-| Two signal threads | Isolates the callback from a slow frame | The model turns out fast enough to run in-callback |
-| Plain JSON tracking | Everything already writes JSON | The experiment count grows past a few hundred |
+| Jetson Orin Nano Super for Lane B | PS names Jetson and TensorRT | TensorRT cannot run the GRU layers — then ONNX Runtime CUDA on the same board |
+| ADAU1787 for Lane A | Low-latency analog-in → DSP → analog-out path built for ANC headsets | FastDSP capacity insufficient for two ears — shorten ANC filters |
+| 16 kHz, 32 / 16 ms | GTCRN's native settings; published sizes stay valid | Latency must drop below ~50 ms |
+| Fixed ANC before adaptive | Lower risk; commercial headsets often ship fixed ANC | Fixed ANC proves inadequate on real noise |
+| Python runner before C++ engine | Proves the chain on the Jetson quickly | Timing jitter in Python exceeds the 16 ms deadline |
+| PFFFT over FFTW | Licence | — |

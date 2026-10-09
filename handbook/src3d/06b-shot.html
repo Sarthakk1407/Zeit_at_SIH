@@ -1,0 +1,347 @@
+
+/* ============================================================
+   THE GUNSHOT RUN — one shot, traced through both lanes.
+
+   The scenario (range, round speed, miss distance, source
+   levels) is the only input. A second machine — the same code
+   the live bench runs — is given a seeded background, four
+   seconds to let the canceller settle, and then the shot. Every
+   figure in the run's log is measured from what that machine
+   computed; nothing in the log is typed in by hand.
+   ============================================================ */
+
+const SHOT = {
+  // ---- scenario: inputs, not results ----
+  RANGE: 30,          // m, shooter to wearer
+  V_BULLET: 822,      // m/s — about Mach 2.4, a 5.56 mm class round
+  C: 343,             // m/s, speed of sound at 20 °C
+  MISS: 3,            // m, closest approach of the round to the head
+  L_CRACK: 145,       // dB peak of the N-wave at 3 m — estimate for small arms
+  L_BLAST_1M: 157,    // dB peak 1 m from the muzzle — estimate
+  D_MICS: 0.58,       // ms, Mic 1 is on the far side of the head
+  WINDOW: 200,        // ms shown on the monitor
+  PRE: 4.0, POST: 1.3, BASE: 0.15,   // s of simulation before / after, and the IRT baseline
+  SEED: 20260919,
+  VOICE_SEED: 11,     // chosen so the wearer is mid-sentence when the shot arrives
+  RATES: [{ k: 100, l: '100× slow', s: '20 s for 200 ms' },
+          { k: 300, l: '300× slow', s: '60 s for 200 ms' },
+          { k: 30,  l: '30× slow',  s: '6 s for 200 ms' }],
+  rate: 0, active: false, playing: false, t: 0, data: null, shown: 0,
+};
+// arrival times follow from the geometry — physics, not tuning
+SHOT.T_BULLET = SHOT.RANGE / SHOT.V_BULLET * 1000;                 // 36.5 ms
+SHOT.T_CRACK = SHOT.T_BULLET + SHOT.MISS / SHOT.C * 1000;          // 45.2 ms
+SHOT.T_BLAST = SHOT.RANGE / SHOT.C * 1000;                          // 87.5 ms
+SHOT.L_BLAST = SHOT.L_BLAST_1M - 20 * Math.log10(SHOT.RANGE);      // spherical spreading to 30 m
+
+/* ---------- the two pressure waves ---------- */
+function nWave(tms) {                 // ballistic crack: an N-shaped wave about 0.35 ms long
+  const T = 0.35;
+  if (tms < 0 || tms > T) return 0;
+  return dbToPa(SHOT.L_CRACK) * (1 - 2 * tms / T);
+}
+function blastWave(tms, rand) {       // Friedlander waveform, its ground reflection, and a decaying tail
+  if (tms < 0) return 0;
+  const P = dbToPa(SHOT.L_BLAST), tp = 2.5, b = 1.6;
+  const fr = x => x < 0 ? 0 : (x > 40 ? 0 : (1 - x / tp) * Math.exp(-b * x / tp));
+  let p = P * fr(tms) + 0.7 * P * fr(tms - 0.44);
+  if (tms < 180) p += P * 0.05 * (rand() - .5) * Math.exp(-tms / 60);
+  return p;
+}
+
+/* ---------- run it ----------
+   over.talk: 0 runs the same shot with the wearer silent — that is how
+   irt.py measures event recordings, so the IRT figures come from that run. */
+function runShot(over = {}) {
+  const rand = mulberry32(SHOT.SEED);
+  const N0 = Math.round(SHOT.PRE * SR);                  // the trigger
+  const R0 = N0 - Math.round(SHOT.BASE * SR);            // first recorded sample
+  const L = Math.round((SHOT.BASE + SHOT.POST) * SR);
+  const tail = mulberry32(SHOT.SEED + 1);
+  const d = {
+    N0, R0, L,
+    field: new Float32Array(L), mic2: new Float32Array(L), ear: new Float32Array(L),
+    passive: new Float32Array(L), play: new Float32Array(L), resid: new Float32Array(L),
+    boom: new Float32Array(L), tx: new Float32Array(L),
+    clip: new Uint8Array(L), hold: new Uint8Array(L), duck: new Uint8Array(L),
+    adapt: new Uint8Array(L), limit: new Uint8Array(L),
+    frames: [],
+  };
+  const idx = n => n - R0;
+  const mach = createMachine({
+    rand,
+    voiceRand: mulberry32(SHOT.VOICE_SEED),
+    impulse(n) {
+      const tms = (n - N0) / SR * 1000;
+      if (tms < 0) return { ref: 0, boom: 0 };
+      return {
+        ref: nWave(tms - SHOT.T_CRACK) + blastWave(tms - SHOT.T_BLAST, tail),
+        boom: nWave(tms - SHOT.T_CRACK - SHOT.D_MICS) + blastWave(tms - SHOT.T_BLAST - SHOT.D_MICS, tail),
+      };
+    },
+    probe(n, s) {
+      const i = idx(n); if (i < 0 || i >= L) return;
+      d.field[i] = s.field; d.mic2[i] = s.mic2; d.ear[i] = s.ear; d.passive[i] = s.passive;
+      d.play[i] = s.play; d.resid[i] = s.resid; d.boom[i] = s.boom;
+      d.clip[i] = s.clip ? 1 : 0; d.hold[i] = s.refOk ? 0 : 1; d.duck[i] = s.duck ? 1 : 0;
+      d.adapt[i] = s.adapting ? 1 : 0; d.limit[i] = s.limit ? 1 : 0;
+    },
+    probeTx(n0, tx) {
+      for (let k = 0; k < BLK; k++) { const i = idx(n0 + k); if (i >= 0 && i < L) d.tx[i] = tx[k]; }
+    },
+    probeFrame(f) {
+      if (f.n0 + BLK < R0 || f.n0 >= R0 + L) return;
+      d.frames.push({ t0: (f.n0 - N0) / SR * 1000, t1: (f.n0 + BLK - N0) / SR * 1000,
+                      impulse: f.impulse, jump: f.jump, voiced: f.voiced, ms: f.ms,
+                      sIn: f.sIn, nIn: f.nIn, sOut: f.sOut, nOut: f.nOut, mask: f.maskMean, mode: f.mode, norm: f.norm, rmsDb: f.rmsDb });
+    },
+  });
+  Object.assign(mach.s, { scene: 'street', anc: 1, hear: 1, adapt: 1, talk: 1, clean: 1, ptt: 1, rx: 0 },
+                over.talk === 0 ? { talk: 0 } : {});
+  const frames = Math.ceil((SHOT.PRE + SHOT.POST) * SR / BLK);
+  const t0 = performance.now();
+  for (let f = 0; f < frames; f++) mach.tick();
+  d.computeMs = performance.now() - t0;
+  d.uart = mach.log.filter(l => l.kind === 'u').map(l => ({ t: (l.t - SHOT.PRE) * 1000, text: l.text }))
+                   .filter(l => l.t >= -1).reverse();
+  d.tOf = i => (i + R0 - N0) / SR * 1000;
+  d.iOf = tms => Math.round(tms / 1000 * SR) + N0 - R0;
+  if (over.analyse !== false) {
+    d.silent = runShot({ talk: 0, analyse: false });
+    d.computeMs += d.silent.computeMs;
+    analyseShot(d);
+  }
+  return d;
+}
+
+/* ---------- what the run measured ---------- */
+function rmsDb(a, i0, i1) {
+  let s = 0, n = 0;
+  for (let i = Math.max(0, i0); i < Math.min(a.length, i1); i++) { s += a[i] * a[i]; n++; }
+  return n ? paToDb(Math.sqrt(s / n)) : 0;
+}
+function peakOf(a, i0, i1) {
+  let p = 0, at = i0;
+  for (let i = Math.max(0, i0); i < Math.min(a.length, i1); i++) if (Math.abs(a[i]) > p) { p = Math.abs(a[i]); at = i; }
+  return { db: paToDb(p), at };
+}
+function firstWhere(arr, i0, i1, want = 1) {
+  for (let i = Math.max(0, i0); i < Math.min(arr.length, i1); i++) if (arr[i] === want) return i;
+  return -1;
+}
+function runLength(arr, i0, want = 1) {
+  let i = i0;
+  while (i < arr.length && arr[i] === want) i++;
+  return i - i0;
+}
+
+/* Impulse Recovery Time, with the definition in synthetic_generator/metrics/irt.py:
+   octave bands 125 Hz – 8 kHz, 5 ms envelope, baseline = median of the 150 ms before
+   the loudest sample, recovered when the envelope stays within 1/0.9 of the baseline
+   for 20 ms. The band filters are 4th-order Butterworth sections run forwards and
+   backwards, like sosfiltfilt. */
+function irt(x) {
+  const bands = [[125, 250], [250, 500], [500, 1000], [1000, 2000], [2000, 4000], [4000, 8000]];
+  const nb = Math.round(0.150 * SR), hold = Math.round(0.020 * SR), n5 = Math.round(0.005 * SR);
+  let onset = 0, pk = 0;
+  for (let i = 0; i < x.length; i++) if (Math.abs(x[i]) > pk) { pk = Math.abs(x[i]); onset = i; }
+  if (onset < nb + SR / 100) return null;
+  const times = [];
+  for (const [lo, hiRaw] of bands) {
+    const hi = Math.min(hiRaw, SR / 2 * 0.99);
+    const secs = () => [new BQ().hp(lo, 0.5412), new BQ().hp(lo, 1.3066), new BQ().lp(hi, 0.5412), new BQ().lp(hi, 1.3066)];
+    const y = Float32Array.from(x);
+    let f = secs();
+    for (let i = 0; i < y.length; i++) { let v = y[i]; for (const b of f) v = b.run(v); y[i] = v; }
+    f = secs();
+    for (let i = y.length - 1; i >= 0; i--) { let v = y[i]; for (const b of f) v = b.run(v); y[i] = v; }
+    // centred 5 ms moving average of the power
+    const env = new Float32Array(y.length);
+    let acc = 0; const h = n5 >> 1;
+    const sq = i => (i >= 0 && i < y.length) ? y[i] * y[i] : 0;
+    for (let i = -h; i < n5 - h; i++) acc += sq(i);
+    for (let i = 0; i < y.length; i++) {
+      env[i] = Math.sqrt(acc / n5) + 1e-12;
+      acc += sq(i + n5 - h) - sq(i - h);
+    }
+    const base = Array.from(env.subarray(onset - nb, onset)).sort((a, b) => a - b)[nb >> 1];
+    let peak = 0;
+    for (let i = onset; i < Math.min(env.length, onset + Math.round(0.05 * SR)); i++) peak = Math.max(peak, env[i]);
+    if (peak <= base * 2) { times.push(0); continue; }
+    const thr = base / 0.90;
+    let found = -1;
+    for (let i = onset; i < env.length - hold; i++) {
+      if (env[i] > thr) continue;
+      let ok = true;
+      for (let j = i; j < i + hold; j++) if (env[j] > thr) { ok = false; break; }
+      if (ok) { found = i - onset; break; }
+    }
+    times.push((found >= 0 ? found : env.length - onset) / SR * 1000);
+  }
+  return { mean: times.reduce((a, b) => a + b, 0) / times.length, max: Math.max(...times), bands: times, onset };
+}
+
+function analyseShot(d) {
+  const R = {}, S = SHOT, i = t => d.iOf(t);
+  // the crack at Mic 2
+  R.crackField = peakOf(d.field, i(S.T_CRACK - .2), i(S.T_CRACK + 1)).db;
+  R.crackClipMs = 0;
+  for (let k = i(S.T_CRACK - .2); k < i(S.T_CRACK + 3); k++) R.crackClipMs += d.clip[k];
+  R.crackClipMs = R.crackClipMs / SR * 1000;
+  // A1 hold
+  const h0 = firstWhere(d.hold, i(S.T_CRACK - .5), i(S.T_CRACK + 5));
+  R.holdT = h0 >= 0 ? d.tOf(h0) : null;
+  R.holdMs = h0 >= 0 ? runLength(d.hold, h0) / SR * 1000 : 0;
+  // A4 crack guard
+  const g0 = firstWhere(d.duck, i(S.T_CRACK - 1), i(S.T_BLAST));
+  R.guardT = g0 >= 0 ? d.tOf(g0) : null;
+  R.guardDelay = g0 >= 0 ? R.guardT - S.T_CRACK : null;
+  R.duckMs = g0 >= 0 ? runLength(d.duck, g0) / SR * 1000 : 0;
+  R.duckEndT = g0 >= 0 ? R.guardT + R.duckMs : null;
+  R.lead = g0 >= 0 ? S.T_BLAST - R.guardT : null;
+  // the blast
+  R.blastMic2 = peakOf(d.mic2, i(S.T_BLAST - .2), i(S.T_BLAST + 12)).db;
+  R.blastField = peakOf(d.field, i(S.T_BLAST - .2), i(S.T_BLAST + 12)).db;
+  R.blastClipMs = 0;
+  for (let k = i(S.T_BLAST - .2); k < i(S.T_BLAST + 40); k++) R.blastClipMs += d.clip[k];
+  R.blastClipMs = R.blastClipMs / SR * 1000;
+  R.playBefore = rmsDb(d.play, i(-140), i(-5));
+  R.playBlast = rmsDb(d.play, i(S.T_BLAST), i(S.T_BLAST + 30));
+  let ps = 0, rs = 0;
+  for (let k = i(S.T_BLAST); k < i(S.T_BLAST + 30); k++) { ps += d.passive[k] ** 2; rs += d.resid[k] ** 2; }
+  R.ancBlast = 10 * Math.log10((ps + 1e-20) / (rs + 1e-20));
+  const ep = peakOf(d.ear, i(0), i(S.WINDOW)), pp = peakOf(d.passive, i(0), i(S.WINDOW));
+  R.earPeak = ep.db; R.earPeakT = d.tOf(ep.at); R.passPeak = pp.db;
+  // adaptation freeze
+  const a0 = firstWhere(d.adapt, i(S.T_CRACK - 1), i(S.WINDOW), 0);
+  R.freezeT = a0 >= 0 ? d.tOf(a0) : null;
+  const a1 = a0 >= 0 ? firstWhere(d.adapt, a0, d.L, 1) : -1;
+  R.resumeT = a1 >= 0 ? d.tOf(a1) : null;
+  // Lane B
+  const fr = d.frames.filter(f => f.t0 >= -20);
+  const imp = fr.filter(f => f.impulse && f.t0 < 400);
+  R.impFrames = imp.length;
+  R.firstImp = imp[0] || null;
+  R.blastFrames = imp.filter(f => f.t1 > S.T_BLAST - 1).length;
+  R.frameMsMax = Math.max(...d.frames.map(f => f.ms));
+  R.frameMsMean = d.frames.reduce((a, f) => a + f.ms, 0) / d.frames.length;
+  // IRT, on the silent run — the way irt.py measures event recordings
+  const q = d.silent || d;
+  R.irtRaw = irt(q.boom);
+  R.irtOut = irt(q.tx);
+  R.frameOver = d.frames.filter(f => f.ms > 16).length;
+  R.lastImpEnd = imp.length ? imp[imp.length - 1].t1 : null;
+  d.R = R;
+  d.events = buildShotEvents(d);
+  d.lights = buildShotLights(d);
+}
+
+function f1(x) { return x == null || !isFinite(x) ? '—' : x.toFixed(1); }
+function f2(x) { return x == null || !isFinite(x) ? '—' : x.toFixed(2); }
+
+function buildShotEvents(d) {
+  const R = d.R, S = SHOT, ev = [];
+  const E = (t, k, text, parts = []) => ev.push({ t, k, text, parts });
+  E(0, 'TRIG', `Shot fired <b>${S.RANGE} m</b> away · round at ${S.V_BULLET} m/s (Mach ${(S.V_BULLET / S.C).toFixed(1)}) · scenario input`);
+  E(S.T_BULLET, 'PROP', `Round passes <b>${S.MISS} m</b> from the head — its shock wave, the crack, starts here`);
+  E(S.T_CRACK, 'RX', `Crack reaches Mic 2 · <b>${f1(R.crackField)} dB</b> peak outside the cup` +
+    (R.crackClipMs > 0 ? ` · the capsule overloads at 135 dB and clips for <b>${f2(R.crackClipMs)} ms</b>` : ' · inside the capsule\'s range'), ['mic2R']);
+  if (R.holdT != null) E(R.holdT + .001, 'A', `A1 clip flag · reference not trusted — anti-noise held for <b>${f2(R.holdMs)} ms</b>`, ['adau']);
+  if (R.guardT != null) E(R.guardT + .002, 'A', `A4 crack guard fires <b>${f2(R.guardDelay)} ms</b> after the crack arrived · hear-through down 30 dB for ${Math.round(R.duckMs)} ms`, ['adau', 'mic2R']);
+  if (R.freezeT != null) E(R.freezeT + .003, 'A', `A8 adaptation frozen — a gunshot must not train the canceller`, ['stm']);
+  E(S.T_CRACK + S.D_MICS, 'RX', `Crack reaches Mic 1 on the boom, <b>${S.D_MICS} ms</b> later — too close together to predict anything from`, ['mic1']);
+  if (R.firstImp) E(R.firstImp.t1, 'B', `B2 flags the frame T+${f1(R.firstImp.t0)}–${f1(R.firstImp.t1)} ms as an impulse · <b>${f1(20 * Math.log10(R.firstImp.jump))} dB</b> above the background`, ['jetson']);
+  if (R.firstImp && isFinite(R.firstImp.norm)) E(R.firstImp.t1 + .01, 'B', `B3 holds the level scale at <b>${f1(R.firstImp.norm)} dB</b> through the shot · the RMS of the same frame jumps to ${f1(R.firstImp.rmsDb)} dB`, ['jetson']);
+  E(S.T_BLAST, 'RX', `Muzzle blast reaches Mic 2 · <b>${f1(R.blastField)} dB</b> peak` +
+    (R.blastClipMs > 0 ? ` · clipped ${f2(R.blastClipMs)} ms` : ' · below the 135 dB overload point, so the reference is intact'), ['mic2R']);
+  if (R.lead != null) E(S.T_BLAST + .01, 'A', `Hear-through was already ducked <b>${f1(R.lead)} ms</b> before the blast · the system plays <b>${f1(R.playBlast)} dB</b> into the ear during it (${f1(R.playBefore)} dB just before the shot)`, ['spkR', 'adau']);
+  E(S.T_BLAST + 8, 'A', `Anti-noise on the blast: <b>${f1(R.ancBlast)} dB</b> of its energy removed over 30 ms, filter held · in this model the reference hears exactly what reaches the cup — a real shot from another direction will get far less`, ['spkR']);
+  E(R.earPeakT, R.earPeak > 140 ? 'WARN' : 'OUT', `Peak at the ear <b>${f1(R.earPeak)} dBP</b> (earmuff alone: ${f1(R.passPeak)}) · limit 140 dBP — ${R.earPeak > 140 ? 'EXCEEDED' : f1(140 - R.earPeak) + ' dB of margin'}`, ['head']);
+  if (R.blastFrames) E(Math.min(S.WINDOW - 1, S.T_BLAST + 20), 'B', `B6/B8 repair · ${R.blastFrames} frame${R.blastFrames > 1 ? 's' : ''} around the blast kept at a higher mask floor instead of being cut to silence`, ['jetson']);
+  E(Math.min(S.WINDOW - .5, S.T_BLAST + 40), R.frameOver ? 'WARN' : 'OUT',
+    (R.frameOver ? `${R.frameOver} frame${R.frameOver > 1 ? 's' : ''} over the 16 ms budget in this browser` : 'Every Lane B frame inside its 16 ms budget') +
+    ` · mean <b>${f2(R.frameMsMean)} ms</b>, worst ${f2(R.frameMsMax)} ms of compute per frame — this browser, not the Jetson`, ['jetson']);
+  if (R.duckEndT != null) E(R.duckEndT, 'A', `Hear-through restored after ${Math.round(R.duckMs)} ms`, ['adau']);
+  if (R.resumeT != null) E(R.resumeT, 'A', `Adaptation resumes`, ['stm']);
+  if (R.irtRaw && R.irtOut) E(Math.max(S.WINDOW + 1, (d.silent || d).tOf(R.irtOut.onset) + R.irtOut.mean), "OUT",
+    `IRT, irt.py definition, wearer silent · raw boom mic <b>${f1(R.irtRaw.mean)} ms</b> → Lane B output <b>${f1(R.irtOut.mean)} ms</b>`, ['jetson']);
+  for (const u of d.uart) if (u.t > 0) E(u.t, 'UART', u.text, ['stm', 'jetson']);
+  E(Math.max(...ev.map(e => e.t)) + 1, 'END', `Run complete · ${(SHOT.PRE + SHOT.POST).toFixed(1)} s of signal computed in ${f1(d.computeMs)} ms`);
+  return ev.sort((a, b) => a.t - b.t);
+}
+
+/* when each chain block is doing something, from the recorded run */
+function buildShotLights(d) {
+  const S = SHOT, L = {};
+  const span = (arr, want = 1) => {                  // runs of arr === want, in ms
+    const out = []; let s = -1;
+    for (let i = 0; i < arr.length; i++) {
+      const on = arr[i] === want;
+      if (on && s < 0) s = i;
+      if (!on && s >= 0) { out.push([d.tOf(s), d.tOf(i)]); s = -1; }
+    }
+    if (s >= 0) out.push([d.tOf(s), d.tOf(arr.length)]);
+    return out;
+  };
+  const always = [[-1e9, 1e9]];
+  L.A1 = span(d.hold); L.A4 = span(d.duck); L.A5 = span(d.limit);
+  L.A8 = span(d.adapt);
+  const hearOn = span(d.duck, 0);
+  L.A2 = hearOn; L.A3 = hearOn;
+  L.A6 = span(d.hold, 0); L.A7 = L.A6; L.A9 = always; L.A10 = always; L.A11 = [];
+  // Lane B runs at frame boundaries: light each block for 3 ms after a frame completes
+  const blink = (pred) => d.frames.filter(pred).map(f => [f.t1, f.t1 + 3]);
+  L.B1 = always;
+  L.B2 = d.frames.filter(f => f.impulse).map(f => [f.t0, f.t1 + 3]);
+  L.B4 = blink(() => true); L.B5 = blink(() => true); L.B7 = blink(() => true);
+  L.B6 = blink(f => f.impulse); L.B8 = L.B6;
+  L.B9 = blink(f => f.voiced); L.B11 = blink(() => true);
+  L.B3 = blink(() => true); L.B10 = 'off';
+  for (const r of ['R1', 'R2', 'R3', 'R4', 'R5']) L[r] = [];
+  return L;
+}
+function shotLit(id, t) {
+  const L = SHOT.data && SHOT.data.lights; if (!L) return 0;
+  const v = L[id];
+  if (v === 'off') return 'off';
+  if (!v) return 0;
+  for (const [a, b] of v) if (t >= a && t < b) return id === 'B7' ? 'ai' : 1;
+  return 0;
+}
+
+/* ---------- playback ---------- */
+function fireShot() {
+  document.getElementById('scopenote').textContent = 'computing the shot…';
+  setTimeout(() => {
+    SHOT.data = runShot();
+    SHOT.active = true; SHOT.playing = true; SHOT.t = 0; SHOT.shown = 0;
+    document.getElementById('liveBtn').hidden = false;
+    document.getElementById('shotCard').hidden = false;
+    document.getElementById('scopeTitle').textContent = 'Signal monitor — one shot, 0 to 200 ms, every sample';
+    logStamp = -1;
+    renderShotCard();
+  }, 30);
+}
+function stepShot(dt) {
+  if (!SHOT.active || !SHOT.playing) return;
+  const rate = SHOT.RATES[SHOT.rate].k;
+  SHOT.t += dt * 1000 / rate;
+  if (SHOT.t >= SHOT.WINDOW) { SHOT.t = SHOT.WINDOW; SHOT.playing = false; }
+  const evs = SHOT.data.events;
+  let changed = false;
+  const until = SHOT.playing ? SHOT.t : Infinity;       // at the end of the window, list the rest at once
+  while (SHOT.shown < evs.length && evs[SHOT.shown].t <= until) {
+    const e = evs[SHOT.shown++];
+    if (e.parts.length) setHot(e.parts, []);
+    changed = true;
+  }
+  if (changed) { logStamp = -1; renderShotCard(); }
+}
+function endShot() {
+  SHOT.active = false; SHOT.playing = false;
+  document.getElementById('liveBtn').hidden = true;
+  document.getElementById('shotCard').hidden = true;
+  document.getElementById('scopeTitle').textContent = 'Signal monitor — the last 0.6 s, decibel axis';
+  clearHot();
+  logStamp = -1;
+}

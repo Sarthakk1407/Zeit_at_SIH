@@ -1,0 +1,220 @@
+
+/* ============================================================
+   CONTROLS, INFO CARD, STEP EXPLANATIONS
+   ============================================================ */
+
+const $ = s => document.querySelector(s);
+const STATUS_PILL = { verified: ['v', 'verified'], must: ['', 'must buy'], gate: ['c', 'gate'],
+                      build: ['', 'we build it'], have: ['', 'already have'] };
+
+/* live readings for the parts that are actually doing the work */
+const LIVE = {
+  adau: () => [['anti-noise now', SIM.s.anc ? SIM.m.ancDb.toFixed(1) + ' dB' : 'canceller off'],
+               ['at the ear', SIM.m.ear.toFixed(0) + ' dB'],
+               ['hear-through', SIM.s.hear ? (SIM.m.duck ? 'ducked — crack guard' : 'on') : 'off'],
+               ['scene setting held', SCENE_NAME[SIM.m.mode] || SIM.m.mode]],
+  jetson: () => [['SNR in → out', isFinite(SIM.m.snrIn) ? SIM.m.snrIn.toFixed(1) + ' → ' + SIM.m.snrOut.toFixed(1) + ' dB' : 'nobody is talking'],
+                 ['frame time', SIM.m.frameMs.toFixed(2) + ' ms of 16 (this browser)'],
+                 ['scene decided', SCENE_NAME[SIM.m.mode] || SIM.m.mode], ['transmitting', SIM.s.ptt ? 'yes' : 'no']],
+  stm:  () => [['scene setting held', SCENE_NAME[SIM.m.mode] || SIM.m.mode], ['PTT', SIM.s.ptt ? 'pressed — opto on' : 'released'],
+               ['adaptation', SIM.m.adapting ? 'running' : 'frozen']],
+  tpa:  () => [['sum at the ear', SIM.m.ear.toFixed(0) + ' dB of 82'], ['radio voice', SIM.s.rx ? 'present' : 'silent']],
+  mic3R: () => [['error signal', SIM.m.ear.toFixed(0) + ' dB'], ['earmuff alone would be', SIM.m.passive.toFixed(0) + ' dB']],
+  mic2R: () => [['outside now', (SIM.m.passive + 18).toFixed(0) + ' dB (approx)'], ['feeds', 'ANC · hear-through · AI input 1']],
+  spkR: () => [['playing', SIM.s.anc ? 'anti-noise + hear-through' : 'hear-through only'],
+               ['peak at the ear', SIM.m.peak.toFixed(0) + ' dBP of 140']],
+  umc:  () => [['in 1–3', 'boom · reference · throat'], ['out 1', SIM.s.ptt ? 'voice to the radio' : 'muted, PTT up']],
+  rbox: () => [['key line', SIM.s.ptt ? 'grounded — radio transmitting' : 'open'],
+               ['in from radio', SIM.s.rx ? 'voice present' : 'quiet']],
+  mic4: () => [['voice detected', SIM.m.voiced ? 'yes — guard active' : 'no']],
+};
+
+function renderInfo(def) {
+  const box = $('#info');
+  if (!def) {
+    box.innerHTML = `<p style="color:var(--text-3);font-size:13.5px;margin:0">Click a part in the viewport, a cable,
+      or a block in the chain strips below. <strong style="color:var(--text-2)">Click the earcup</strong> and it opens:
+      the two microphones, the driver and the cushion inside it, with the live figures for that cup.</p>`;
+    return;
+  }
+  const links = LINKS.filter(l => l.from === def.id || l.to === def.id);
+  const pills = (def.status || []).map(s => {
+    const p = STATUS_PILL[s] || ['', s];
+    return `<span class="pill ${p[0]}">${p[1]}</span>`;
+  }).join('') + (def.approx ? '<span class="pill u">size approx</span>' : '');
+  box.innerHTML = `
+    <span class="tag">${def.hid} · ${def.grp}</span>
+    <h4>${def.name}</h4>
+    <div style="margin-bottom:8px">${pills}</div>
+    <p>${def.sum}</p>
+    ${LIVE[def.id] ? `<dl id="liveBox"></dl>` : ''}
+    <dl>${def.specs.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}
+      ${def.price ? `<dt>cost</dt><dd>${def.price}</dd>` : ''}</dl>
+    ${links.length ? `<dl><dt>cables</dt><dd>${links.map(l =>
+        `<div class="wire" data-wire="${l.id}"><span class="sw" style="background:${swatch(l.t)}"></span>
+         ${l.from === def.id ? '→' : '←'} ${(PART.get(l.from === def.id ? l.to : l.from) || { def: {} }).def.name || ''}</div>`).join('')}</dd></dl>` : ''}
+    ${def.steps && def.steps.length ? `<dl><dt>used by</dt><dd class="mono">${def.steps.map(s =>
+        `<span class="wire" data-step="${s}" style="display:inline;margin-right:6px">${s}</span>`).join('')}</dd></dl>` : ''}`;
+  box.querySelectorAll('[data-wire]').forEach(el => el.addEventListener('click', () => traceWire(el.dataset.wire)));
+  box.querySelectorAll('[data-step]').forEach(el => el.addEventListener('click', () => showStep(el.dataset.step)));
+  updateLive();
+}
+function updateLive() {
+  const el = $('#liveBox');
+  if (!el || !selected || !LIVE[selected]) return;
+  el.innerHTML = LIVE[selected]().map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+}
+
+/* ---------- the opened earcup ---------- */
+function renderCupInfo() {
+  const inside = [['mic2R', 'outside the shell — hears the noise first'],
+                  ['mic3R', 'next to the ear — measures what got through'],
+                  ['spkR', '40 mm driver — plays the anti-noise and the voice'],
+                  ['muff', 'shell, cushion and foam — the passive protection']];
+  $('#info').innerHTML = `
+    <span class="tag">H1 · the right earcup, opened</span>
+    <h4>Inside the cup</h4>
+    <p>Sound crosses from the outer shell to the ear in roughly half a millisecond. Everything in this cup exists to
+    beat that: the outside microphone hears the noise first, the DSP makes the opposite of it, the driver plays it,
+    and the inside microphone checks the result.</p>
+    <dl id="cupLive"></dl>
+    <dl>
+      <dt>0.00 ms</dt><dd>noise reaches Mic 2, outside the shell</dd>
+      <dt>~0.05 ms</dt><dd>the DSP has the opposite of it ready</dd>
+      <dt>~0.50 ms</dt><dd>the noise itself arrives at the ear; the anti-noise is already there</dd>
+      <dt>always</dt><dd>Mic 3 measures the residue and the filter is corrected</dd>
+    </dl>
+    <dl><dt>in here</dt><dd>${inside.map(([id, why]) =>
+      `<div class="wire" data-part="${id}"><span class="sw" style="background:${swatch('spk')}"></span>
+       ${(PART.get(id) || { def: {} }).def.name || id} <span style="color:var(--text-3)">— ${why}</span></div>`).join('')}</dd></dl>`;
+  $('#info').querySelectorAll('[data-part]').forEach(el => el.addEventListener('click', () => {
+    selected = el.dataset.part; setHot([el.dataset.part], []); renderInfo(PART.get(el.dataset.part).def);
+  }));
+  updateCupLive();
+}
+function updateCupLive() {
+  const el = $('#cupLive');
+  if (!el) return;
+  const m = SIM.m;
+  el.innerHTML = [['outside', (m.passive + 18).toFixed(0) + ' dB (approx)'],
+                  ['through the shell', m.passive.toFixed(0) + ' dB'],
+                  ['anti-noise removes', SIM.s.anc ? m.ancDb.toFixed(1) + ' dB' : 'canceller off'],
+                  ['heard at the ear', m.ear.toFixed(0) + ' dB'],
+                  ['peak', m.peak.toFixed(0) + ' dBP of 140']]
+    .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+}
+
+/* ---------- a chain block, explained ---------- */
+function showStep(id) {
+  const s = STEPS.find(x => x.id === id);
+  if (!s) return;
+  setHot(s.p || [], s.w || []);
+  selected = null;
+  const lane = s.lane === 'A' ? 'Lane A — the ear' : s.lane === 'B' ? 'Lane B — the voice' : 'Radio receive';
+  const runsOn = (s.p || []).map(p => (PART.get(p) || { def: {} }).def.name).filter(Boolean).slice(0, 4);
+  $('#info').innerHTML = `
+    <span class="tag">${s.id} · ${lane}</span>
+    <h4>${s.t}</h4>
+    <p>${s.x}</p>
+    ${runsOn.length ? `<dl><dt>runs on</dt><dd>${runsOn.join(' · ')}</dd></dl>` : ''}
+    ${s.sim ? `<dl><dt>to watch it</dt><dd>${describeSim(s.sim)}</dd></dl>` : ''}`;
+  if (s.cam) {
+    const aspect = Math.max(.4, vp.clientWidth / vp.clientHeight);
+    const k = Math.min(2.2, Math.max(1, 1.62 / aspect));
+    const tgt = new THREE.Vector3(...s.cam[1]);
+    tween(camera.position, new THREE.Vector3(...s.cam[0]).sub(tgt).multiplyScalar(k).add(tgt), 950);
+    tween(controls.target, tgt, 950);
+  }
+}
+function describeSim(sim) {
+  const bits = [];
+  if (sim.scene) bits.push(`scene: ${SCENE[sim.scene].label}`);
+  if (sim.anc) bits.push('anti-noise on');
+  if (sim.hear) bits.push('hear-through on');
+  if (sim.talk) bits.push('wearer talking');
+  if (sim.clean) bits.push('clean-up on');
+  if (sim.ptt) bits.push('hold to transmit');
+  if (sim.rx) bits.push('radio speaking');
+  return bits.join(' · ');
+}
+
+/* ---------- the gunshot run ---------- */
+const LIVE_KEY = $('#scopeKey').innerHTML;
+const SHOT_KEY = `<span><i style="background:var(--m2)"></i>MIC 2 — capsule output</span>
+  <span><i style="background:var(--m2);opacity:.35"></i>true pressure outside</span>
+  <span><i style="background:var(--spk)"></i>at the ear, system on</span>
+  <span><i style="background:var(--src)"></i>at the ear, earmuff alone</span>
+  <span><i style="background:var(--m1)"></i>Lane B out</span>`;
+$('#fireBtn').addEventListener('click', () => {
+  $('#scopeKey').innerHTML = SHOT_KEY;
+  fireShot();
+});
+$('#rateBtn').addEventListener('click', () => {
+  SHOT.rate = (SHOT.rate + 1) % SHOT.RATES.length;
+  const r = SHOT.RATES[SHOT.rate];
+  $('#rateBtn').innerHTML = `Rate — ${r.l}<span class="sub">${r.s}</span>`;
+});
+$('#liveBtn').addEventListener('click', leaveShot);
+function leaveShot() {
+  if (!SHOT.active) return;
+  endShot();
+  $('#scopeKey').innerHTML = LIVE_KEY;
+}
+
+/* ---------- controls ---------- */
+function markGroup(sel, activeEl) {
+  document.querySelectorAll(sel).forEach(b => b.classList.toggle('on', b === activeEl));
+}
+document.querySelectorAll('[data-scene]').forEach(b => b.addEventListener('click', () => {
+  leaveShot();
+  SIM.set({ scene: b.dataset.scene });
+  markGroup('[data-scene]', b);
+}));
+document.querySelectorAll('[data-tog]').forEach(b => b.addEventListener('click', () => {
+  leaveShot();
+  const k = b.dataset.tog;
+  SIM.set({ [k]: SIM.s[k] ? 0 : 1 });
+  b.classList.toggle('on', !!SIM.s[k]);
+}));
+const pttBtn = $('#bPtt');
+pttBtn.addEventListener('pointerdown', () => { SIM.set({ ptt: 1 }); pttBtn.classList.add('on'); });
+addEventListener('pointerup', () => { if (SIM.s.ptt) { SIM.set({ ptt: 0 }); pttBtn.classList.remove('on'); } });
+pttBtn.addEventListener('pointerleave', () => { if (SIM.s.ptt) { SIM.set({ ptt: 0 }); pttBtn.classList.remove('on'); } });
+
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  const v = b.dataset.view;
+  markGroup('[data-view]', b);
+  if (v === 'cup') { openCup(true); return; }
+  if (cupOpen) openCup(false);
+  view = v;
+  applyView();
+  $('#stagelab').textContent = VIEW_LABEL[v] || 'Whole bench';
+  const [p, t] = homeFor(v);
+  tween(camera.position, p, 950); tween(controls.target, t, 950);
+}));
+
+document.querySelectorAll('[data-disp]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.disp;
+  if (k === 'labels') { showLabels = !showLabels; b.classList.toggle('on', showLabels); }
+  if (k === 'allwires') { showAllWires = !showAllWires; b.classList.toggle('on', showAllWires); applyView(); }
+  if (k === 'explode') { exploded = !exploded; b.classList.toggle('on', exploded); applyExploded(); }
+  if (k === 'spin') { orbiting = !orbiting; b.classList.toggle('on', orbiting); }
+}));
+
+$('#logClear').addEventListener('click', () => { SIM.log.length = 0; logStamp = -1; drawLog(); });
+
+function syncControls() {
+  document.querySelectorAll('[data-scene]').forEach(b => b.classList.toggle('on', b.dataset.scene === SIM.s.scene));
+  document.querySelectorAll('[data-tog]').forEach(b => b.classList.toggle('on', !!SIM.s[b.dataset.tog]));
+  pttBtn.classList.toggle('on', !!SIM.s.ptt);
+}
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k === 'e') { openCup(!cupOpen); }
+  else if (k === 'l') document.querySelector('[data-disp="labels"]').click();
+  else if (k === 'w') document.querySelector('[data-disp="allwires"]').click();
+  else if (k === 'x') document.querySelector('[data-disp="explode"]').click();
+  else if (k === 'escape') { if (cupOpen) openCup(false); selected = null; clearHot(); renderInfo(null); }
+});

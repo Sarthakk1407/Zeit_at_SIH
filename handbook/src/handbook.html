@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANVIL System Handbook · Team ZEIT · SIH 2026</title>
+<meta name="description" content="ANVIL: an adaptive noise-cancelling headset that protects a soldier's hearing and cleans the voice on the radio. System handbook for Smart India Hackathon 2026, PS 26052.">
+<style>
+:root{
+  --bg:#ffffff; --panel:#f6f8fb; --ink:#1d2433; --muted:#5b6475; --rule:#e2e7ee;
+  --navy:#1f3864; --gold:#ffd54a;
+  --green:#2e8b3e; --green-f:#ecf7ee; --green-l:#8fcb99;
+  --blue:#1f5fa8;  --blue-f:#eaf1fb;  --blue-l:#93b6e3;
+  --red:#d6412a;   --red-f:#fdefea;   --red-l:#efa58e;
+  --orange:#c7650f;--orange-f:#fef3e6;--orange-l:#f1b36e;
+  --purple:#6b3fb3;--purple-f:#f3eefa;--purple-l:#b89ddc;
+  --teal:#0e7c90;  --teal-f:#e3f3f6;  --teal-l:#7fc3d1;
+  --term:#0c0c0c; --term-ink:#cccccc; --term-bar:#202020; --term-cmd:#f9f1a5;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0e131b; --panel:#151c27; --ink:#e7ecf3; --muted:#9aa6b8; --rule:#263142;
+    --navy:#9db8ee; --gold:#ffd54a;
+    --green:#5fc277; --green-f:#12261a; --green-l:#2f6b40;
+    --blue:#6ea8ef;  --blue-f:#122236;  --blue-l:#2c5488;
+    --red:#f0745c;   --red-f:#2c1612;   --red-l:#7a3528;
+    --orange:#f0a04a;--orange-f:#2b1c0c;--orange-l:#7a5220;
+    --purple:#b396ea;--purple-f:#1e1730;--purple-l:#553e86;
+    --teal:#4fc1d6;  --teal-f:#0d2329;  --teal-l:#22626f;
+    --shadow:none;
+  }
+  .hero-img img,.fig img{background:#fff;border-radius:10px}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--blue)} a:hover{text-decoration-thickness:2px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+code,.mono{font-family:Consolas,"Cascadia Mono","SF Mono",Menlo,monospace;font-size:.92em}
+h1,h2,h3{line-height:1.2;margin:0}
+p{margin:0 0 12px}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- nav ---------- */
+nav.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+nav.top .wrap{display:flex;gap:6px;align-items:center;overflow-x:auto;padding-top:9px;padding-bottom:9px}
+nav.top b{color:var(--navy);margin-right:10px;white-space:nowrap}
+nav.top a{white-space:nowrap;text-decoration:none;color:var(--muted);font-size:14px;padding:4px 10px;border-radius:999px}
+nav.top a:hover{background:var(--panel);color:var(--ink)}
+
+/* ---------- hero ---------- */
+header.hero{padding:44px 0 26px}
+.hero-grid{display:grid;grid-template-columns:1.02fr 1fr;gap:34px;align-items:center}
+.eyebrow{font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.hero h1{font-size:68px;letter-spacing:-.02em;color:var(--navy);margin:8px 0 2px}
+.hero .full{font-size:22px;font-weight:700;color:var(--blue);margin-bottom:14px}
+.hero .lede{font-size:18px;max-width:34em}
+.meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13.5px;color:var(--muted);margin:14px 0 18px}
+.meta b{color:var(--ink)}
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-block;text-decoration:none;font-weight:600;font-size:14.5px;padding:9px 16px;border-radius:10px;
+  border:1.5px solid var(--navy);color:var(--navy)}
+.btn.primary{background:var(--navy);color:var(--bg)}
+.btn:hover{filter:brightness(1.08)}
+.hero-img{border:1px solid var(--rule);border-radius:16px;padding:10px;background:#fff;box-shadow:var(--shadow)}
+.hero-img img{display:block;width:100%;height:auto}
+.hero-img figcaption,.fig figcaption{font-size:13px;color:var(--muted);padding:8px 6px 2px}
+@media (prefers-color-scheme:dark){.hero-img figcaption{color:#5b6475}}
+
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:26px 0 8px}
+.stat{border:1px solid var(--rule);border-radius:14px;padding:14px 16px;background:var(--panel)}
+.stat .v{font-size:27px;font-weight:800;letter-spacing:-.01em}
+.stat .l{font-size:13.5px;font-weight:600}
+.stat .s{font-size:12.5px;color:var(--muted)}
+.stat.g .v{color:var(--green)} .stat.b .v{color:var(--blue)} .stat.p .v{color:var(--purple)}
+.stat.t .v{color:var(--teal)} .stat.r .v{color:var(--red)}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:1px 7px;border-radius:999px;
+  background:var(--green);color:var(--bg);vertical-align:2px;margin-left:6px}
+
+/* ---------- sections ---------- */
+section{padding:34px 0;border-top:1px solid var(--rule)}
+.sec-h{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.sec-n{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  font-weight:800;color:#fff;background:var(--c,var(--navy))}
+@media (prefers-color-scheme:dark){.sec-n{color:#0e131b}}
+.sec-h h2{font-size:25px;color:var(--c,var(--navy));text-transform:uppercase;letter-spacing:.01em}
+.sec-lede{font-size:17.5px;max-width:52em;margin:6px 0 18px}
+.cols{display:grid;gap:16px}
+.c2{grid-template-columns:1fr 1fr} .c3{grid-template-columns:repeat(3,1fr)} .c4{grid-template-columns:repeat(4,1fr)}
+.card{border:1.3px solid var(--l,var(--rule));background:var(--f,var(--panel));border-radius:14px;padding:16px 18px}
+.card h3{font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:var(--c,var(--navy));margin-bottom:8px}
+.card ul{margin:0;padding-left:18px} .card li{margin:4px 0}
+.red{--c:var(--red);--f:var(--red-f);--l:var(--red-l)}
+.blue{--c:var(--blue);--f:var(--blue-f);--l:var(--blue-l)}
+.green{--c:var(--green);--f:var(--green-f);--l:var(--green-l)}
+.orange{--c:var(--orange);--f:var(--orange-f);--l:var(--orange-l)}
+.purple{--c:var(--purple);--f:var(--purple-f);--l:var(--purple-l)}
+.teal{--c:var(--teal);--f:var(--teal-f);--l:var(--teal-l)}
+.big{font-size:30px;font-weight:800;color:var(--c);line-height:1.1}
+.big+b{display:block;margin:2px 0}
+.small{font-size:13.5px;color:var(--muted)}
+.note{background:var(--navy);color:#fff;border-radius:12px;padding:13px 18px;margin-top:16px;font-size:15.5px}
+.note b{color:var(--gold)}
+@media (prefers-color-scheme:dark){.note{background:#16223a;color:#e7ecf3}}
+
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:nowrap}
+td:first-child{font-weight:600}
+.tbl{border:1px solid var(--rule);border-radius:14px;overflow:hidden;background:var(--bg)}
+.tbl table tr:last-child td{border-bottom:0}
+.scroll{overflow-x:auto}
+
+/* ---------- two-lane picture and flows ---------- */
+.lanes{display:grid;grid-template-columns:210px 1fr 190px;gap:14px;align-items:stretch}
+.lanes .col{display:grid;gap:12px}
+.io{border:1.3px solid var(--teal-l);background:var(--teal-f);border-radius:12px;padding:10px 12px;font-size:14px}
+.io b{color:var(--teal);display:block}
+.io.out{border-color:var(--navy);background:var(--navy);color:#fff} .io.out b{color:#fff}
+@media (prefers-color-scheme:dark){.io.out{background:#16223a;color:#e7ecf3;border-color:#3c5a94}.io.out b{color:#e7ecf3}}
+.lane{border:1.5px solid var(--l);background:var(--f);border-radius:14px;padding:14px 16px}
+.lane h3{color:var(--c);font-size:16px;margin-bottom:2px}
+.lane .sub{font-size:13.5px;color:var(--muted);margin-bottom:10px}
+.link{font-size:13.5px;font-weight:700;color:var(--orange);text-align:center;padding:2px 0}
+.flow{display:flex;flex-wrap:wrap;gap:8px 22px;margin:8px 0}
+.node{position:relative;flex:1 1 132px;min-width:128px;background:var(--bg);border:1.4px solid var(--c);border-radius:10px;
+  padding:8px 10px;font-size:13px;line-height:1.35}
+.node b{display:block;font-size:14px}
+.node i{font-style:normal;font-size:10.5px;font-weight:700;color:var(--c);letter-spacing:.04em;float:right;margin-left:6px}
+.node+.node::before{content:"→";position:absolute;left:-18px;top:50%;transform:translateY(-50%);color:var(--c);font-weight:700}
+.node.imp{--c:var(--red);background:var(--red-f)} .node.adp{--c:var(--orange);background:var(--orange-f)}
+.node.ai{background:var(--purple);border-color:var(--purple);color:#fff} .node.ai i{color:#fff}
+.node.end{background:var(--navy);border-color:var(--navy);color:#fff}
+@media (prefers-color-scheme:dark){.node.ai,.node.end{color:#0e131b}.node.ai i{color:#0e131b}}
+.row-l{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:12px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin-top:10px}
+.legend span::before{content:"";display:inline-block;width:14px;height:10px;border-radius:3px;margin-right:6px;
+  border:1.4px solid var(--k);background:var(--kf,transparent);vertical-align:-1px}
+
+/* ---------- figures ---------- */
+.fig{margin:0;border:1px solid var(--rule);border-radius:14px;padding:12px;background:var(--bg)}
+.fig img{display:block;width:100%;height:auto}
+svg text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.bar{display:flex;height:34px;border-radius:8px;overflow:hidden;font-size:12.5px;font-weight:700;color:#fff}
+.bar>div{display:grid;place-items:center;white-space:nowrap;border-right:2px solid var(--bg)}
+.bar>div:last-child{border-right:0}
+.cost{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cost div{border-radius:10px;padding:9px 6px;text-align:center;color:#fff;font-size:13px}
+.cost b{display:block;font-size:17px}
+
+/* ---------- terminal ---------- */
+.terms{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.term{margin:0;border-radius:10px;overflow:hidden;background:var(--term);box-shadow:var(--shadow);border:1px solid #2b2b2b}
+.term .bar-t{display:flex;align-items:center;background:var(--term-bar);height:34px;padding-left:8px;font:12.5px "Segoe UI",system-ui,sans-serif;color:#ddd}
+.term .tab{background:var(--term);align-self:flex-end;height:28px;padding:5px 14px 0;border-radius:7px 7px 0 0}
+.term .ctl{margin-left:auto;letter-spacing:22px;color:#aaa;padding-right:2px}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-ink);font:12.2px/1.42 Consolas,"Cascadia Mono","SF Mono",Menlo,monospace;
+  overflow-x:auto;white-space:pre;tab-size:4}
+.term .c{color:var(--term-cmd)} .term .dim{color:#767676}
+.term figcaption{background:var(--panel);color:var(--ink);border-top:1px solid var(--rule);padding:10px 14px;font-size:13.5px}
+.term figcaption a{white-space:nowrap}
+.term.wide{grid-column:1/-1}
+.shot{font:12.6px/1.5 Consolas,"Cascadia Mono","SF Mono",Menlo,monospace;color:var(--term-ink);padding:10px 14px 14px}
+.shot .hd{color:#fff;padding-bottom:6px}
+.shot .ev{display:grid;grid-template-columns:104px 54px 1fr;gap:0 8px;padding:2px 0}
+.shot .t{color:#767676;text-align:right} .shot .k{font-weight:700}
+.k-A{color:#6fd08a} .k-B{color:#7db7ff} .k-RX{color:#ff8f7a} .k-OUT{color:#f9f1a5} .k-TRIG,.k-PROP{color:#bbb}
+
+footer{border-top:1px solid var(--rule);padding:26px 0 46px;color:var(--muted);font-size:13.5px}
+@media (max-width:900px){
+  .hero-grid,.c2,.c3,.terms{grid-template-columns:1fr}
+  .c4,.stats{grid-template-columns:1fr 1fr} .lanes{grid-template-columns:1fr}
+  .hero h1{font-size:52px} .cost{grid-template-columns:1fr 1fr}
+  .shot .ev{grid-template-columns:86px 44px 1fr}
+}
+@media print{nav.top{display:none} section{break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<nav class="top"><div class="wrap">
+  <b>ANVIL</b>
+  <a href="#problem">Problem</a><a href="#idea">Two lanes</a><a href="#headset">Headset</a>
+  <a href="#lane-a">Lane A</a><a href="#lane-b">Lane B</a><a href="#training">Training</a>
+  <a href="#proof">Proof</a><a href="#shot">One gunshot</a><a href="#ps">PS 26052</a>
+  <a href="#cost">Cost</a><a href="#refs">References</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="hero-grid">
+    <div>
+      <div class="eyebrow">System handbook · Smart India Hackathon 2026 · PS 26052 · DRDO</div>
+      <h1>ANVIL</h1>
+      <div class="full">Adaptive Noise Void with Intelligent Lanes</div>
+      <p class="lede">An adaptive noise-cancelling headset for defence communication. It protects the
+        soldier's hearing in under a millisecond, keeps the surroundings audible, and sends a clean
+        voice over the radio, in gunfire, on embedded hardware.</p>
+      <div class="meta"><span><b>Team</b> ZEIT v.1.0</span><span><b>Team ID</b> 132724</span>
+        <span><b>Category</b> Hardware</span><span><b>Theme</b> Miscellaneous</span></div>
+      <div class="btns">
+        <a class="btn primary" href="zeit-bench-3d.html">Open the 3D bench</a>
+        <a class="btn" href="zeit-audit.html">Design review</a>
+        <a class="btn" href="https://github.com/Sarthakk1407/Zeit_at_SIH">Source on GitHub</a>
+      </div>
+    </div>
+    <figure class="hero-img" style="margin:0">
+      <img src="img/anvil-system.jpg" width="1600" height="941" alt="The ANVIL headset with its right earcup exploded, wired to the ear-lane boards, the audio interface, the Jetson and two radios">
+      <figcaption>The whole system: the headset (right earcup opened), the ear-lane boards, the
+        audio interface and Jetson, and the radio pair. Rendered from the part dimensions.</figcaption>
+    </figure>
+  </div>
+  <div class="stats">
+    <div class="stat g"><div class="v">&lt; 1 ms</div><div class="l">Ear lane</div><div class="s">audio DSP, both ears</div></div>
+    <div class="stat b"><div class="v">70–85 ms</div><div class="l">Voice lane, mouth to radio</div><div class="s">150 ms allowed (ITU-T G.114)</div></div>
+    <div class="stat p"><div class="v">25,109</div><div class="l">Network parameters <span class="tag">MEASURED</span></div><div class="s">three-input GTCRN</div></div>
+    <div class="stat t"><div class="v">0.6 ms</div><div class="l">Compute per 16 ms frame <span class="tag">MEASURED</span></div><div class="s">one laptop CPU core</div></div>
+    <div class="stat r"><div class="v">35 dB</div><div class="l">Protection with no power</div><div class="s">sealed earmuff first</div></div>
+  </div>
+</div></header>
+
+<!-- ================================================================ 1 -->
+<section id="problem" class="red"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">1</div><h2>The problem</h2></div>
+  <p class="sec-lede">A soldier talks on the radio while guns fire nearby. The soldier's ears are being
+    damaged, and the listener at the other end hears the gunfire with every order.</p>
+  <div class="cols c4">
+    <div class="card red"><div class="big">150–180 dBP</div><b>at the ear, from weapons</b><span class="small">The MIL-STD-1474E limit is 140 dBP.</span></div>
+    <div class="card red"><div class="big">22.9%</div><b>of IAF personnel have noise-induced hearing loss</b><span class="small">50.8% after 30+ years of service.</span></div>
+    <div class="card blue"><div class="big">464 ms</div><b>for speech to recover after one shot</b><span class="small">1–2 kHz band, our own recordings. <span class="tag">MEASURED</span></span></div>
+    <div class="card blue"><div class="big">110 dBA</div><b>where consumer ANC stops</b><span class="small">Apple excludes gunfire from its hearing protection.</span></div>
+  </div>
+  <div class="note">Tactical headsets today protect the ear and pass the surroundings through, but the radio
+    still carries the gunfire. <b>ANVIL adapts to the scene and cleans the voice too.</b></div>
+</div></section>
+
+<!-- ================================================================ 2 -->
+<section id="idea" class="blue"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">2</div><h2>The idea: two lanes, split by physics</h2></div>
+  <p class="sec-lede">Sound crosses an earcup in 0.3–0.6 ms, faster than any neural network can run.
+    Radio speech tolerates 150 ms. So the ear and the voice run on different processors, each inside
+    its own time budget, and both adapt.</p>
+  <div class="lanes">
+    <div class="col">
+      <div class="io"><b>Outside mics, L + R</b>the world; overload at 135 dB</div>
+      <div class="io"><b>Inside mics, L + R</b>what still reaches the ear</div>
+      <div class="io"><b>Boom mic</b>the voice, with the noise</div>
+      <div class="io"><b>Throat mic</b>the voice as neck vibration</div>
+      <div class="io"><b>Radio receive</b>the teammate's voice</div>
+    </div>
+    <div class="col">
+      <div class="lane green"><h3>Lane A · the ear</h3>
+        <div class="sub">ADAU1787 audio DSP + STM32 · under 1 ms · never waits for the Jetson</div>
+        Hear-through that lifts quiet sounds and compresses loud ones, a crack guard that ducks both
+        ears before the muzzle blast, hybrid active noise cancelling that re-tunes itself, and
+        limiters that hold everything played into the ear under 82 dB.</div>
+      <div class="link">↑ the scene classifier re-tunes the ear lane · Jetson → UART → STM32 → I²C → DSP</div>
+      <div class="lane blue"><h3>Lane B · the voice</h3>
+        <div class="sub">NVIDIA Jetson Orin Nano Super · TensorRT · 16 ms frames · 70–85 ms mouth to radio</div>
+        A three-input neural network (boom, outside reference, throat) removes the noise from the
+        boom microphone. An impulse detector and repair stage handle the shot itself. The incoming
+        radio voice is cleaned, levelled and capped before it reaches both ears.</div>
+    </div>
+    <div class="col">
+      <div class="io out"><b>Speakers, L + R</b>anti-noise + hear-through + radio voice, 82 dB max</div>
+      <div class="io out"><b>Radio transmit</b>clean voice; push-to-talk keyed by the STM32</div>
+    </div>
+  </div>
+  <div class="tbl scroll" style="margin-top:18px"><table>
+    <tr><th></th><th>Lane A · the ear</th><th>Lane B · the voice</th></tr>
+    <tr><td>Serves</td><td>The wearer's hearing and awareness</td><td>The listener on the radio, and the wearer's understanding of the reply</td></tr>
+    <tr><td>Intelligence</td><td>Classical DSP, steered live by Lane B's scene classifier</td><td>GTCRN neural network plus classical blocks</td></tr>
+    <tr><td>Measured by</td><td>Noise at a dummy ear, peak at the ear against 140 dBP, the 82 dB ceiling</td><td>SNR, STOI, PESQ, SI-SNR, impulse recovery time, words lost per shot, latency</td></tr>
+    <tr><td>If it stops</td><td>The sealed earmuff still protects</td><td>The ear lane carries on with its last setting</td></tr>
+  </table></div>
+</div></section>
+
+<!-- ================================================================ 3 -->
+<section id="headset" class="teal"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">3</div><h2>The headset</h2></div>
+  <p class="sec-lede">A 3M PELTOR Optime III earmuff (35 dB passive) carrying six microphones and two
+    40 mm speakers. Protection is passive first: with no power at all, the sealed cup still protects.</p>
+  <div class="cols c2" style="align-items:start">
+    <figure class="fig"><img src="img/anvil-headset.jpg" width="1100" height="772" alt="The assembled ANVIL headset with boom microphone and throat microphone">
+      <figcaption>The assembled headset. The boom sits on the left, clear of a right-shouldered rifle;
+        a handedness switch moves it without retraining the model.</figcaption></figure>
+    <div class="tbl scroll"><table>
+      <tr><th>Microphone</th><th>Hears</th><th>Feeds</th></tr>
+      <tr><td>Boom, at the mouth</td><td>Voice plus the surrounding noise</td><td>Lane B, input 0</td></tr>
+      <tr><td>Throat</td><td>Voice as neck vibration, almost no airborne noise</td><td>Lane B, input 2</td></tr>
+      <tr><td>Outside right</td><td>The world, with the least voice</td><td>Both lanes: noise reference, ANC, hear-through</td></tr>
+      <tr><td>Outside left</td><td>The world, left side</td><td>Lane A: ANC, hear-through</td></tr>
+      <tr><td>Inside right, inside left</td><td>What still reaches each ear</td><td>Lane A: error signal for the canceller</td></tr>
+    </table></div>
+  </div>
+  <div class="cols c3" style="margin-top:16px">
+    <div class="card teal"><h3>Three walls</h3>The sealed earmuff, an optional foam earplug for live
+      fire, then the electronics, which may only make things quieter.</div>
+    <div class="card teal"><h3>The 82 dB rule</h3>The DSP path and the radio path are each capped at
+      79 dB, so their sum at the speaker never passes 82 dB. The amplifier volume is locked at
+      calibration.</div>
+    <div class="card teal"><h3>One DSP, both ears</h3>The ADAU1787 has four inputs and two outputs,
+      exactly a stereo hybrid-ANC headset. A crack heard on either side acts on both ears.</div>
+  </div>
+</div></section>
+
+<!-- ================================================================ 4 -->
+<section id="lane-a" class="green"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">4</div><h2>Lane A · the ear</h2></div>
+  <p class="sec-lede">Everything that must beat sound to the eardrum runs on the audio DSP. The STM32
+    manages it, adapts the canceller and keys the radio. The small tags match the
+    <a href="zeit-bench-3d.html">3D bench</a>.</p>
+  <div class="lane green">
+    <div class="row-l">Hear-through path (per ear)</div>
+    <div class="flow">
+      <div class="node imp"><i>A1</i><b>Clip flag</b>outside mic near full scale</div>
+      <div class="node imp"><i>A4</i><b>Crack guard</b>both ears down 20–30 dB within microseconds</div>
+      <div class="node"><i>A2</i><b>Band filter</b>150 Hz to 6 kHz: voices, footsteps, vehicles</div>
+      <div class="node"><i>A3</i><b>Level-dependent gain</b>quiet sounds up to +12 dB, loud ones compressed</div>
+      <div class="node"><i>A5</i><b>Limiter</b>hear-through peak cap</div>
+    </div>
+    <div class="row-l">Adaptive cancelling path</div>
+    <div class="flow">
+      <div class="node adp"><i>A9</i><b>Playback removal</b>takes out what we play, so only noise adapts</div>
+      <div class="node adp"><i>A8</i><b>Adaptation</b>filtered-x LMS on the STM32; frozen during a shot</div>
+      <div class="node"><i>A6</i><b>Feed-forward ANC</b>from the outside mic, ahead of the 0.3–0.6 ms leak</div>
+      <div class="node"><i>A7</i><b>Feedback ANC</b>from the inside mic, for the low rumble</div>
+      <div class="node end"><i style="color:#fff">A10 · A11</i><b>Mix + output limiter</b>79 dB, then the speakers</div>
+    </div>
+    <div class="legend"><span style="--k:var(--green)">signal path</span>
+      <span style="--k:var(--red);--kf:var(--red-f)">impulse handling</span>
+      <span style="--k:var(--orange);--kf:var(--orange-f)">adaptation</span></div>
+  </div>
+
+  <h3 style="margin:22px 0 4px;color:var(--green)">Why the crack guard works: the bullet arrives before its own blast</h3>
+  <p class="small" style="font-size:14.5px">A supersonic round outruns the sound of the muzzle. For a shooter 30 m away,
+    the crack reaches the headset 45.2 ms after the shot and the blast at 87.5 ms.</p>
+  <figure class="fig"><svg viewBox="0 0 1000 190" role="img" aria-label="Timeline of one shot: crack at 45.2 ms, blast at 87.5 ms, 42 ms of warning between them">
+    <line x1="60" y1="118" x2="960" y2="118" stroke="var(--rule)" stroke-width="2"/>
+    <g font-size="12" fill="var(--muted)" text-anchor="middle">
+      <g><line x1="60" y1="113" x2="60" y2="123" stroke="var(--muted)"/><text x="60" y="140">0 ms</text></g>
+      <g><line x1="240" y1="113" x2="240" y2="123" stroke="var(--muted)"/><text x="240" y="140">20</text></g>
+      <g><line x1="420" y1="113" x2="420" y2="123" stroke="var(--muted)"/><text x="420" y="140">40</text></g>
+      <g><line x1="600" y1="113" x2="600" y2="123" stroke="var(--muted)"/><text x="600" y="140">60</text></g>
+      <g><line x1="780" y1="113" x2="780" y2="123" stroke="var(--muted)"/><text x="780" y="140">80</text></g>
+      <g><line x1="960" y1="113" x2="960" y2="123" stroke="var(--muted)"/><text x="960" y="140">100 ms</text></g>
+    </g>
+    <rect x="467" y="98" width="380" height="20" fill="var(--orange-f)" stroke="var(--orange)" stroke-width="1.2" rx="4"/>
+    <text x="657" y="113" text-anchor="middle" font-size="13" font-weight="700" fill="var(--orange)">42.3 ms of warning</text>
+    <rect x="467" y="150" width="493" height="14" fill="var(--green-f)" stroke="var(--green)" stroke-width="1.2" rx="4"/>
+    <text x="474" y="182" font-size="12.5" font-weight="600" fill="var(--green)">hear-through ducked in both ears, adaptation frozen (holds about 300 ms)</text>
+    <g font-size="13" font-weight="700">
+      <circle cx="60" cy="118" r="6" fill="var(--ink)"/><text x="60" y="60" text-anchor="start" fill="var(--ink)">Shot fired</text>
+      <line x1="60" y1="66" x2="60" y2="112" stroke="var(--ink)" stroke-dasharray="3 3"/>
+      <circle cx="388" cy="118" r="5" fill="var(--muted)"/><text x="388" y="84" text-anchor="end" fill="var(--muted)">36.5 ms · round passes the head</text>
+      <line x1="388" y1="90" x2="388" y2="112" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      <circle cx="467" cy="118" r="7" fill="var(--red)"/><text x="467" y="36" text-anchor="middle" fill="var(--red)">45.2 ms · crack arrives</text>
+      <line x1="467" y1="42" x2="467" y2="112" stroke="var(--red)" stroke-dasharray="3 3"/>
+      <circle cx="847" cy="118" r="9" fill="var(--red)"/><text x="847" y="60" text-anchor="middle" fill="var(--red)">87.5 ms · muzzle blast</text>
+      <line x1="847" y1="66" x2="847" y2="108" stroke="var(--red)" stroke-dasharray="3 3"/>
+    </g>
+  </svg><figcaption>Shooter at 30 m, round at 822 m/s passing 3 m from the head. The crack guard
+    fires on the crack, so the hear-through is already down when the far louder blast lands.</figcaption></figure>
+</div></section>
+
+<!-- ================================================================ 5 -->
+<section id="lane-b" class="blue"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">5</div><h2>Lane B · the voice</h2></div>
+  <p class="sec-lede">Every 16 ms the Jetson looks at three microphones and keeps only the voice from
+    the boom. The throat microphone tells the network where the words are, even during a blast.</p>
+  <div class="lane blue">
+    <div class="row-l">Impulse branch</div>
+    <div class="flow">
+      <div class="node imp"><i>B2</i><b>Impulse detector</b>peak, kurtosis and high-frequency energy at 48 kHz</div>
+      <div class="node adp"><i>B5</i><b>Scene classifier</b>kurtosis (Gaussian = 3), stationarity, level; sets γ and β live</div>
+      <div class="node imp"><i>B6</i><b>Impulse repair</b>BMRI: an AR model rebuilds the worst γ % of samples</div>
+    </div>
+    <div class="row-l">Outgoing voice</div>
+    <div class="flow">
+      <div class="node"><i>B1</i><b>Capture</b>48 kHz, 16 ms blocks, 3:1 down to 16 kHz</div>
+      <div class="node"><i>B3</i><b>Robust scaling</b>90th percentile or FLOM, never RMS</div>
+      <div class="node"><i>B4</i><b>Spectrum</b>512-point FFT, 129 ERB features</div>
+      <div class="node ai"><i>B7</i><b>GTCRN network</b>3 inputs, 25,109 parameters, causal</div>
+      <div class="node"><i>B8 · B9</i><b>Merge + voice guard</b>the throat envelope keeps every word</div>
+      <div class="node end"><i style="color:#fff">B11</i><b>Resynthesis</b>back to 48 kHz, out to the radio</div>
+    </div>
+    <div class="row-l">Incoming radio voice</div>
+    <div class="flow" style="--c:var(--purple)">
+      <div class="node"><i>R1</i><b>Voice detect</b>ducks the hear-through</div>
+      <div class="node"><i>R2</i><b>Hiss removal</b>static and squelch</div>
+      <div class="node"><i>R3</i><b>Auto gain</b>one level for every call</div>
+      <div class="node"><i>R4</i><b>Speech EQ</b>lift at 1–4 kHz</div>
+      <div class="node end"><i style="color:#fff">R5</i><b>Limiter</b>79 dB, then both ears</div>
+    </div>
+  </div>
+  <div class="cols c2" style="margin-top:16px;align-items:start">
+    <div class="tbl scroll"><table>
+      <tr><th>The network</th><th></th></tr>
+      <tr><td>Architecture</td><td>GTCRN (Rong et al., ICASSP 2024), re-implemented for three inputs</td></tr>
+      <tr><td>Output</td><td>Complex ratio mask on the boom microphone's spectrum</td></tr>
+      <tr><td>Structure</td><td>ERB merge, subband features, grouped temporal convolutions with attention, dual-path grouped GRUs, mirrored decoder</td></tr>
+      <tr><td>Size</td><td class="num">25,109 parameters (24,389 with two inputs, 23,669 with one)</td></tr>
+      <tr><td>Streaming</td><td>Causal, one 16 ms frame at a time with carried state; ONNX, then TensorRT FP16 / INT8</td></tr>
+    </table></div>
+    <div>
+      <div class="card blue"><h3>Why RMS is thrown out</h3>Gunfire is heavy-tailed: it has no finite
+        variance, so an RMS level never settles. On our 44 recorded impulses RMS drifts 18× inside
+        one event; the fractional lower-order moment (FLOM) drifts 5.7×. <span class="tag">MEASURED</span></div>
+      <div class="card blue" style="margin-top:12px"><h3>Where the 150 ms goes</h3>
+        <div class="bar" title="Mouth to radio: about 72 ms of the 150 ms allowed">
+          <div style="width:12%;background:var(--blue)">18</div>
+          <div style="width:21.3%;background:var(--navy)">32 ms window</div>
+          <div style="width:4%;background:var(--green)"></div>
+          <div style="width:10.7%;background:var(--blue)">16</div>
+          <div style="width:52%;background:var(--panel);color:var(--muted)">headroom to 150 ms</div>
+        </div>
+        <div class="small" style="margin-top:6px">Input buffer and resampling 18 ms · STFT window 32 ms ·
+          network compute (green) · output buffer 16 ms. About 72 ms mouth to radio.</div></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================================================================ 6 -->
+<section id="training" class="purple"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">6</div><h2>Training and deployment</h2></div>
+  <p class="sec-lede">The network is trained offline on fresh mixtures every epoch, then shipped to the
+    Jetson as one engine file. One file crosses the boundary between training and the device.</p>
+  <div class="lane purple">
+    <div class="flow">
+      <div class="node"><b>Data</b>11 datasets, about 229,000 clips, 100 GB</div>
+      <div class="node"><b>Mix</b>speech + noise at −15 to +20 dB SNR</div>
+      <div class="node"><b>Augment</b>α-stable bursts, clipping, throat dropout</div>
+      <div class="node"><b>Train</b>PyTorch, three inputs, 150 epochs</div>
+      <div class="node"><b>Export</b>streaming ONNX with parity checks</div>
+      <div class="node end"><b>Deploy</b>TensorRT FP16 / INT8 on the Jetson</div>
+    </div>
+  </div>
+  <div class="cols c3" style="margin-top:16px">
+    <div class="card purple"><h3>Trained on gunfire</h3>α-stable impulsive bursts in 25% of examples,
+      including α below 0.5. Half of all mixtures sit between −15 and 0 dB SNR, the gunfire regime.</div>
+    <div class="card purple"><h3>Trained for the real microphones</h3>Reference-channel clipping in 25%
+      of examples (the outside mic overloads at 135 dB), head shadow, a small voice leak, and
+      per-channel gain.</div>
+    <div class="card purple"><h3>Works without the throat mic</h3>The throat input is zeroed in 30% of
+      examples, so one model runs with or without it. Our own range recordings are held out for
+      testing only.</div>
+  </div>
+</div></section>
+
+<!-- ================================================================ 7 -->
+<section id="proof" class="teal"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">7</div><h2>Proof: measured, not estimated</h2></div>
+  <p class="sec-lede">Everything below is the unedited output of the project's own tools. The raw text of
+    each run is in <a href="proof/"><code>handbook/proof/</code></a>, and every command can be re-run from
+    the repository.</p>
+  <div class="terms">
+    {{TERM|training-selftest.txt|training|python selftest.py|all|The whole voice-lane pipeline runs end to end: data mixing, training, evaluation, ONNX export with parity, streaming STFT, pruning, INT8 quantisation and the Jetson resampler. <b>13 of 13 checks pass.</b>}}
+    {{TERM|latency-benchmark.txt|training|python bench_latency.py|all|The three-input network, exported and timed one frame at a time: <b>0.6 ms per 16 ms frame</b> on one laptop CPU core, 0 of 2,000 frames late, and the exported model matches the trained one to within 5e-8. Run of 28 Sep 2026.}}
+    {{TERM.wide|capture-validate.txt|data_collection|python validate.py good_shots.wav --expect-events 5|all|The range-day gate. Every take is checked for format, clipping, bandwidth, dropouts, wind and complete impulses before it is accepted; shown here on the toolkit's reference test take. The toolkit's own self-test passes every check (<a href="proof/capture-selftest.txt">proof/capture-selftest.txt</a>).}}
+    {{TERM.wide|normalisation.txt|synthetic_generator/experiments|python p1_normalisation.py|2-10,26-36|Why RMS is invalid for impulsive noise, measured. For Gaussian noise every estimator settles as the window grows. For heavy-tailed noise (α = 0.5) RMS never settles, while the 90th percentile and FLOM (p = 0.2) do. Excerpt.}}
+  </div>
+
+  <div class="cols c2" style="margin-top:18px;align-items:start">
+    <figure class="fig">
+      <svg viewBox="0 0 520 300" role="img" aria-label="Impulse recovery time by frequency band, mean of 34 recorded impulses; the 1 to 2 kilohertz band is slowest at 464 milliseconds">
+        <text x="8" y="20" font-size="15" font-weight="700" fill="var(--ink)">Speech takes longest to recover where it matters most</text>
+        <text x="8" y="39" font-size="12.5" fill="var(--muted)">Impulse recovery time by band, ms · mean of 34 recorded impulses</text>
+        <g stroke="var(--rule)"><line x1="40" y1="250" x2="512" y2="250"/><line x1="40" y1="198" x2="512" y2="198"/>
+          <line x1="40" y1="146" x2="512" y2="146"/><line x1="40" y1="94" x2="512" y2="94"/></g>
+        <g font-size="11.5" fill="var(--muted)" text-anchor="end"><text x="34" y="254">0</text><text x="34" y="202">150</text>
+          <text x="34" y="150">300</text><text x="34" y="98">450</text></g>
+        {{IRTBARS}}
+      </svg>
+      <figcaption>Measured on our own range recordings with <code>synthetic_generator/metrics/irt.py</code>.
+        A score averaged over ten seconds cannot see a 464 ms hole in the 1–2 kHz band, which is why
+        ANVIL reports recovery time and words lost per shot beside SNR, STOI and PESQ.</figcaption>
+    </figure>
+    <figure class="fig"><img src="img/range-trip.jpg" width="1600" height="395" alt="Three photographs from the team's range recording session">
+      <figcaption>Our own field data. Range trip, 7 September 2026: 15 takes, 213 events, 44 true
+        impulses recorded at 48 kHz / 24-bit. These recordings are the test reference and are never
+        used for training.</figcaption></figure>
+  </div>
+</div></section>
+
+<!-- ================================================================ 8 -->
+<section id="shot" class="red"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">8</div><h2>One gunshot, through both lanes</h2></div>
+  <p class="sec-lede">The <a href="zeit-bench-3d.html">3D bench</a> runs both lanes as real signal-processing
+    code at 16 kHz. This is its log for one shot at 30 m: every figure is computed by the simulation,
+    none is typed in.</p>
+  <figure class="term wide">
+    <div class="bar-t"><span class="tab">node gunshot_run.mjs</span><span class="ctl">–▢✕</span></div>
+    {{SHOTLOG}}
+    <figcaption>Simulation, seeded and repeatable: <a href="proof/gunshot-run.txt">proof/gunshot-run.txt</a>,
+      produced by <a href="proof/gunshot_run.mjs">gunshot_run.mjs</a> from the bench's own source. The
+      canceller figure assumes the reference microphone hears exactly what reaches the cup.</figcaption>
+  </figure>
+</div></section>
+
+<!-- ================================================================ 9 -->
+<section id="ps" class="green"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">9</div><h2>Meeting problem statement 26052</h2></div>
+  <div class="tbl scroll"><table>
+    <tr><th>The problem statement asks for</th><th>How ANVIL answers it</th></tr>
+    <tr><td>Stationary noise (engines, rotors)</td><td>Hybrid adaptive cancelling at the ear; the neural mask on the voice</td></tr>
+    <tr><td>Non-stationary noise (wind, vehicles, babble)</td><td>The neural network with the live scene classifier</td></tr>
+    <tr><td>Impulsive noise (gunfire, blasts)</td><td>Passive earmuff, crack guard, impulse detection and repair, a model trained on α-stable bursts</td></tr>
+    <tr><td>Adaptive noise cancellation</td><td>Filtered-x LMS re-tunes the canceller every few milliseconds; the scene classifier re-tunes both lanes</td></tr>
+    <tr><td>High speech intelligibility (SNR &gt; 15 dB, STOI &gt; 0.85, PESQ &gt; 2.5)</td><td>Scored per input-SNR bucket by <code>evaluate.py</code>, with impulse recovery time and words lost per shot beside them</td></tr>
+    <tr><td>Real time on embedded hardware</td><td>Under 1 ms on the ADAU1787; 70–85 ms mouth to radio on the Jetson Orin Nano Super</td></tr>
+    <tr><td>ONNX / TensorRT</td><td>PyTorch → streaming ONNX (parity checked) → TensorRT FP16 / INT8</td></tr>
+    <tr><td>Primary + reference microphones, headphones, communication unit</td><td>Six microphones, two speakers, and a PMR446 radio pair with isolated audio and push-to-talk</td></tr>
+  </table></div>
+</div></section>
+
+<!-- ================================================================ 10 -->
+<section id="cost" class="orange"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">10</div><h2>Fail-safe behaviour and cost</h2></div>
+  <div class="cols c2" style="align-items:start">
+    <div class="tbl scroll"><table>
+      <tr><th>If this fails</th><th>The wearer still gets</th></tr>
+      <tr><td>Battery</td><td>Passive 35 dB protection</td></tr>
+      <tr><td>Jetson</td><td>The ear lane, with its last setting; crack guard and limiters work</td></tr>
+      <tr><td>Audio DSP</td><td>Passive protection, and the radio voice through the amplifier</td></tr>
+      <tr><td>Throat microphone</td><td>Unchanged hearing; the model continues on two inputs</td></tr>
+      <tr><td>An inside microphone</td><td>Hear-through in that ear; cancelling pauses there</td></tr>
+    </table></div>
+    <div class="card orange">
+      <h3>Prototype cost: ₹1,26,250 including GST</h3>
+      <div class="cost">
+        <div style="background:#1f5fa8"><b>₹55,000</b>Voice lane</div>
+        <div style="background:#2e8b3e"><b>₹37,300</b>Ear lane</div>
+        <div style="background:#c7650f"><b>₹19,550</b>Headset</div>
+        <div style="background:#6b3fb3"><b>₹8,900</b>Radio link</div>
+        <div style="background:#475569"><b>₹5,500</b>Test kit</div>
+      </div>
+      <p class="small" style="margin:10px 0 0">Every part is priced from Indian listings. The fielded unit
+        shrinks the ear lane to one PCB inside the earcup and the voice lane to one Jetson module on a
+        carrier. Push-to-talk, not voice activation: gunfire can never key the radio.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================================================================ 11 -->
+<section id="refs"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">11</div><h2>References and links</h2></div>
+  <div class="cols c2" style="align-items:start">
+    <div class="card"><h3>Sources</h3><ul class="small" style="font-size:14px;color:var(--ink)">
+      <li>MIL-STD-1474E, noise limits · ITU-T G.114, one-way delay · EN 352, hearing protectors</li>
+      <li>Widrow et al., Adaptive Noise Cancelling, Proc. IEEE, 1975</li>
+      <li>Rong et al., GTCRN, ICASSP 2024</li>
+      <li>Ruhland et al., Binary Mask Residual Interpolation, TASLP 2015</li>
+      <li>Yuan, Li and Kuruoglu, α-stable training noise, 2023</li>
+      <li>Shao and Nikias, fractional lower-order moments, Proc. IEEE, 1993</li>
+      <li>NIHL in Indian Air Force personnel, Med J Armed Forces India, 2009</li>
+      <li>Apple, Hearing Protection: gunfire and sound above 110 dBA excluded</li>
+      <li>3M PELTOR ComTac VIII, Infineon IM73A135, Analog Devices ADAU1787 datasheets</li>
+    </ul></div>
+    <div class="card"><h3>In this repository</h3><ul style="font-size:14.5px">
+      <li><a href="zeit-bench-3d.html">3D bench</a>: every part at datasheet size, both lanes running live</li>
+      <li><a href="zeit-audit.html">Design review</a>: the team's audit of its own earlier design</li>
+      <li><a href="https://github.com/Sarthakk1407/Zeit_at_SIH/blob/main/docs/01-system/architecture.md">architecture.md</a>: the locked architecture, step by step</li>
+      <li><a href="https://github.com/Sarthakk1407/Zeit_at_SIH/blob/main/synthetic_generator/HARDWARE.md">HARDWARE.md</a>: parts, wiring and the bill of materials</li>
+      <li><a href="https://github.com/Sarthakk1407/Zeit_at_SIH/tree/main/training">training/</a>: the network, training, export and the Jetson runtime</li>
+      <li><a href="https://github.com/Sarthakk1407/Zeit_at_SIH/tree/main/data_collection">data_collection/</a>: the range recording toolkit</li>
+    </ul></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">ANVIL · Team ZEIT v.1.0 · Smart India Hackathon 2026 · Problem Statement 26052 (DRDO).
+  Photographs and renders are the team's own. Built {{DATE}} from <code>handbook/src/handbook.html</code>.</div></footer>
+</body>
+</html>

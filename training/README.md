@@ -1,8 +1,8 @@
 # training/
 
 The Lane B model: **train in PyTorch → export ONNX → run with TensorRT on the
-Jetson.** One trained network (GTCRN, dual microphone); everything else in the
-11-block chain is hand-written code in the C++ engine.
+Jetson.** One trained network (GTCRN, three inputs: boom, reference, throat);
+everything else in the chain is hand-written code.
 
 ```
 PyTorch  ──train.py──►  best.pt  ──export_onnx.py──►  gtcrn_stream.onnx
@@ -18,31 +18,37 @@ audio in about a minute on CPU and must print `ALL CHECKS PASSED`.
 
 | | |
 |---|---|
-| Network | GTCRN (Rong et al., ICASSP 2024), re-implemented, with Mic 2 added as input channels |
-| Parameters | **24,389** dual-mic · **23,669** single-mic (the paper reports 23.7 K — this matches) |
-| Input | Complex STFT of Mic 1 **and** Mic 2: magnitude, real, imaginary |
+| Network | GTCRN (Rong et al., ICASSP 2024), re-implemented, with the reference and throat mics added as input channels |
+| Parameters | **25,109** three inputs (final) · **24,389** two · **23,669** one (the paper reports 23.7 K — this matches) |
+| Input | Complex STFT of the boom, reference and throat mics: magnitude, real, imaginary |
 | Output | A complex ratio mask applied to **Mic 1's noisy spectrum** (H-GTCRN's finding) |
 | Structure | ERB band merging (65 low bins kept, 192 high bins → 64 bands), subband feature extraction, grouped temporal convolutions with attention, dual-path grouped GRUs (across frequency and across time) |
 | Audio | **16 kHz, 32 ms window, 16 ms hop** — GTCRN's native settings |
 | Latency | 32 ms algorithmic + ~2 ms resampling + audio buffers. Well inside the ~150 ms one-way delay voice links tolerate |
 | Causal | Yes. Every time-direction layer looks only backwards, so the model runs frame by frame |
 
-> **This resolves the rate conflict** noted in `docs/01-system/architecture.md`
-> §7 and `synthetic_generator/MODEL_VALUES.md` §6: the model uses GTCRN's
-> published 16 kHz / 32 ms / 16 ms settings rather than 48 kHz / 20 ms /
-> 10 ms, so its band layout and parameter count stay valid. The docs' 25.3 ms
-> Lane B figure needs updating to match.
+> These settings are the locked architecture (`docs/01-system/architecture.md`
+> §6): GTCRN's native 16 kHz / 32 ms / 16 ms, so its band layout and published
+> size stay valid. The model takes **3 inputs** in this order: 0 = boom mic,
+> 1 = reference mic, 2 = throat mic — **25,109 parameters** (MEASURED; streaming
+> and ONNX parity verified; full self-test passes with 3 inputs).
 
 ## The data — mixed fresh, never stored
 
-Your corpora are single-microphone, but the model needs two. `zeit/data.py`
+Your corpora are single-microphone, but the model needs three. `zeit/data.py`
 builds every training example on the fly:
 
 ```
-Mic 1  = speech                            + g · noise_at_Mic1
-Mic 2  = tiny speech leak (−45…−25 dB)     + g · noise_at_Mic2
-target = clean speech
+input 0 (boom)      = speech                                   + g · noise_at_Mic1
+input 1 (reference) = tiny speech leak (−45…−25 dB)            + g · noise_at_Mic2
+input 2 (throat)    = speech low-passed at 1.5–3 kHz           + a small noise leak (−40…−25 dB)
+                      — or all zeros 30 % of the time (throat dropout)
+target              = clean speech
 ```
+
+The throat channel is **simulated** until paired throat/air recordings (TAPS,
+Vibravox) are downloaded and indexed; then real pairs replace the simulation
+for the utterances they cover.
 
 - **noise_at_Mic2** is the same noise reaching a point ~20 cm away: two channels
   of a real multichannel room response when one is available, otherwise a
@@ -126,7 +132,7 @@ Anything can be overridden without editing the file:
 
 ```bash
 python train.py configs/base.yaml train.batch_size=16 train.num_workers=4
-python train.py configs/base.yaml --resume runs/gtcrn_dualmic-XXXX/last.pt
+python train.py configs/base.yaml --resume runs/gtcrn_3mic-XXXX/last.pt
 ```
 
 Training stops early when validation SI-SNR has not improved for 20 epochs.
@@ -134,7 +140,7 @@ Training stops early when validation SI-SNR has not improved for 20 epochs.
 ### 4. Evaluate
 
 ```bash
-python evaluate.py runs/gtcrn_dualmic-XXXX/best.pt
+python evaluate.py runs/gtcrn_3mic-XXXX/best.pt
 ```
 
 Report the `by_snr.csv` curves, not a single average. "SNR > 15 dB" is reported
@@ -143,21 +149,21 @@ both ways — output SNR and improvement — because the PS does not say which.
 ### 5. (Optional) prune and fine-tune
 
 ```bash
-python prune.py runs/gtcrn_dualmic-XXXX/best.pt --amount 0.3
-python train.py configs/base.yaml train.epochs=30 train.lr=2e-4 --init runs/gtcrn_dualmic-XXXX/pruned_30.pt
+python prune.py runs/gtcrn_3mic-XXXX/best.pt --amount 0.3
+python train.py configs/base.yaml train.epochs=30 train.lr=2e-4 --init runs/gtcrn_3mic-XXXX/pruned_30.pt
 ```
 
 ### 6. Export to ONNX
 
 ```bash
-python export_onnx.py runs/gtcrn_dualmic-XXXX/best.pt
+python export_onnx.py runs/gtcrn_3mic-XXXX/best.pt
 ```
 
 The streaming model's inputs and outputs:
 
 | Name | Shape | Meaning |
 |---|---|---|
-| `frame` | (1, 2, 257, 1, 2) | One noisy STFT frame, both mics |
+| `frame` | (1, 3, 257, 1, 2) | One noisy STFT frame, three inputs |
 | `conv_cache` | (1, 6, 16, 10, 33) | Past frames the causal convolutions need |
 | `tra_cache` | (6, 1, 16) | Attention GRU states |
 | `inter_cache` | (4, 33, 8) | Time-direction GRU states |
@@ -169,7 +175,7 @@ The streaming model's inputs and outputs:
 Put a few dozen real 2-channel noisy WAVs in a folder:
 
 ```bash
-python quantize_onnx.py runs/gtcrn_dualmic-XXXX/gtcrn_stream.onnx --calib-dir calib_wavs/
+python quantize_onnx.py runs/gtcrn_3mic-XXXX/gtcrn_stream.onnx --calib-dir calib_wavs/
 ```
 
 Compare against FP32 with `enhance.py` and your ears before trusting it. The
@@ -189,15 +195,20 @@ python3 realtime.py --onnx ../gtcrn_stream.onnx --list-devices
 python3 realtime.py --onnx ../gtcrn_stream.onnx --device "UMC404HD" --trt-fp16
 ```
 
-Mic 1 on interface input 1, Mic 2 on input 2 (change with `--in-ch`). Press
+Boom on interface input 1, reference on input 2, throat on input 3 (change with `--in-ch`); a 2-input model uses the first two. Press
 **ENTER** to switch the model on and off. On exit it prints mean, p99 and max
 frame time — quote the p99, not the mean.
 
 ## What is not here yet
 
-- **Blocks 2, 5, 6, 8, 9, 10** (Aux-IVA, kurtosis classifier, BMRI, deep
-  filtering, voice guard, residual LMS) — these are the C++ engine. Deep
-  filtering will later become a second output head on this same network.
+- **Real throat-mic pairs**: TAPS / Vibravox are not indexed yet; the throat
+  channel is simulated. Compare simulated and real throat spectra before the
+  full run.
+- **Robust normalisation (B3)**: neither training nor the runtime applies it
+  yet, so the two are consistent; add it to both at the same time.
+- **Blocks B2, B3, B5, B6, B8, B9, B10 and the radio receive chain R1–R5** —
+  hand-written parts of the Jetson engine. Aux-IVA is no longer in the
+  architecture.
 - **Structured pruning** — `prune.py` is unstructured; zeros do not cut
   TensorRT latency by themselves.
 - **DNSMOS** — add Microsoft's DNSMOS ONNX model to `zeit/metrics.py` so

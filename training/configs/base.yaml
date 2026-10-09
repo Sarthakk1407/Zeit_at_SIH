@@ -1,8 +1,8 @@
-# ZEIT — GTCRN dual-mic, the main training config.
+# ZEIT — GTCRN, 3 inputs (boom, reference, throat): the main training config.
 # Override anything from the command line:  python train.py configs/base.yaml train.batch_size=16
 
 run:
-  name: gtcrn_dualmic
+  name: gtcrn_3mic
   out_dir: runs
   seed: 1234
 
@@ -11,7 +11,7 @@ audio:
   segment_s: 4.0            # 32 ms window / 16 ms hop is fixed in zeit/audio.py
 
 model:
-  mics: 2                   # 2 = Mic 1 + Mic 2 reference. 1 = classic single-channel GTCRN
+  mics: 3                   # 0 = boom (Mic 1), 1 = reference (Mic 2R/2L), 2 = throat (Mic 4). 1 = classic GTCRN
 
 data:
   # Folder names are the ones on the ZEIT drive (synthetic_generator/STORAGE.md).
@@ -60,6 +60,10 @@ mix:
   mic2_delay_ms: [-0.6, 0.6]       # ~20 cm between boom and outer earcup
   head_shadow_db: [-10, 0]
   speech_leak_db: [-45, -25]       # Mic 2 must barely hear the voice
+  throat_dropout: 0.3              # input 2 zeroed this often: model works with or without the throat mic
+  throat_lowpass_hz: [1500, 3000]  # body conduction loses the highs (simulated until TAPS / Vibravox pairs are indexed)
+  throat_noise_leak_db: [-40, -25] # airborne noise reaching the throat mic, relative to Mic 1
+  throat_gain_db: [-6, 6]
   rir_prob: 0.5
   clip_prob: 0.25
   clip_over_db: [0, 12]

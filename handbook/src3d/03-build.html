@@ -1,0 +1,574 @@
+
+/* ============================================================
+   MATERIALS, PRIMITIVES, PART BUILDERS
+   ============================================================ */
+
+const matCache = new Map();
+function M(color, rough = .55, metal = 0, extra = {}) {
+  const key = color + '|' + rough + '|' + metal + '|' + JSON.stringify(extra);
+  if (matCache.has(key)) return matCache.get(key);
+  const m = new THREE.MeshStandardMaterial(Object.assign({ color, roughness: rough, metalness: metal }, extra));
+  matCache.set(key, m);
+  return m;
+}
+const MAT = {
+  gold   : () => M(0xd8b56a, .32, .95),
+  silver : () => M(0xc9ced6, .3, .92),
+  darkMet: () => M(0x3a3f46, .42, .85),
+  black  : () => M(0x14161a, .6, .25),
+  plastic: () => M(0x22252b, .72, .05),
+  white  : () => M(0xe9ecf1, .68, .02),
+  foam   : () => M(0x2a2d33, .96, 0),
+  copper : () => M(0xb87333, .38, .9),
+  glass  : () => M(0x9fd8ff, .12, .1, { transparent: true, opacity: .26 }),
+  led    : (c) => M(0x14161a, .5, 0, { emissive: c, emissiveIntensity: .5 }),
+};
+
+function G(x = 0, y = 0, z = 0) { const g = new THREE.Group(); g.position.set(x, y, z); return g; }
+function add(parent, child, x = 0, y = 0, z = 0) { child.position.set(x, y, z); parent.add(child); return child; }
+
+function box(w, h, d, mat, r = 0) {
+  const g = r > 0 ? new RoundedBoxGeometry(w, h, d, 2, Math.min(r, Math.min(w, h, d) / 2.05))
+                  : new THREE.BoxGeometry(w, h, d);
+  const m = new THREE.Mesh(g, mat);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function cyl(rt, rb, h, mat, seg = 24) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function sphere(r, mat, seg = 20) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, seg * .7 | 0), mat);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+
+/* ---------- printed-circuit board with drawn silkscreen ---------- */
+const texCache = new Map();
+function pcbTexture(w, d, base, draw, key) {
+  if (texCache.has(key)) return texCache.get(key);
+  const S = 5, c = document.createElement('canvas');
+  c.width = Math.max(32, Math.round(w * S)); c.height = Math.max(32, Math.round(d * S));
+  const x = c.getContext('2d');
+  x.fillStyle = base; x.fillRect(0, 0, c.width, c.height);
+  // subtle copper-pour mottle
+  x.globalAlpha = .06;
+  for (let i = 0; i < 160; i++) {
+    x.fillStyle = i % 2 ? '#ffffff' : '#000000';
+    x.fillRect(Math.random() * c.width, Math.random() * c.height, Math.random() * 40 + 6, Math.random() * 12 + 2);
+  }
+  x.globalAlpha = 1;
+  const api = {
+    ctx: x, S,
+    rect(mx, my, mw, mh, col = 'rgba(255,255,255,.72)', fill = false) {
+      x.strokeStyle = col; x.fillStyle = col; x.lineWidth = 1.2;
+      const a = [mx * S, my * S, mw * S, mh * S];
+      fill ? x.fillRect(...a) : x.strokeRect(...a);
+    },
+    text(mx, my, s, size = 3.2, col = 'rgba(255,255,255,.8)', align = 'left') {
+      x.fillStyle = col; x.textAlign = align; x.textBaseline = 'middle';
+      x.font = `600 ${size * S}px ui-monospace, Menlo, monospace`;
+      x.fillText(s, mx * S, my * S);
+    },
+    pads(mx, my, n, pitch = 2.54, r = .8, col = '#d8b56a') {
+      x.fillStyle = col;
+      for (let i = 0; i < n; i++) {
+        x.beginPath(); x.arc((mx + i * pitch) * S, my * S, r * S, 0, 7); x.fill();
+      }
+    },
+  };
+  draw(api);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  texCache.set(key, t);
+  return t;
+}
+function board(w, d, h, baseHex, baseCss, draw, key) {
+  const side = M(baseHex, .62, .05);
+  const top = new THREE.MeshStandardMaterial({ map: pcbTexture(w, d, baseCss, draw, key), roughness: .58, metalness: .08 });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [side, side, top, side, side, side]);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+
+/* ---------- connectors and small parts ---------- */
+function header(cols, rows, mat = MAT.black()) {
+  const g = G(), p = 2.54, w = cols * p, d = rows * p;
+  add(g, box(w, 2.4, d, mat), 0, 1.2, 0);
+  const pin = new THREE.InstancedMesh(new THREE.BoxGeometry(.64, 6, .64), MAT.gold(), cols * rows);
+  pin.castShadow = true;
+  const o = new THREE.Object3D(); let i = 0;
+  for (let cx = 0; cx < cols; cx++) for (let cz = 0; cz < rows; cz++) {
+    o.position.set(-w / 2 + p / 2 + cx * p, 3.6, -d / 2 + p / 2 + cz * p);
+    o.updateMatrix(); pin.setMatrixAt(i++, o.matrix);
+  }
+  g.add(pin);
+  return g;
+}
+function usbA(stack = 1) {
+  const g = G();
+  for (let i = 0; i < stack; i++) {
+    const s = add(g, box(13.2, 6.2, 16, MAT.silver()), 0, 3.4 + i * 7, 0);
+    add(g, box(11.6, 2.4, 1.2, M(0x1c6fd0, .6, .1)), 0, 3.4 + i * 7, 8.2);
+  }
+  return g;
+}
+function usbC() { const g = G(); add(g, box(9.2, 3.4, 7.4, MAT.silver()), 0, 1.9, 0); return g; }
+function microUSB() { const g = G(); add(g, box(8, 3, 5.6, MAT.silver()), 0, 1.7, 0); return g; }
+function rj45() {
+  const g = G();
+  add(g, box(16, 13.5, 21, MAT.silver()), 0, 6.9, 0);
+  add(g, box(12, 9, 1.4, MAT.black()), 0, 6.4, 10.6);
+  return g;
+}
+function barrel() { const g = G(); add(g, cyl(4.2, 4.2, 11, MAT.black(), 16).rotateX(Math.PI / 2), 0, 4.4, 0); return g; }
+function trsJack(r = 4.6, col) {
+  const g = G();
+  const j = cyl(r, r, 9, col || MAT.darkMet(), 20); j.rotation.x = Math.PI / 2;
+  add(g, j, 0, r, 0);
+  add(g, cyl(r * .45, r * .45, 1.2, MAT.black(), 16).rotateX(Math.PI / 2), 0, r, 4.8);
+  return g;
+}
+function comboJack() {
+  const g = G();
+  add(g, cyl(11.5, 11.5, 10, MAT.silver(), 24).rotateX(Math.PI / 2), 0, 11.5, 0);
+  add(g, cyl(9.2, 9.2, 3, MAT.black(), 24).rotateX(Math.PI / 2), 0, 11.5, 4.2);
+  add(g, cyl(4.4, 4.4, 2, MAT.darkMet(), 18).rotateX(Math.PI / 2), 0, 11.5, 5.4);
+  return g;
+}
+function gx16(pins = 8) {
+  const g = G();
+  add(g, cyl(8, 8, 14, MAT.darkMet(), 22).rotateZ(Math.PI / 2), 0, 8, 0);
+  add(g, cyl(7, 7, 3, MAT.black(), 22).rotateZ(Math.PI / 2), 7, 8, 0);
+  const pin = new THREE.InstancedMesh(new THREE.CylinderGeometry(.55, .55, 3, 8), MAT.gold(), pins);
+  const o = new THREE.Object3D();
+  for (let i = 0; i < pins; i++) {
+    const a = i / pins * Math.PI * 2;
+    o.position.set(8.4, 8 + Math.sin(a) * 3.6, Math.cos(a) * 3.6);
+    o.rotation.z = Math.PI / 2; o.updateMatrix(); pin.setMatrixAt(i, o.matrix);
+  }
+  g.add(pin);
+  return g;
+}
+function ic(w, d, label, h = 1.1) {
+  const g = G();
+  add(g, box(w, h, d, M(0x0f1013, .48, .3), .2), 0, h / 2, 0);
+  const n = Math.max(2, Math.round(d / 1.27));
+  for (const s of [-1, 1]) {
+    const pins = new THREE.InstancedMesh(new THREE.BoxGeometry(1.1, .3, .45), MAT.silver(), n);
+    const o = new THREE.Object3D();
+    for (let i = 0; i < n; i++) {
+      o.position.set(s * (w / 2 + .5), .3, -d / 2 + .6 + i * (d - 1.2) / (n - 1));
+      o.updateMatrix(); pins.setMatrixAt(i, o.matrix);
+    }
+    g.add(pins);
+  }
+  if (label) g.userData.label = label;
+  return g;
+}
+function eCap(r = 3, h = 7) {
+  const g = G();
+  add(g, cyl(r, r, h, M(0x1b2a4a, .5, .35), 16), 0, h / 2, 0);
+  add(g, cyl(r * .95, r * .95, .6, M(0xc9ced6, .4, .8), 16), 0, h - .2, 0);
+  return g;
+}
+function smd(g, n, w, d, col = 0x2b2f36) {
+  const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(2, .7, 1.2), M(col, .55, .2), n);
+  const o = new THREE.Object3D();
+  for (let i = 0; i < n; i++) {
+    o.position.set((Math.random() - .5) * w, 2, (Math.random() - .5) * d);
+    o.rotation.y = Math.random() < .5 ? 0 : Math.PI / 2;
+    o.updateMatrix(); inst.setMatrixAt(i, o.matrix);
+  }
+  g.add(inst);
+}
+function knob(r = 7, h = 12, col = 0xb3202c) {
+  const g = G();
+  add(g, cyl(r * .9, r, h, M(col, .48, .1), 20), 0, 0, 0);
+  add(g, box(1.6, h + .2, r * 1.5, MAT.white()), 0, 0, r * .45);
+  return g;
+}
+function ledMesh(color, r = 1.4) { return sphere(r, MAT.led(color), 10); }
+
+/* ---------- cable helper used by part builders (short pigtails) ---------- */
+function pigtail(points, r = 1.6, color = 0x1b1d21) {
+  const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(8, points.length * 8), r, 8, false), M(color, .82, .02));
+  m.castShadow = true;
+  return m;
+}
+
+/* ============================================================
+   BUILDERS — one per part type
+   ============================================================ */
+const BUILDERS = {};
+
+/* ---------------- mannequin head + stand ---------------- */
+BUILDERS.head = () => {
+  const g = G(), skin = M(0x7e7a73, .95, .01);
+  add(g, cyl(58, 68, 12, MAT.darkMet(), 28), 0, 6, 0);              // base plate
+  add(g, cyl(22, 26, 108, MAT.silver(), 20), 0, 66, 0);             // post
+  const neck = add(g, cyl(34, 40, 60, skin, 24), 0, 148, 0);
+  neck.scale.z = .86;
+  const head = add(g, sphere(84, skin, 28), 0, 246, 4);
+  head.scale.set(.84, 1.08, .94);
+  const jaw = add(g, sphere(52, skin, 20), 0, 196, 24); jaw.scale.set(.82, .72, .9);
+  add(g, box(16, 26, 16, skin, 6), 0, 232, 74);                     // nose
+  for (const s of [-1, 1]) {                                        // ears
+    const e = add(g, sphere(16, skin, 14), s * 70, 244, 6);
+    e.scale.set(.42, 1.15, .78);
+  }
+  // in-ear measurement microphone (the part of H22 that matters)
+  const mic = add(g, cyl(3.2, 3.2, 9, MAT.silver(), 12), 70, 244, 6);
+  mic.rotation.z = Math.PI / 2;
+  g.add(pigtail([[72, 242, 6], [90, 200, 40], [96, 60, 120], [90, 6, 180]], 1.4, 0x2b2f36));
+  return g;
+};
+
+/* ---------------- earmuff: shells, cushions, headband ---------------- */
+const CUP_X = 88, CUP_Y = 250;
+BUILDERS.muff = (part, ctx) => {
+  const g = G(), shell = M(0x1f2b3a, .52, .08), trim = M(0xe0b23a, .5, .1);
+  for (const s of [-1, 1]) {
+    const cup = G(s * CUP_X, CUP_Y, 4);
+    const closed = G();
+    add(closed, box(34, 104, 80, shell, 14), s * 8, 0, 0);
+    add(closed, box(3, 74, 54, trim, 2), s * 25.5, 0, 0);           // brand plate
+    cup.add(closed);
+    if (s > 0) {
+      // right cup can be drawn as an open shell so the inside is visible
+      const geo = new THREE.LatheGeometry(
+        [[0, 0], [30, 0], [42, 6], [46, 20], [46, 44], [40, 52]].map(p => new THREE.Vector2(p[0], p[1])),
+        36, 0, Math.PI * 1.32);
+      const lathe = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x1f2b3a, roughness: .52, metalness: .08, side: THREE.DoubleSide }));
+      lathe.rotation.z = -Math.PI / 2; lathe.rotation.y = -0.6;
+      lathe.scale.set(1.5, 1, 1.15);
+      lathe.castShadow = true;
+      cup.add(lathe);
+      g.userData.cutShell = lathe;
+      g.userData.closedShell = closed;
+    }
+    const cush = add(cup, new THREE.Mesh(new THREE.TorusGeometry(40, 11, 12, 30), M(0x0f1216, .92, 0)), -s * 12, 0, 0);
+    cush.rotation.y = Math.PI / 2; cush.scale.set(1, 1.18, 1); cush.castShadow = true;
+    const arm = add(cup, box(7, 66, 5, MAT.silver(), 2), s * 2, 52, -26);
+    g.add(cup);
+  }
+  // headband over the top
+  const band = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-CUP_X, CUP_Y + 78, -22), new THREE.Vector3(-64, 352, -18),
+    new THREE.Vector3(0, 372, -14), new THREE.Vector3(64, 352, -18),
+    new THREE.Vector3(CUP_X, CUP_Y + 78, -22)]), 40, 7, 10, false), M(0x14181e, .7, .06));
+  band.castShadow = true; g.add(band);
+  const pad = add(g, box(24, 12, 60, M(0x0f1216, .92, 0), 5), 0, 368, -14);
+  // cable exits the left cup and runs to the bench
+  g.add(pigtail([[-CUP_X - 6, CUP_Y - 46, 0], [-96, 150, 16], [-90, 40, 20], [-88, 12, 14]], 3, 0x1b1d21));
+  return g;
+};
+
+/* ---------------- microphones ---------------- */
+BUILDERS.mic2 = (part) => {                    // outside MEMS, on the cup shell
+  const s = part.id.endsWith('L') ? -1 : 1, g = G(s * (CUP_X + 26), CUP_Y + 26, 26);
+  const b = add(g, board(16, 13, 1.2, 0xe8e8ea, '#e9e9ec', a => {
+    a.rect(1, 1, 14, 11, 'rgba(0,0,0,.35)'); a.pads(3, 11.4, 4, 2.54, .7, '#c9a24a');
+    a.text(8, 5, 'IM73', 3, 'rgba(0,0,0,.55)', 'center');
+  }, 'im73'), 0, 0, 0);
+  b.rotation.z = s * Math.PI / 2;
+  add(g, cyl(2.6, 2.6, 2, MAT.black(), 12), s * 2, 0, 0).rotation.z = Math.PI / 2;
+  const foam = add(g, sphere(8, MAT.foam(), 14), s * 8, 0, 0); foam.scale.set(.8, 1, 1);
+  return g;
+};
+BUILDERS.mic3 = (part) => {                    // inside error mic (SparkFun red)
+  const s = part.id.endsWith('L') ? -1 : 1, g = G(s * (CUP_X - 22), CUP_Y + 22, 18);
+  const b = add(g, board(18, 12, 1.2, 0x8c1f2a, '#8c1f2a', a => {
+    a.text(9, 4, 'ICS-40180', 2.6, 'rgba(255,255,255,.85)', 'center');
+    a.pads(3, 9.5, 5, 2.54, .7);
+  }, 'ics'), 0, 0, 0);
+  b.rotation.z = s * Math.PI / 2;
+  add(g, box(3.6, 2.6, 1, MAT.black()), 0, 3, 0);
+  return g;
+};
+BUILDERS.boom = () => {                        // gooseneck + capsule + windshield
+  const g = G();
+  const c = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-CUP_X - 4, CUP_Y - 18, 30), new THREE.Vector3(-104, 226, 84),
+    new THREE.Vector3(-86, 196, 134), new THREE.Vector3(-56, 186, 166)]);
+  const arm = new THREE.Mesh(new THREE.TubeGeometry(c, 46, 3.4, 10, false), M(0x23262c, .6, .3));
+  arm.castShadow = true; g.add(arm);
+  const rings = new THREE.InstancedMesh(new THREE.TorusGeometry(4, .9, 6, 12), M(0x30343b, .5, .5), 22);
+  const o = new THREE.Object3D();
+  for (let i = 0; i < 22; i++) {
+    const t = i / 21, p = c.getPointAt(t), tan = c.getTangentAt(t);
+    o.position.copy(p); o.lookAt(p.clone().add(tan)); o.updateMatrix(); rings.setMatrixAt(i, o.matrix);
+  }
+  g.add(rings);
+  add(g, cyl(6, 6, 14, MAT.black(), 16), -52, 185, 170).rotation.x = Math.PI / 2;
+  const foam = add(g, sphere(12, MAT.foam(), 16), -50, 185, 178); foam.scale.z = 1.25;
+  return g;
+};
+BUILDERS.throat = () => {                      // neckband + two capsules
+  const g = G();
+  const band = new THREE.Mesh(new THREE.TorusGeometry(46, 3.2, 8, 40, Math.PI * 1.5), M(0x14181e, .8, .05));
+  band.rotation.x = Math.PI / 2; band.rotation.z = -Math.PI / 4;
+  add(g, band, 0, 150, 0); band.castShadow = true;
+  for (const s of [-1, 1]) {
+    const cap = add(g, cyl(8, 8, 6, M(0x1b1f26, .7, .1), 16), s * 26, 150, 34);
+    cap.rotation.x = Math.PI / 2;
+    add(g, cyl(5.4, 5.4, 1.6, M(0x3a3f46, .5, .4), 16), s * 26, 150, 37.4).rotation.x = Math.PI / 2;
+  }
+  g.add(pigtail([[26, 150, 34], [52, 130, 30], [66, 40, 40], [64, 8, 60]], 1.6, 0x1b1d21));
+  return g;
+};
+BUILDERS.spk = (part) => {                     // 40 mm driver inside the cup
+  const s = part.id.endsWith('L') ? -1 : 1, g = G(s * (CUP_X - 6), CUP_Y, 4);
+  const basket = add(g, cyl(20, 20, 6, M(0x1a1d22, .6, .3), 26), 0, 0, 0);
+  basket.rotation.z = Math.PI / 2;
+  const cone = add(g, cyl(17.5, 7, 6, M(0x0c0e11, .85, .05), 26), -s * 3.4, 0, 0);
+  cone.rotation.z = Math.PI / 2;
+  const dome = add(g, sphere(7, M(0x2a2f36, .5, .4), 14), -s * 6.6, 0, 0); dome.scale.x = .5;
+  const ring = add(g, new THREE.Mesh(new THREE.TorusGeometry(20, 1.6, 8, 28), MAT.silver()), 0, 0, 0);
+  ring.rotation.y = Math.PI / 2;
+  return g;
+};
+BUILDERS.ptt = () => {                         // push-to-talk box on the bench
+  const g = G();
+  add(g, box(34, 16, 26, M(0x1b1f26, .7, .08), 4), 0, 8, 0);
+  add(g, cyl(8, 8, 5, M(0xb3202c, .5, .1), 20), 0, 16, 0);
+  g.add(pigtail([[0, 8, 13], [10, 8, 40], [24, 6, 60]], 1.5, 0x1b1d21));
+  return g;
+};
+BUILDERS.none = () => G();
+
+/* ---------------- preamp board (H6) ---------------- */
+BUILDERS.preamp = () => {
+  const g = G();
+  const b = add(g, board(100, 80, 1.6, 0x1f5c36, '#1f5c36', a => {
+    a.text(50, 5, 'ZEIT PREAMP / BIAS  H6', 3.4, 'rgba(255,255,255,.85)', 'center');
+    for (let i = 0; i < 6; i++) a.text(6, 16 + i * 9, 'IN' + (i + 1), 2.8, 'rgba(255,255,255,.6)');
+    ['OUT1', 'OUT2', 'OUT3', 'OUT5', 'OUT6', 'OUT7', 'OUT8'].forEach((t, i) => a.text(94, 15 + i * 8.5, t, 2.8, 'rgba(255,255,255,.6)', 'right'));
+    a.text(50, 74, '2.8 V MEMS · 5 V RAIL · STAR GND', 2.8, 'rgba(255,255,255,.5)', 'center');
+    a.rect(30, 20, 40, 44, 'rgba(255,255,255,.35)');
+    for (let i = 0; i < 4; i++) a.pads(33, 26 + i * 11, 8, 3, .7);
+  }, 'preamp'), 0, .8, 0);
+  for (let i = 0; i < 4; i++) add(g, ic(5, 6, 'OPA1678'), -14 + (i % 2) * 22, 1.6, -12 + ((i / 2) | 0) * 22);
+  add(g, ic(4, 5, 'LDO 2.8 V'), 26, 1.6, 24);
+  for (let i = 0; i < 3; i++) add(g, eCap(3.2, 8), -34 + i * 9, 1.6, 26);
+  smd(g, 48, 86, 66, 0x2b2f36);
+  add(g, gx16(8), -50, 1.6, 6).rotation.y = Math.PI;                 // headset cable socket
+  const sw = add(g, box(12, 7, 8, M(0x14161a, .6, .1), 1), 30, 4.4, -26);   // handedness switch
+  add(g, cyl(1.4, 1.4, 6, MAT.silver(), 8), 32, 9, -26).rotation.z = -.5;
+  for (let i = 0; i < 7; i++) add(g, trsJack(3.2), 48, 1.6, -26 + i * 8.6).rotation.y = Math.PI / 2;
+  return g;
+};
+
+/* ---------------- ADAU1787 evaluation board (H9) ---------------- */
+BUILDERS.adau = () => {
+  const g = G();
+  add(g, board(115, 90, 1.6, 0x14365c, '#14365c', a => {
+    a.text(57, 6, 'EVAL-ADAU1787Z', 4, 'rgba(255,255,255,.9)', 'center');
+    a.text(57, 12, 'dimensions approximate — board drawing not read yet', 2.4, 'rgba(255,255,255,.45)', 'center');
+    a.rect(44, 32, 28, 28, 'rgba(255,255,255,.4)');
+    a.text(58, 46, 'ADAU1787', 3, 'rgba(255,255,255,.75)', 'center');
+    ['ADC1', 'ADC2', 'ADC3', 'ADC4'].forEach((t, i) => a.text(6, 26 + i * 10, t, 2.8, 'rgba(255,255,255,.65)'));
+    a.text(109, 30, 'DAC L', 2.8, 'rgba(255,255,255,.65)', 'right');
+    a.text(109, 40, 'DAC R', 2.8, 'rgba(255,255,255,.65)', 'right');
+    a.text(109, 58, 'I2C 1.8V', 2.8, 'rgba(255,255,255,.65)', 'right');
+    a.text(109, 68, 'TDM', 2.8, 'rgba(255,255,255,.65)', 'right');
+    a.pads(20, 84, 12, 3, .8); a.pads(70, 84, 12, 3, .8);
+  }, 'adau'), 0, .8, 0);
+  const chip = add(g, box(13, 1.4, 13, M(0x0b0d10, .45, .35), .4), 0, 2.2, 0);
+  add(g, box(9, .4, 9, M(0x3a3f46, .4, .7), .2), 0, 3, 0);
+  add(g, header(2, 12), -36, 1.6, -30).rotation.y = Math.PI / 2;
+  add(g, header(2, 12), 36, 1.6, -30).rotation.y = Math.PI / 2;
+  add(g, header(2, 8), 30, 1.6, 26).rotation.y = Math.PI / 2;
+  for (let i = 0; i < 4; i++) add(g, trsJack(3.4), -57, 1.6, -26 + i * 10).rotation.y = -Math.PI / 2;
+  add(g, microUSB(), 20, 1.6, 45);
+  add(g, eCap(3.4, 9), -20, 1.6, 34); add(g, eCap(3.4, 9), -10, 1.6, 34);
+  add(g, ledMesh(0x4cc76a, 1.3), 44, 3, 38);
+  smd(g, 70, 96, 72, 0x232830);
+  return g;
+};
+
+/* ---------------- STM32 Nucleo-H743ZI2 (H11) ---------------- */
+BUILDERS.nucleo = () => {
+  const g = G();
+  add(g, board(133, 70, 1.6, 0x0c5c3a, '#0c5c3a', a => {
+    a.text(66, 6, 'NUCLEO-H743ZI2', 4, 'rgba(255,255,255,.9)', 'center');
+    a.ctx.setLineDash([8, 6]); a.rect(38, 2, .1, 66, 'rgba(255,255,255,.5)'); a.ctx.setLineDash([]);
+    a.text(18, 36, 'ST-LINK', 3.4, 'rgba(255,255,255,.6)', 'center');
+    a.rect(74, 26, 22, 22, 'rgba(255,255,255,.4)');
+    a.text(85, 37, 'H743', 3, 'rgba(255,255,255,.75)', 'center');
+    a.text(120, 62, 'UART · I2C · SAI · PTT', 2.6, 'rgba(255,255,255,.55)', 'right');
+  }, 'nucleo'), 0, .8, 0);
+  add(g, box(20, 1.3, 20, M(0x0b0d10, .45, .3), .3), 18.5, 2.2, 0);
+  add(g, rj45(), -46, 1.6, -24).rotation.y = Math.PI;
+  add(g, microUSB(), -60, 1.6, 20).rotation.y = Math.PI / 2;
+  add(g, header(2, 35), -20, 1.6, -30);
+  add(g, header(2, 35), -20, 1.6, 30);
+  add(g, header(2, 19), 42, 1.6, -30);
+  add(g, header(2, 19), 42, 1.6, 30);
+  add(g, cyl(3, 3, 4, M(0x1b62c9, .5, .1), 14), 54, 3, -20);     // user button
+  add(g, cyl(3, 3, 4, MAT.black(), 14), 54, 3, 20);              // reset
+  [0x4cc76a, 0x2997ff, 0xff6b5e].forEach((c, i) => add(g, ledMesh(c, 1.2), 30, 2.6, -16 + i * 8));
+  smd(g, 90, 120, 56, 0x1d222a);
+  return g;
+};
+
+/* ---------------- small breakouts ---------------- */
+BUILDERS.tiny = (part) => {
+  const g = G(), red = part.id === 'pca';
+  add(g, board(24, 18, 1.2, red ? 0x8c1f2a : 0x1b1f26, red ? '#8c1f2a' : '#1b1f26', a => {
+    a.text(12, 6, red ? 'PCA9306' : 'TXB0104', 3, 'rgba(255,255,255,.9)', 'center');
+    a.text(12, 12, red ? '1.8 ↔ 3.3 V' : '1.8 → 3.3 V', 2.4, 'rgba(255,255,255,.6)', 'center');
+    a.pads(3, 16, 8, 2.54, .7);
+  }, part.id), 0, .6, 0);
+  add(g, ic(3, 4, ''), 0, 1.2, 0);
+  add(g, header(8, 1), 0, 1.2, 7);
+  return g;
+};
+BUILDERS.tpa = () => {
+  const g = G();
+  add(g, board(34, 26, 1.2, 0x14161a, '#14161a', a => {
+    a.text(17, 6, 'TPA6130A2', 3.2, 'rgba(255,255,255,.9)', 'center');
+    a.text(17, 12, '3.3 V · 32 Ω · I²C', 2.4, 'rgba(255,255,255,.6)', 'center');
+    a.pads(4, 22, 9, 2.8, .7);
+  }, 'tpa'), 0, .6, 0);
+  add(g, ic(4, 4, ''), 0, 1.2, -2);
+  add(g, header(9, 1), 0, 1.2, 10);
+  add(g, gx16(4), 18, 1.2, 0).rotation.y = 0;
+  for (let i = 0; i < 4; i++) add(g, eCap(2, 4), -12 + i * 6, 1.2, 4);
+  return g;
+};
+
+/* ---------------- UMC404HD (H14) ---------------- */
+BUILDERS.umc = () => {
+  const g = G(), W = 212, D = 130, H = 46;
+  add(g, box(W, H, D, M(0x101216, .55, .4), 3), 0, H / 2, 0);
+  add(g, box(W - 6, H - 8, 1.5, M(0x8f1b22, .5, .2)), 0, H / 2, D / 2 + .6);   // red front fascia
+  add(g, box(W, 2, D - 8, M(0x2a2e34, .5, .5)), 0, H, 0);
+  for (let i = 0; i < 4; i++) {                                    // four combo inputs
+    add(g, comboJack(), -74 + i * 34, 0, D / 2 + 2);
+    add(g, knob(6.5, 11), -74 + i * 34, 34, D / 2 - 2).rotation.x = Math.PI / 2;
+    add(g, ledMesh(i < 3 ? 0x4cc76a : 0x9aa4b2, 1.1), -60 + i * 34, 34, D / 2 + 1);
+  }
+  add(g, knob(9, 13, 0x1b1f26), 84, 22, D / 2 - 2).rotation.x = Math.PI / 2;   // monitor
+  add(g, trsJack(5.2), 62, 0, D / 2 + 2);                                       // phones
+  add(g, box(12, 6, 3, M(0x8f1b22, .5, .1)), 96, 34, D / 2 + 1);               // 48 V switch (off)
+  // rear: USB-B, four line outs, power
+  add(g, box(12, 11, 8, MAT.silver()), 48, 12, -D / 2 - 2);
+  for (let i = 0; i < 4; i++) add(g, trsJack(4.4), -70 + i * 18, 8, -D / 2 - 2).rotation.y = Math.PI;
+  add(g, barrel(), 92, 8, -D / 2 - 4).rotation.y = Math.PI;
+  return g;
+};
+
+/* ---------------- Jetson Orin Nano Super (H15) ---------------- */
+BUILDERS.jetson = () => {
+  const g = G(), W = 100, D = 79;
+  for (const [x, z] of [[-42, -32], [42, -32], [-42, 32], [42, 32]]) add(g, cyl(3, 3, 4, MAT.black(), 10), x, 2, z);
+  add(g, board(W, D, 1.6, 0x0c4a2e, '#0c4a2e', a => {
+    a.text(50, 5, 'JETSON ORIN NANO SUPER · DEV KIT', 3, 'rgba(255,255,255,.85)', 'center');
+    a.text(50, 74, '100 × 79 × 21 mm', 2.6, 'rgba(255,255,255,.5)', 'center');
+    a.pads(16, 12, 20, 2.54, .7); a.pads(16, 14.5, 20, 2.54, .7);
+  }, 'jet'), 0, 4.8, 0);
+  const sink = add(g, box(70, 10, 45, M(0x1a1d22, .45, .7), 1), 0, 10.6, -4);  // module + heatsink
+  const fins = new THREE.InstancedMesh(new THREE.BoxGeometry(1.2, 8, 43), M(0x2a2e34, .4, .8), 26);
+  const o = new THREE.Object3D();
+  for (let i = 0; i < 26; i++) { o.position.set(-33 + i * 2.6, 15.6, -4); o.updateMatrix(); fins.setMatrixAt(i, o.matrix); }
+  fins.castShadow = true; g.add(fins);
+  const fan = G(0, 20.4, -4);                                                   // the fan spins in the loop
+  add(fan, cyl(15, 15, 3, M(0x14161a, .6, .2), 20), 0, 0, 0);
+  const blades = G();
+  for (let i = 0; i < 7; i++) {
+    const b = add(blades, box(13, .8, 4.6, M(0x3a3f46, .5, .3)), 7, 0, 0);
+    b.rotation.y = i / 7 * Math.PI * 2; b.position.set(Math.cos(i / 7 * 6.283) * 7, .6, Math.sin(i / 7 * 6.283) * 7);
+  }
+  fan.add(blades); fan.userData.spin = blades; g.add(fan);
+  add(g, usbA(2), -30, 5.6, 36).rotation.y = Math.PI;                            // ports, front edge
+  add(g, usbA(2), -10, 5.6, 36).rotation.y = Math.PI;
+  add(g, rj45(), 14, 5.6, 32).rotation.y = Math.PI;
+  add(g, usbC(), 36, 5.6, 36);
+  add(g, box(17, 7, 8, MAT.silver()), 36, 9, -36);                               // DisplayPort
+  add(g, barrel(), -44, 5.6, -10).rotation.y = Math.PI / 2;
+  add(g, box(15, 1.2, 11, M(0x1b1f26, .6, .1)), -30, 4.4, 8);                    // microSD (H16)
+  add(g, header(20, 2), 0, 5.6, -34);                                            // 40-pin header
+  add(g, ledMesh(0x4cc76a, 1.1), 44, 6.4, 20);
+  return g;
+};
+
+/* ---------------- monitor ---------------- */
+let SCREEN_TEX = null;
+BUILDERS.monitor = () => {
+  const g = G();
+  add(g, box(180, 10, 90, M(0x1b1f26, .6, .2), 3), 0, 5, 0);
+  add(g, box(14, 130, 24, M(0x2a2e34, .5, .4), 2), 0, 70, -6);
+  const panel = add(g, box(340, 200, 9, M(0x0c0d10, .55, .2), 2), 0, 210, 0);
+  panel.rotation.x = -.14;
+  const c = document.createElement('canvas'); c.width = 512; c.height = 300;
+  SCREEN_TEX = new THREE.CanvasTexture(c); SCREEN_TEX.colorSpace = THREE.SRGBColorSpace;
+  SCREEN_TEX.userData = { canvas: c };
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(320, 182),
+    new THREE.MeshBasicMaterial({ map: SCREEN_TEX, toneMapped: false }));
+  screen.position.set(0, 210 + 0.6, 5.2); screen.rotation.x = -.14;
+  g.add(screen);
+  return g;
+};
+
+/* ---------------- radio interface box (H19) ---------------- */
+BUILDERS.rbox = () => {
+  const g = G(), W = 90, D = 70, H = 34;
+  add(g, box(W, 3, D, M(0x1b1f26, .7, .06), 2), 0, 1.5, 0);
+  add(g, board(W - 12, D - 12, 1.5, 0x3d2f1c, '#3d2f1c', a => {
+    a.text(39, 6, 'RADIO INTERFACE  H19', 3, 'rgba(255,255,255,.8)', 'center');
+    a.text(39, 52, 'ISOLATED — TRANSFORMERS + OPTO + DC BLOCK', 2.2, 'rgba(255,255,255,.5)', 'center');
+    for (let r = 0; r < 14; r++) a.pads(5, 12 + r * 3, 26, 3, .5, 'rgba(216,181,106,.55)');
+  }, 'rbox'), 0, 4, 0);
+  for (const x of [-22, 4]) {                                   // two isolation transformers
+    add(g, box(14, 12, 12, M(0x14161a, .7, .1), 1), x, 10.8, -8);
+    add(g, box(15, 3, 13, M(0x8a6a2a, .5, .5)), x, 16.5, -8);
+  }
+  add(g, ic(4, 5, 'PC817'), 26, 4.8, -6);                       // optocoupler
+  for (let i = 0; i < 3; i++) add(g, eCap(2.6, 6), -26 + i * 8, 4.8, 16);  // DC-block caps
+  const lid = add(g, box(W, 2, D, MAT.glass(), 2), 0, H, 0);    // clear lid so the inside is visible
+  for (const s of [-1, 1]) add(g, box(3, H, 3, M(0x1b1f26, .7, .06)), s * (W / 2 - 2), H / 2, D / 2 - 2);
+  g.add(pigtail([[44, 12, 0], [70, 18, -20], [104, 30, -58]], 2, 0x1b1d21));  // K-plug lead
+  return g;
+};
+
+/* ---------------- PMR446 radio (H18) ---------------- */
+BUILDERS.radio = () => {
+  const g = G(), W = 58, D = 34, H = 108;
+  add(g, box(W, H, D, M(0x16191e, .62, .12), 5), 0, H / 2, 0);
+  add(g, box(W - 10, 26, 2, M(0x0a0c0f, .5, .2)), 0, H - 22, D / 2);          // display
+  add(g, box(W - 16, 20, 1.6, M(0x1f6d4a, .35, .1, { emissive: 0x0d3a26, emissiveIntensity: .3 })), 0, H - 22, D / 2 + 1.2);
+  const grille = new THREE.InstancedMesh(new THREE.CylinderGeometry(1.4, 1.4, 1, 8), MAT.black(), 36);
+  const o = new THREE.Object3D();
+  for (let i = 0; i < 36; i++) {
+    o.position.set(-16 + (i % 6) * 6.4, H - 54 - ((i / 6) | 0) * 6.4, D / 2 + .4);
+    o.rotation.x = Math.PI / 2; o.updateMatrix(); grille.setMatrixAt(i, o.matrix);
+  }
+  g.add(grille);
+  add(g, box(10, 26, 4, M(0x2a2e34, .5, .2), 1), -W / 2 - 1, H - 46, 0);       // PTT paddle
+  add(g, cyl(5, 6, 14, M(0x1b1f26, .5, .2), 14), 18, H + 6, -6);               // knob
+  add(g, cyl(3.4, 4, 76, M(0x14161a, .7, .1), 12), -16, H + 38, -6);           // antenna
+  add(g, box(12, 8, 6, M(0x2a2e34, .5, .3)), -6, H + 2, 6);                    // K-jack cover
+  return g;
+};
+
+/* ---------------- supplies and meter ---------------- */
+BUILDERS.psu = () => {
+  const g = G();
+  add(g, box(86, 30, 52, M(0x1b1f26, .72, .06), 4), 0, 15, 0);
+  add(g, box(30, 12, 1, M(0x3a3f46, .6, .1)), 0, 20, 26.4);
+  add(g, ledMesh(0x4cc76a, 1.1), 26, 20, 26.6);
+  g.add(pigtail([[-40, 10, 0], [-70, 8, 20], [-96, 6, 44]], 2.2, 0x1b1d21));
+  return g;
+};
+BUILDERS.slm = () => {
+  const g = G();
+  add(g, box(58, 24, 150, M(0x1b1f26, .7, .08), 5), 0, 12, 0);
+  add(g, box(44, 2, 56, M(0x8fb6a0, .4, .05, { emissive: 0x24402f, emissiveIntensity: .3 })), 0, 24.2, 24);
+  add(g, cyl(7, 7, 26, M(0x2a2e34, .5, .4), 14), 0, 18, -86).rotation.x = Math.PI / 2;
+  add(g, sphere(8, MAT.foam(), 12), 0, 18, -104);
+  return g;
+};

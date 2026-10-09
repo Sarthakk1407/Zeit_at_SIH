@@ -29,70 +29,64 @@ question, and you should be able to say why in one sentence.
 
 ## 1. HARDWARE — what physically goes in the device
 
-| Block | Spec | From |
-|---|---|---|
-| **Mic 1 — primary** | At the mouth, inside the respirator/headset mask. Picks up the vocal command corrupted by gunshot noise | **Widrow** |
-| **Mic 2 — reference** | Helmet exterior, facing outwards. Picks up **only** the environment | **Widrow** |
-| **Isolation between them** | Mic 2 must contain **zero components of the wearer's voice** | **Widrow** — mathematically, the filter minimises total output power, which forces it to target only the noise. If Mic 2 hears the voice, the system will cancel the voice |
-| **Mic type** | Dynamic (moving-coil) for the blast path — no active electronics to overload | **Gap 1.5** — Deep ANC models loudspeaker saturation but nothing models the mic overloading. 140 dB blast vs 110–120 dB capsule limit |
-| **Mic spacing** | Our real headset geometry, and tested for robustness to it | **Gap 2.4** — Tan et al. fixed 10 cm and never varied it. A model that works at one spacing fails the first time someone adjusts the headset |
-| **ADC** | 48 kHz / 24-bit minimum | Digitek gives an honest 24 kHz bandwidth |
-| **Board** | Raspberry Pi 5 for Lane B on the bench (`architecture.md` §9); Lane A's DSP still undecided | **DeepFilterNet2** proves Raspberry Pi 4 real-time. **GTCRN** at tens of thousands of parameters means a Jetson is probably unnecessary |
-| **Power meter** | A USB power meter, on the bench | **Gap 2.3** — nobody in the literature reports watts. Free differentiator |
+The full parts list, ports and wiring are in
+[`../../synthetic_generator/HARDWARE.md`](../../synthetic_generator/HARDWARE.md).
+This table shows where each hardware decision comes from.
 
-**Hardware team owns rows 1–3 and 5.** Those are mechanical decisions software
-cannot fix afterwards.
+| Block | Final design | From |
+|---|---|---|
+| **Mic 1 — primary** | Boom on the left earcup, 2–5 cm from the mouth | **Widrow**; left side keeps it clear of a right-shouldered rifle (3M ComTac VIII practice) |
+| **Mic 2R — reference** | Outside the right earcup, opposite the boom | **Widrow** — must contain almost no voice, or the system learns to remove the voice |
+| **Mic 4 — throat** | Laryngophone on the neck | **INVISIO** body-conducted voice principle — a voice path airborne gunfire cannot enter |
+| **Mic 2L, Mic 3L, Mic 3R** | Outside left; inside left and right | Two-eared hear-through (**Peltor / Apple**) and hybrid ANC error sensors |
+| **Mic type** | High-overload MEMS (135 dB) outside; low-noise MEMS inside | **Gap 1.5** — mic saturation is modelled by nobody; we choose for it and train on it |
+| **Earmuff** | 3M PELTOR Optime III, SNR 35 dB, passive | Protection must work with the power off (EN 352 ratings are measured unpowered) |
+| **Lane A board** | ADAU1787 DSP + STM32 | Anti-noise must beat sound to the ear (≈ 0.3–0.6 ms) |
+| **Lane B board** | Jetson Orin Nano Super, TensorRT | PS names Jetson and TensorRT; **GTCRN** at 25K parameters keeps it small |
+| **ADC** | 48 kHz / 24-bit (UMC404HD; ADAU1787 internal) | Resampled to the model's 16 kHz |
+| **Power measurement** | `tegrastats` on the Jetson | **Gap 2.3** — nobody in the literature reports watts |
+
+**The team owns the mechanical decisions** (mic positions, sealing, the
+voice-leak test): software cannot fix them afterwards.
 
 ---
 
-## 2. ON-DEVICE — the real-time signal path
+## 2. ON-DEVICE — the real-time signal paths
 
-This is the only code that ships. Read top to bottom; that is the signal flow.
+Two lanes; the detail is [`architecture.md`](architecture.md) §4–§5.
 
-![On-device signal path](../diagrams/1_signal_path.png)
+**Lane A (ADAU1787, both ears):** clip detect → hear-through band filter →
+level-dependent gain → crack guard → 82 dB limiter; feed-forward + feedback
+ANC; mixer; output limiter.
+
+**Lane B (Jetson):**
 
 ```
   Mic 1 ──┐
-          ├──►  [A] robust normalisation
-  Mic 2 ──┘           │
-                      ▼
-                [B] STFT + ERB analysis
-                      │
-          ┌───────────┴───────────┐
-          ▼                       ▼
-   [C] transient            [D] neural core
-       classifier                (GTCRN-class)
-          │                       │
-    ┌─────┴─────┐                 │
-    ▼           ▼                 │
- [E] impulsive  [F] stationary ◄──┘
-     path           path
-     BMRI AR        learned mask
-    interpolate     + deep filtering
-    │           │
-    └─────┬─────┘
-          ▼
-   [G] intelligibility guard
-          │
-   [H] optional LMS residual
-          │
-   [I] ISTFT ──► enhanced speech
+  Mic 2R ─┼──► [B1] capture ─► [B3] robust normalisation ─► [B4] STFT + ERB
+  Mic 4 ──┘         │                                              │
+                    └─► [B2] impulse detector              ┌───────┴────────┐
+                        [B5] scene classifier ──► modes    ▼                ▼
+                                                    [B6] BMRI repair   [B7] GTCRN, 3 inputs
+                                                           └───────┬────────┘
+                                                            [B8] merge ─► [B9] voice guard
+                                                                   ─► [B10] residual LMS (optional)
+                                                                   ─► [B11] ISTFT ─► radio
 ```
 
 | Block | What it does | From | Why here |
 |---|---|---|---|
-| **[A] Robust normalisation** | Scale on the 90th percentile of magnitude, or a fractional lower-order moment. **Never RMS** | **Gap 2.2 + cross-finding B**; the FLOM tool is **Shao & Nikias (1993)**, cited inside Yuan et al. | RMS is a second moment. For α-stable noise with α<2 the variance is *infinite*. The closest published dual-mic system has a preprocessing step that is formally invalid for our noise class. **Fix this before anything else — everything downstream is meaningless otherwise** |
-| **[B] STFT + ERB** | Complex STFT, then compress to ERB bands | **DCCRN** (complex, keeps phase), **GTCRN / DeepFilterNet2 / IS³** (ERB) | Phase matters for cancellation. ERB is perceptually motivated and cuts the band count hard, which is where the compute saving comes from |
-| **[C] Transient classifier** | Estimates residual kurtosis, classifies the frame stationary / non-stationary / impulsive, tunes the detection percentage γ and threshold offset β | **BMRI paper's Innovation 1** — the paper hand-tunes γ offline from a kurtosis chart; we replace that with a small live classifier (SVM / decision tree / tiny CNN) | **This is the "adaptive" the PS demands.** Without it the pipeline is fixed, not adaptive |
-| **[D] Neural core** | ERB + grouped convolution + grouped RNN + SFE + TRA, complex domain | **GTCRN (ICASSP 2024)**. Dual-mic form from **H-GTCRN**. Full-band + sub-band branches from **FullSubNet** | The smallest architecture with published enhancement results. This is the **AI/ML** the PS requires |
-| **[E] Impulsive path** | AR model predicts each residual sample from its neighbours; worst γ% flagged and interpolated back in | **BMRI (Ruhland et al. 2015)** — 2048-sample blocks, AR order 16/32, single pass, no neural component | **Because prediction fails on impulses.** Deep ANC's latency trick predicts ahead; a gunshot is unpredictable by definition. So this path *detects and reacts* instead. Direct consequence of cross-finding A |
-| **[F] Stationary path** | Learned mask applied to the **noisy input**, plus deep filtering below 5 kHz for harmonic detail | **H-GTCRN ablation** (mask on noisy input beats mask on separated output), **DeepFilterNet2 / IS³** (deep filtering) | BMRI's own admitted weakness is steady Gaussian noise. That is exactly where the neural core is strong. The two paths are complementary by design |
-| **[G] Intelligibility guard** | Spectral correction removing regained low-frequency rumble after interpolation | **BMRI's spectral-correction step**, formalised as its own module (Innovation 3) | The PS demands intelligibility be *preserved*. This is the module that guarantees cleaning never eats the voice |
-| **[H] LMS residual** | Optional final adaptive stage | **Widrow** | Cheap, classical, catches what the learned path leaves. Optional — measure whether it earns its latency |
-| **[I] ISTFT** | Back to waveform | — | — |
+| **[B3] Robust normalisation** | Scale on the 90th percentile or a fractional lower-order moment. **Never RMS** | **Gap 2.2 + cross-finding B**; FLOM from **Shao & Nikias (1993)**, cited inside Yuan et al. | RMS is undefined for α-stable noise (α < 2). MEASURED on our 44 events: RMS drifts 18×, FLOM 5.7× |
+| **[B4] STFT + ERB** | Complex STFT (512 / 256 at 16 kHz), ERB compression to 129 features | **DCCRN** (complex), **GTCRN** (ERB) | Phase matters; ERB cuts compute |
+| **[B5] Scene classifier** | Kurtosis + stationarity + level → mode for both lanes, γ and β for BMRI | **BMRI Innovation 1** made live | **The "adaptive" the PS demands** |
+| **[B7] GTCRN** | Complex ratio mask on the boom mic from 3 inputs | **GTCRN (ICASSP 2024)**; extra channels from **H-GTCRN**; throat channel from **INVISIO** | The **AI/ML** the PS requires; 25,109 parameters |
+| **[B6] BMRI repair** | AR detect + interpolate on flagged frames, short cracks only | **BMRI (Ruhland et al. 2015)** | **Prediction fails on impulses** (cross-finding A) — detect and react |
+| **[B9] Voice guard** | Restores voice bands the throat envelope says were spoken | **BMRI's spectral correction**, formalised | Intelligibility must be *preserved* |
+| **[B10] Residual LMS** | Optional final adaptive stage | **Widrow** | Only if it measurably helps |
+| **[B11] ISTFT** | Back to waveform, to the radio | — | — |
 
-**Which models actually ship:** only **[D] GTCRN-class** and **[E] BMRI**.
-Everything else in this table is a technique, not a model.
+**Which models ship:** only **[B7] GTCRN** is learned. BMRI, the classifier,
+normalisation, the guard, and all of Lane A are classical.
 
 ---
 
@@ -125,7 +119,7 @@ None of this runs on the device. All of it shapes the weights that do.
 | **Target** | Mask (IRM-family) rather than direct spectrum | **Wang & Chen** |
 | **Applied to** | The **noisy input**, not a pre-separated estimate | **H-GTCRN ablation** |
 | **Dual-channel conditioning** | Feed **both** separated-speech and separated-noise channels | **H-GTCRN ablation** — the largest single gain in their study |
-| **Feature** | Log-power beats full complex for the IVA branch | **H-GTCRN ablation** |
+| **Inputs** | Boom + reference + throat as channels; throat dropout ≈ 30 % | **H-GTCRN** (extra channels), **INVISIO** (throat) |
 | **Loss** | SI-SNR + L1 on real/imag/magnitude + multi-resolution spectrogram loss | **Tan et al.**, **DeepFilterNet2** |
 | **Loss (stretch)** | Fractional lower-order moments | **Cross-finding C** — squared error is ML-optimal for Gaussian residuals; under heavy tails one impulsive sample drags the gradient more than a second of speech. **Stretch goal, must not block anything** |
 | **Speech corpus** | **LibriSpeech + Lombard GRID on disk**; Hindi (SPRING-INX) pending | English no longer blocks this stage — `synthetic_generator/DATASET_SPEC.md` §3 |
@@ -151,8 +145,8 @@ None of this runs on the device. All of it shapes the weights that do.
 | STOI | PS | > 0.85 |
 | PESQ | PS | > 2.5 |
 | **NMSE** | **Deep ANC** — their metric, so comparisons are like-for-like | more negative better |
-| **DNSMOS SIG** | **Your Notes screenshot** | **4.1** |
-| **DNSMOS BAK** | **Your Notes screenshot** | **4.2** |
+| **DNSMOS SIG** | **Reddy et al. (DNSMOS P.835)**; anchor from GTCRN's DNS3 blind test | **≥ 3.00** |
+| **DNSMOS BAK** | **Reddy et al. (DNSMOS P.835)**; anchor from GTCRN's DNS3 blind test | **≥ 3.90** |
 | Latency, ms/frame | **Gap 2.3** | real-time on our board |
 | **Power, watts** | **Gap 2.3** | nobody reports it |
 
@@ -175,19 +169,19 @@ PS's intelligibility requirement exists to prevent.
 
 | Source | Job in our system | Ships on device? |
 |---|---|---|
-| **Widrow (1975)** | Two-mic architecture, mic placement, isolation constraint, LMS residual | **Yes** — [H], and the hardware layout |
+| **Widrow (1975)** | Two-mic architecture, mic placement, isolation constraint, LMS residual | **Yes** — [B10], and the hardware layout |
 | **NOISEX-92 (1993)** | SNR framework, the noise set everyone inherits — and its blind spot | No — evaluation framing |
-| **Shao & Nikias (1993)** | Fractional lower-order moments for [A] | **Yes** — [A] |
-| **BMRI / Ruhland (2015)** | Impulsive path [E], intelligibility guard [G], adaptive γ [C] | **Yes** — three blocks |
+| **Shao & Nikias (1993)** | Fractional lower-order moments for [B3] | **Yes** — [B3] |
+| **BMRI / Ruhland (2015)** | Impulsive path [B6], intelligibility guard [B9], adaptive γ [B5] | **Yes** — three blocks |
 | **Wang & Chen (2018)** | Supervised paradigm, mask targets | No — training method |
-| **DCCRN (2020)** | Complex-domain processing in [B] | Concept only |
+| **DCCRN (2020)** | Complex-domain processing in [B4] | Concept only |
 | **Deep ANC (2021)** | **Baseline to attack.** Its gaps give us 2.1, 2.2, 2.4, 2.8. NMSE metric | No — baseline |
 | **Tan et al. dual-mic (2021)** | **Baseline to attack.** Pruning method. Its gaps give us 2.3, 2.5, 2.6, 2.7 | No — baseline + pruning method |
-| **FullSubNet (2021)** | Full-band + sub-band structure in [D] | Concept only |
-| **DeepFilterNet2 (2022)** | Deep filtering in [F], loss design, embedded feasibility proof | Concept + comparison |
+| **FullSubNet (2021)** | Full-band + sub-band structure in [B7] | Concept only |
+| **DeepFilterNet2 (2022)** | Deep filtering in [B7] (future deep-filtering head), loss design, embedded feasibility proof | Concept + comparison |
 | **Yuan et al. α-stable (2023)** | Augmentation, and the clipping regime we invert | No — training only |
-| **GTCRN (2024)** | **The neural core [D]** | **Yes** |
-| **H-GTCRN** | Dual-mic form of [D], three ablation findings | **Yes** |
+| **GTCRN (2024)** | **The neural core [B7]** | **Yes** |
+| **H-GTCRN** | Multi-channel form of [B7]; mask on the noisy input | **Yes** |
 | **IS³ (2025)** | Synthetic data pipeline template, two-stage filtering | No — data method |
 | **Our range data** | The reference the generator is validated against | No — but it is what makes the dataset claim real |
 

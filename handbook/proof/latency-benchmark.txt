@@ -1,0 +1,16 @@
+ANVIL voice lane -- streaming latency benchmark
+cpu       13th Gen Intel(R) Core(TM) i5-1335U
+runtime   onnxruntime 1.30.0, CPU provider, 1 thread
+model     GTCRN, 3 inputs, 25,109 parameters
+export    streaming ONNX, 324 KB
+verify
+  streaming vs whole-clip (PyTorch)   max |diff| = 3.73e-08   OK
+  ONNX Runtime vs PyTorch streaming   max |diff| = 4.84e-08   OK
+  all outputs finite                  OK
+timing    2000 frames of 16 ms, state carried frame to frame
+  mean    0.603 ms    p50   0.512 ms    p95   1.029 ms
+  p99     1.488 ms    max   3.484 ms
+  real-time factor        0.038   (1.0 = just real time)
+  frames over budget      0 / 2000
+  headroom at p99         14.512 ms of every 16 ms
+RESULT    PASS -- faster than real time on one laptop CPU core

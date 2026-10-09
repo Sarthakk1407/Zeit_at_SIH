@@ -1,14 +1,84 @@
-DATA/
+# ANVIL (Team ZEIT) — SIH 2026, PS 26052
+# Code, documentation and the handbook are tracked. Recordings, datasets,
+# trained weights and anything machine-local are not.
+
+# ---- Python -----------------------------------------------------------------
 __pycache__/
-*.pyc
-.DS_Store
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# virtual environments
+.venv/
+.venv-*/
+venv/
+env/
+
+# ---- Recordings and datasets (large, and the range data stays private) -------
+DATA/
 REFERENCE_REAL/
 VALIDATION_SET/
 real shots/
-data_collection/testdata/
 data for training/
+data_collection/testdata/
+zeit-data/
+*.wav
+*.flac
+*.mp3
+*.ogg
+
+# ---- Training runs and model artefacts --------------------------------------
 training/runs/
 training/data_index.jsonl
 training/jetson/trt_cache/
+calib_wavs/
+runs/
+*.pt
+*.pth
+*.ckpt
 *.onnx
 *.engine
+*.plan
+*.trt
+events.out.tfevents.*
+
+# ---- Logs, caches, temporary files ------------------------------------------
+*.log
+*.tmp
+*.bak
+*.swp
+tmp/
+temp/
+
+# ---- Secrets (never commit) --------------------------------------------------
+.env
+.env.*
+*.pem
+*.key
+
+# ---- Editors and tools -------------------------------------------------------
+.vscode/
+.idea/
+*.code-workspace
+.claude/
+
+# ---- Operating system --------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ---- Office lock files (created while a document is open) --------------------
+~$*
+.~lock.*
+
+# ---- Node (only if a front-end tool is ever added) ---------------------------
+node_modules/
+dist/
+
+# ---- Superseded handbook drafts, kept locally only ---------------------------
+handbook/_old/

@@ -219,18 +219,19 @@ Needs Stage 4.
 
 | Step | What |
 |---|---|
-| 5.1 | Neural core: GTCRN-class — ERB, grouped conv/RNN, SFE, TRA, complex domain |
+| 5.1 | Neural core: GTCRN, **3 inputs** (boom, reference, throat) with throat dropout — ERB, grouped conv/RNN, SFE, TRA, complex domain |
 | 5.2 | Transient path: BMRI-style AR detect + interpolate |
 | 5.3 | The adaptive element: kurtosis classifier tuning γ and β |
 | 5.4 | Intelligibility guard: spectral correction after interpolation |
 | 5.5 | Optional LMS residual stage |
 | 5.6 | Train, then evaluate on the Stage 2 grid |
 
-**Where the two mics plug in:** primary at the mouth inside the mask, reference
-on the helmet exterior facing outwards. The reference must contain **zero
-components of the wearer's voice** — if it does, the filter is mathematically
-incapable of cancelling the speech. That is a mechanical requirement for the
-hardware team, not something software fixes later.
+**Where the mics plug in** (final headset, `architecture.md` §3): the boom
+(Mic 1) on the left earcup, the reference (Mic 2R) outside the right earcup,
+the throat mic (Mic 4) on the neck. The reference must contain as little of the
+wearer's voice as possible — otherwise the system learns to remove the voice.
+That is a mechanical requirement checked by the voice-leak test, not something
+software fixes later.
 
 ---
 
@@ -242,7 +243,7 @@ Needs Stage 5.
 |---|---|---|
 | 6.1 | Structured pruning, sparse group lasso, iterative | Whole groups — hardware can skip them; scattered zeros still get multiplied |
 | 6.2 | Quantization | The study Tan et al. never did |
-| 6.3 | ONNX / TensorRT | Per the PS |
+| 6.3 | ONNX → TensorRT on the Jetson Orin Nano Super | Per the PS |
 | 6.4 | Measure on the **actual board**: MMAC/s, ms per frame, and **watts** | Nobody in the literature reports power. Bring a USB power meter |
 
 ---

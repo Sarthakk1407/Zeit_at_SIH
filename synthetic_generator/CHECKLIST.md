@@ -119,8 +119,8 @@ not survive.
 
 ## Phase 5 — Model
 
-- [ ] ⚠️ **Resolve the rate conflict** — 20/10 ms @ 48 kHz vs 32/16 ms @ 16 kHz. Write the decision down
-- [ ] Write down the rate chain (48 k → 16 k → mask upsample) incl. anti-alias filter latency
+- [x] **Rate conflict resolved** — 16 kHz, 32 / 16 ms (GTCRN native); written in `architecture.md` §6 and `MODEL_VALUES.md` §6 — *19 Sep 2026*
+- [x] Rate chain written down (48 k capture → 3:1 FIR → 16 k model → 1:3 FIR → 48 k) incl. filter delay — *19 Sep 2026*
 - [ ] 5.1 GTCRN-class core
 - [ ] 5.2 BMRI transient path
 - [ ] 5.3 Kurtosis classifier → γ, β
@@ -154,15 +154,15 @@ not survive.
 
 ## Claim risks — fix before any submission ⚠️
 
-- [ ] Report PESQ / STOI / SNR as **curves vs input SNR**, state where you cross
-- [ ] Settle whether "SNR > 15 dB" is output SNR or ΔSNR; report both
-- [ ] Re-anchor DNSMOS targets — SIG 4.1 / BAK 4.2 came from a Notes screenshot; GTCRN's own blind test is SIG 3.00
-- [x] Restore the **two-lane split** — done in `handbook/` and in `docs/01-system/architecture.md`, which is now organised around Lane A (FxLMS, < 1 ms) and Lane B (25.3 ms)
+- [x] Report PESQ / STOI / SNR as **curves vs input SNR**, state where you cross — `training/evaluate.py` scores per input-SNR bucket and prints where each PS target is first met
+- [x] Settle whether "SNR > 15 dB" is output SNR or ΔSNR; report both — `evaluate.py` reports output SNR and ΔSNR side by side
+- [x] Re-anchor DNSMOS targets — now SIG ≥ 3.00 / BAK ≥ 3.90, GTCRN's own DNS3 blind-test figures, in `workflow.md` and `placement.md` — *10 Oct 2026*
+- [x] Restore the **two-lane split** — done in `handbook/` and in `docs/01-system/architecture.md`, which is now organised around Lane A (ADAU1787 DSP, < 1 ms) and Lane B (Jetson, ≈ 70–85 ms mouth to radio)
 - [x] Fix the block-[10] wiring — Mic 3 is an in-ear error sensor, it cannot feed the radio uplink. Done in `architecture.md` §5 (residual LMS driven by Mic 2) and `tech-stack.md` §6 — *13 Sep 2026*
 - [x] Rewrite the look-ahead claim — done in `handbook/`: crack 45.2 ms vs blast 87.5 ms = **42.3 ms** genuine look-ahead; Mic1↔Mic2 is 0.58 ms
-- [ ] Narrow BMRI's claimed job — validated on white Cauchy for film restoration, and it degrades transients
+- [x] Narrow BMRI's claimed job — `architecture.md` B6 scopes it to short cracks; long blasts are conceal-and-recover, measured by IRT
 - [ ] Add the **MELPe / Codec2 vocoder** to the evaluation chain; report metrics before *and* after
-- [ ] Cite Le Roux (SI-SDR) and Reddy (DNSMOS) — both already in `docs/research/`, both uncited
+- [x] Cite Le Roux (SI-SDR) and Reddy (DNSMOS) — sources 15 and 16 in `workflow.md` — *10 Oct 2026*
 - [ ] Obtain the Shao & Nikias (1993) paper before FLOM goes into C++
 - [ ] Add TRL statement — "we are at TRL 4; TRL 5 needs environmental qualification + field trial"
 - [ ] Reference MIL-STD-1474 (140 dBP limit) and ANSI/ASA S3.2 (DRT/MRT intelligibility)

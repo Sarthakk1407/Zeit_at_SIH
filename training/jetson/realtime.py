@@ -8,7 +8,7 @@
     Press ENTER to toggle the model ON / OFF (the PS's live demonstration).
     Ctrl+C to stop; frame-time statistics are printed on exit.
 
-Audio path: interface at 48 kHz (ch A = Mic 1 boom, ch B = Mic 2 reference)
+Audio path: interface at 48 kHz (in 1 = boom, in 2 = reference, in 3 = throat)
 -> stateful 3:1 decimation -> 16 kHz streaming model -> 1:3 interpolation ->
 headphone / radio output. Runs on ONNX Runtime; with --trt-* it uses the
 TensorRT execution provider, which builds and caches a TensorRT engine from
@@ -33,6 +33,8 @@ from scipy.signal import firwin, lfilter, lfilter_zi           # noqa: E402
 from zeit.streaming import HOP, OnnxStreamer                   # noqa: E402
 
 FS_IO, FS_MODEL, R = 48000, 16000, 3
+RX_CEIL = 0.5          # hard cap on the radio voice sent to the ears; the dB value
+                       # at the ear is set by the amplifier during calibration
 BLOCK = HOP * R                                                # 768 samples = 16 ms
 
 
@@ -73,14 +75,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--onnx", required=True)
     ap.add_argument("--device", help="sounddevice name or index (both in and out)")
-    ap.add_argument("--in-ch", type=int, nargs=2, default=[1, 2], help="Mic 1 and Mic 2 input channels (1-based)")
+    ap.add_argument("--in-ch", type=int, nargs="+", default=[1, 2, 3],
+                    help="interface inputs (1-based) in model order: boom, reference, throat")
     ap.add_argument("--list-devices", action="store_true")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--trt-fp16", action="store_true")
     g.add_argument("--trt-int8", action="store_true")
     g.add_argument("--trt-fp32", action="store_true")
     g.add_argument("--cpu", action="store_true")
-    ap.add_argument("--gain-db", type=float, default=0.0, help="output gain")
+    ap.add_argument("--gain-db", type=float, default=0.0, help="gain on the outgoing voice (output 1)")
+    ap.add_argument("--rx-ch", type=int, default=4,
+                    help="interface input carrying the radio's receive audio (1-based); 0 = none")
+    ap.add_argument("--rx-gain-db", type=float, default=0.0, help="gain on the incoming radio voice (output 2)")
     a = ap.parse_args()
 
     import sounddevice as sd
@@ -93,6 +99,8 @@ def main():
     print(f"  providers: {st.sess.get_providers()}")
     rs = Resampler(mics)
     gain = 10 ** (a.gain_db / 20)
+    if len(a.in_ch) < mics:
+        sys.exit(f"the model takes {mics} inputs but --in-ch lists {len(a.in_ch)}")
     chans = [c - 1 for c in a.in_ch][:mics]
     state = dict(on=True)
     times = []
@@ -115,11 +123,20 @@ def main():
         t0 = time.perf_counter()
         x = rs.down(indata[:, chans].T.astype(np.float64))
         y = st.process(x) if state["on"] else st.bypass(x)
-        out = rs.up(y) * gain
-        outdata[:] = np.repeat(out[:, None], outdata.shape[1], axis=1)
+        # output 1 -> radio transmit (B11); output 2 -> headset amplifier (R1-R5).
+        # R2-R4 (hiss removal, AGC, EQ) are not written yet: the radio voice is
+        # passed through with gain and a hard limit (R5) so the ears never get the
+        # wearer's own voice, only the incoming one.
+        outdata[:, 0] = rs.up(y) * gain
+        if rx is not None:
+            outdata[:, 1] = np.clip(indata[:, rx] * rx_gain, -RX_CEIL, RX_CEIL)
+        else:
+            outdata[:, 1] = 0.0
         times.append((time.perf_counter() - t0) * 1000)
 
-    n_in = max(chans) + 1
+    rx = a.rx_ch - 1 if a.rx_ch > 0 else None
+    rx_gain = 10 ** (a.rx_gain_db / 20)
+    n_in = max(chans + ([rx] if rx is not None else [])) + 1
     print(f"  {FS_IO} Hz, block {BLOCK} ({BLOCK / FS_IO * 1000:.0f} ms), mics on inputs {a.in_ch}. ENTER toggles, Ctrl+C stops.")
     try:
         with sd.Stream(device=a.device, samplerate=FS_IO, blocksize=BLOCK,

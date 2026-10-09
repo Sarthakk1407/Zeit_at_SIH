@@ -89,7 +89,11 @@ def main():
         ds = DualMicMix(cfg, load_index(idx), "val", fixed=True, length=4)
         a1, b1, s1 = ds[2]; a2, b2, s2 = ds[2]
         check("fixed validation items are identical", bool((a1 == a2).all() and float(s1) == float(s2)))
-        check("mixture shape (mics, samples)", tuple(a1.shape) == (2, 16000), str(tuple(a1.shape)))
+        check("mixture shape (mics, samples)", tuple(a1.shape) == (cfg.model.mics, 16000), str(tuple(a1.shape)))
+        if cfg.model.mics >= 3:
+            ds20 = DualMicMix(cfg, load_index(idx), "val", fixed=True, length=20)
+            zero = [bool((ds20[i][0][2] == 0).all()) for i in range(20)]
+            check("throat channel present, with dropout", 0 < sum(zero) < 20, f"{sum(zero)}/20 items dropped")
         check("mixture finite", bool(np.isfinite(a1.numpy()).all()))
 
         code, out = run(["train.py", cfg_path, *ov, "--device", "cpu"])

@@ -1,0 +1,87 @@
+
+/* ============================================================
+   CABLES — matte sleeving, a coloured band at each end for the
+   signal it carries. Nothing glows and nothing travels along
+   them; what the signals are doing is on the instruments.
+   ============================================================ */
+
+const WIRES = new Map();
+const sleeveMat = M(0x23262b, .88, .02);
+const sleeveDim = new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: .9, metalness: .02, transparent: true, opacity: .25 });
+
+function makeWire(def) {
+  const col = SIG[def.t].c;
+  const pts = def.pts.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+  const dense = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    dense.push(pts[i]);
+    const mid = pts[i].clone().lerp(pts[i + 1], .5);
+    mid.y -= Math.min(7, pts[i].distanceTo(pts[i + 1]) * .04);
+    dense.push(mid);
+  }
+  dense.push(pts[pts.length - 1]);
+  const curve = new THREE.CatmullRomCurve3(dense, false, 'catmullrom', .35);
+
+  const mat = sleeveMat.clone();
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 96, def.key ? 2.4 : 1.8, 8, false), mat);
+  tube.castShadow = true; tube.userData.wireId = def.id;
+  scene.add(tube);
+
+  // identification bands and connector shells at the two ends
+  const bits = [];
+  for (const t of [0.012, 0.988]) {
+    const p = curve.getPointAt(t), tan = curve.getTangentAt(t);
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 3.2, 10, 12), M(0x1a1d22, .8, .08));
+    boot.position.copy(p); boot.lookAt(p.clone().add(tan)); boot.rotateX(Math.PI / 2);
+    boot.castShadow = true; scene.add(boot); bits.push(boot);
+    const b2 = curve.getPointAt(t < .5 ? t + .022 : t - .022);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(3.1, 3.1, 7, 12), M(col, .7, .05));
+    band.position.copy(b2); band.lookAt(p); band.rotateX(Math.PI / 2);
+    scene.add(band); bits.push(band);
+  }
+
+  const w = {
+    def, curve, tube, mat, bits, visible: true,
+    setHot(state) {
+      if (state === null) { mat.opacity = 1; mat.transparent = false; mat.color.setHex(0x23262b); }
+      else if (state) { mat.transparent = false; mat.opacity = 1; mat.color.setHex(col); }
+      else { mat.transparent = true; mat.opacity = .22; mat.color.setHex(0x23262b); }
+      mat.needsUpdate = true;
+    },
+    setVisible(on) { w.visible = on; tube.visible = on; bits.forEach(b => b.visible = on); },
+  };
+  WIRES.set(def.id, w);
+  return w;
+}
+LINKS.forEach(makeWire);
+
+function wireAt(event) {
+  const r = canvas.getBoundingClientRect();
+  pointer.set(((event.clientX - r.left) / r.width) * 2 - 1, -((event.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(pointer, camera);
+  const hits = ray.intersectObjects([...WIRES.values()].filter(w => w.visible).map(w => w.tube), false);
+  return hits.length ? WIRES.get(hits[0].object.userData.wireId) : null;
+}
+
+function swatch(t) { return `#${SIG[t].c.toString(16).padStart(6, '0')}`; }
+
+function traceWire(id) {
+  const w = WIRES.get(id); if (!w) return;
+  selected = null;
+  setHot([w.def.from, w.def.to], [id]);
+  const c = w.curve.getPointAt(.5);
+  const dir = new THREE.Vector3(.4, .66, .8).normalize();
+  tween(camera.position, c.clone().add(dir.multiplyScalar(w.curve.getLength() * .8 + 200)), 850);
+  tween(controls.target, c, 850);
+  const A = PART.get(w.def.from), B = PART.get(w.def.to);
+  document.getElementById('info').innerHTML = `
+    <span class="tag">${SIG[w.def.t].n}${w.def.key ? '' : ' · hidden unless “All cables”'}</span>
+    <h4>${w.def.name}</h4>
+    <p>${w.def.note}</p>
+    <dl>
+      <dt>from</dt><dd><span class="wire" data-part="${w.def.from}">${A ? A.def.name : w.def.from}</span></dd>
+      <dt>to</dt><dd><span class="wire" data-part="${w.def.to}">${B ? B.def.name : w.def.to}</span></dd>
+      ${w.def.steps.length ? `<dt>carries</dt><dd class="mono">${w.def.steps.join(' · ')}</dd>` : ''}
+    </dl>`;
+  document.querySelectorAll('#info [data-part]').forEach(el => el.addEventListener('click', () => select(el.dataset.part, true)));
+}

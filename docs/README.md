@@ -14,11 +14,13 @@ SIH 2026, PS 26052 (DRDO) — AI/ML adaptive noise cancellation for defence.
 
 | Doc | Covers |
 |---|---|
-| [`workflow.md`](01-system/workflow.md) | **The whole system.** All 14 sources, every gap we build on, architecture, hardware, dataset, model, training, evaluation, deployment, what is genuinely ours |
+| [`workflow.md`](01-system/workflow.md) | **The whole system.** All 16 sources, every gap we build on, architecture, hardware, dataset, model, training, evaluation, deployment, what is genuinely ours |
 | [`placement.md`](01-system/placement.md) | **Where everything goes.** Each paper mapped to its block — hardware, on-device, or offline. Which five sources actually ship code |
 | [`two-mic-capture-plan.md`](01-system/two-mic-capture-plan.md) | **The capture plan.** Two mics — one at the gun, one at the speaker. Take types, the look-ahead the geometry buys, and what must be verified before range day |
-| [`architecture.md`](01-system/architecture.md) | **The product's software architecture.** Organised around the two lanes: Lane A, the sub-millisecond FxLMS hearing-protection loop, and Lane B, the 11-block speech engine. The 3-mic headset, every algorithm in plain language, the timing budget, and the innovations |
-| [`tech-stack.md`](01-system/tech-stack.md) | **The stack.** C++ for the real-time path, Python for ML, the latency budget that fixes every other decision, and the parity test that keeps them honest |
+| [`architecture.md`](01-system/architecture.md) | **The final, locked architecture — authoritative.** Lane A (ADAU1787 + STM32: hear-through, crack guard, 82 dB limiter, ANC in both ears, automatic modes) and Lane B (Jetson Orin Nano Super: 3-input GTCRN with TensorRT, radio receive cleaning). The 6-mic headset, every step, timing, failure behaviour, proven vs designed, gates |
+| `ZEIT_Architecture.docx` / `.pdf`, `ZEIT_Hardware.docx` / `.pdf` (in `01-system/`) | Printable copies of the architecture and the hardware, sharing step and hardware IDs, each with 5 blank revision pages |
+| [`tech-stack.md`](01-system/tech-stack.md) | **The stack.** SigmaStudio + STM32 C for Lane A, TensorRT + C++ on the Jetson for Lane B, PyTorch offline; the locked audio settings and the parity test |
+| [`compatibility-audit.md`](01-system/compatibility-audit.md) | **The audit.** Every hardware and software link with status (VERIFIED / TESTED / CALCULATED / UNKNOWN), the 12 problems found and fixed, and the staged buy-and-test plan |
 | [`order.md`](01-system/order.md) | **The sequence.** What each stage produces, what blocks what — plus what is missing from the research |
 
 ## 02-data-collection — the real gunshot data
@@ -68,6 +70,10 @@ SIH 2026, PS 26052 (DRDO) — AI/ML adaptive noise cancellation for defence.
 Regenerate: `python3 diagrams/make_diagrams.py` and
 `python3 diagrams/make_arch_diagrams.py` from this directory.
 
+> ⚠️ Diagrams 1, 4, 5 and 6 still show the **earlier** design (3-mic headset,
+> Raspberry Pi, Aux-IVA, 20 ms frames). They are no longer embedded in the
+> system documents; the text diagrams in `architecture.md` are current.
+
 ## The evaluator-facing pages
 
 Single self-contained HTML files in [`../handbook/`](../handbook/), written to be
@@ -77,8 +83,12 @@ disagree, `docs/` is authoritative.
 | Page | What it is |
 |---|---|
 | [`index.html`](../handbook/index.html) | **The whole project in one page** (live at <https://zeit-handbook.netlify.app/>), with ten figures carrying the architecture and hover definitions on every technical term |
-| [`zeit-bench-3d.html`](../handbook/zeit-bench-3d.html) | **Interactive 3D model of the prototype** (live at <https://zeit-handbook.netlify.app/zeit-bench-3d>), both lanes modelled, earcup cut away, with a lane filter and a simulated shot |
+| [`zeit-bench-3d.html`](../handbook/zeit-bench-3d.html) | **The prototype bench in 3D, with both lanes running** (live at <https://zeit-handbook.netlify.app/zeit-bench-3d>). Every part at its datasheet size, the signal spine wired, the earcup opens on a click — and a live 16 kHz simulation underneath: hear-through, crack guard, limiters and a filtered-x LMS canceller for Lane A; framing, STFT, Wiener mask and voice guard for Lane B; the scene classifier and the Jetson↔STM32 message log, laid out as a document with instrument panels rather than a full-screen scene. **Fire a shot** traces one gunshot at 30 m through both lanes in slow motion, with every figure in its log measured from the same engine (crack guard 0.01 ms after the crack, hear-through down 42 ms before the blast, peak at the ear 112.8 dBP, IRT by the irt.py definition). Sources in `handbook/src3d/`, built with `cat src3d/0*.html > zeit-bench-3d.html` |
 | [`zeit-audit.html`](../handbook/zeit-audit.html) | **The design review** — thirteen ranked findings, each traced to a source |
+| [`zeit-handbook-new.html`](../handbook/zeit-handbook-new.html) | **The final architecture as a readable handbook** — both lanes step by step, the 6-mic headset, hardware, compatibility, feasibility (internal reading copy, not deployed) |
+
+The deployed `index.html` and the 3D model were written for the earlier
+Raspberry Pi design; each carries a notice pointing to the final architecture.
 
 ## Code
 

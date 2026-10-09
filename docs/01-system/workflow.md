@@ -290,23 +290,31 @@ only** — most ambitious, most likely to fail, must not block anything.
 
 ## 3. Hardware and microphones
 
-### 3.1 The two-microphone architecture
+This section explains *why* the hardware looks the way it does, from the
+research. The locked design itself — every part, port and wire — is in
+[`architecture.md`](architecture.md) §3 and
+[`../../synthetic_generator/HARDWARE.md`](../../synthetic_generator/HARDWARE.md).
 
-Straight from Widrow, and the reason it is not optional:
+### 3.1 The primary + reference principle (Widrow)
 
-| Mic | Placement | Picks up |
+| Mic | Placement in the final headset | Picks up |
 |---|---|---|
-| **Primary (Mic 1)** | Close to the mouth, inside the respirator / headset mask | The desired vocal command, corrupted by gunshot and explosion noise |
-| **Reference (Mic 2)** | Exterior of the helmet, facing outwards | **Only** the environment — firearm and vehicle noise |
+| **Primary (Mic 1)** | Boom on the left earcup, 2–5 cm from the mouth | The voice, corrupted by gunfire and vehicle noise |
+| **Reference (Mic 2R)** | Outside the right earcup, on the other side of the head from the mouth | The environment, with as little voice as possible |
 
-**The critical constraint:** if Mic 2 is structurally or spatially isolated so
-that it contains **zero components of the soldier's own voice**, the system is
-*mathematically incapable* of cancelling the speech. The adaptive filter
-minimises total output power, which forces it to target only the noise.
+**The critical constraint:** if the reference contains **no voice**, an adaptive
+canceller is mathematically unable to cancel the speech — it minimises total
+output power, which forces it to target only the noise. The same holds for a
+neural network: whatever appears in the reference is learned as "noise to
+remove". This is a mechanical requirement: the boom and the reference sit on
+opposite sides of the head, and the voice-leak test (reference ≥ 25 dB quieter
+than Mic 1 when speaking) checks it on the built headset.
 
-Get the isolation wrong and the system eats the voice it exists to protect.
-This is a mechanical design requirement handed to the hardware side, not
-something software can fix afterwards.
+The final headset adds four microphones to this pair, each for a reason from
+the research: a **throat mic** (Mic 4) that carries the voice as neck vibration
+— INVISIO's body-conducted principle, immune to airborne gunfire; a **left
+outside mic** (Mic 2L) for two-eared hear-through and left-ear ANC; and **two
+inside mics** (Mic 3L, 3R) as the ANC error sensors. Six in total.
 
 ### 3.2 Microphone SPL is the binding constraint
 
@@ -314,103 +322,85 @@ something software can fix afterwards.
 |---|---|
 | Muzzle blast, close range | 140–155 dB |
 | Ordinary capsule saturation | 110–120 dB |
+| Our outside mics (Infineon IM73A135) | overload at 135 dB SPL (VERIFIED) |
 
-Once the capsule or its internal FET saturates, **no pad, gain change or
-algorithm downstream recovers the waveform.** Only distance helps.
-
-Consequences for the build:
-- **Dynamic (moving-coil) mic** for close blast work — no active electronics to overload
-- **Measurement mic** for sweeps, calibration and ambience
-- Distance as the primary level control; each doubling gives −6 dB
-- The staggered-gain array (§4 of `DETAILS.md`) so one channel always survives
+Once a capsule saturates, **no gain change or algorithm downstream recovers the
+waveform.** The outside mics are chosen for a high overload point; a nearby
+crack will still clip them, and the design handles it: the DSP flags clipping
+and freezes ANC learning (architecture A1, A8), and the network is trained with
+clipped reference signals (T3). For the range capture the staggered-gain array
+(§4 of `DETAILS.md`) keeps one channel unclipped.
 
 ### 3.3 Edge target
 
-The PS names Jetson AGX Orin *or similar*. The literature says a far smaller
-target is achievable:
+The PS names Jetson AGX Orin *or similar*, and ONNX / TensorRT. The literature
+shows the model class is small:
 
 | System | Parameters | Compute | Demonstrated on |
 |---|---|---|---|
 | GTCRN (paper / official impl) | 23.7K / 48.2K | 39.6 / 33.0 MMAC/s | — |
+| **Our GTCRN, 3 inputs** | **25,109** (MEASURED) | GTCRN class | 3.9 ms/frame on a laptop CPU (2-input, MEASURED) |
 | H-GTCRN | ~24K | ~43 M ops/s | — |
 | Dual-mic DC-CRN, pruned | 103.07K | 125.6 MMAC/s | i7 laptop, 2.78 ms per 20 ms frame |
-| DeepFilterNet2 | small | — | **Raspberry Pi 4, real time** |
+| DeepFilterNet2 | small | — | Raspberry Pi 4, real time |
 
-**[unverified]** — none of these numbers has been reproduced by us. They come
-from the reading notes, and the notes themselves say to verify against the PDFs
-before putting anything on a slide.
-
-The argument to make: SWaP-C is the binding constraint on a soldier-worn
-headset, and a GTCRN-class model at tens of thousands of parameters makes a
-Jetson unnecessary. **But measure it on our board before claiming it**, and
-report **watts** — which nobody in the literature does.
+The locked choice is the **Jetson Orin Nano Super** — the smallest Orin that runs
+TensorRT, so the PS's deployment path is met literally while the SWaP-C
+argument (a 25K-parameter model on a 7–25 W board, not a 64 GB AGX Orin) still
+holds. Lane A runs on an **ADAU1787** audio DSP, because anti-noise must reach
+the ear within ≈ 0.3–0.6 ms, which no general-purpose board can do.
+**Measure it on the board before claiming it**, and report **watts**, which no
+paper in the reading reports.
 
 ---
 
 ## 4. System architecture
 
-What falls out of §2, rather than what looks impressive.
+The research leads to a **two-lane** system; the full locked design is
+[`architecture.md`](architecture.md). In brief:
 
 ```
-  Mic 1  primary, at mouth ──┐
-                             ├─→  robust normalisation        (2.3)
-  Mic 2  reference, helmet ──┘     percentile / FLOM, never RMS
-                                          │
-                              ┌───────────┴───────────┐
-                              │                       │
-                    transient detector          neural core
-                    fast, kurtosis-based        GTCRN-class, complex
-                    classifies the frame        ERB + grouped conv/RNN
-                              │                       │
-                    ┌─────────┴─────────┐             │
-                    │                   │             │
-              IMPULSIVE path      STATIONARY path     │
-              BMRI-style:         learned mask        │
-              AR detect +         via the neural core │
-              interpolate                             │
-                    │                   │             │
-                    └─────────┬─────────┘─────────────┘
-                              │
-                    speech-intelligibility guard      (5.4 of the BMRI notes)
-                    spectral correction, removes
-                    regained LF rumble
-                              │
-                    optional LMS residual stage       (Widrow)
-                              │
-                        enhanced speech
+  Lane A — the ear (ADAU1787 + STM32, < 1 ms, no neural network)
+    Mic 2L, 2R outside  ─► hear-through (quiet up, loud down, 82 dB cap), crack guard
+    Mic 3L, 3R inside   ─► hybrid ANC in both ears          ─► speakers
+                            modes set by Lane B's classifier
+
+  Lane B — the voice (Jetson Orin Nano Super, ≈ 70–85 ms)
+    Mic 1 boom, Mic 2R reference, Mic 4 throat
+        ─► impulse detector ─► robust normalisation ─► STFT + ERB
+        ─► [ BMRI impulse repair ‖ GTCRN, 3 inputs, TensorRT ] ─► merge ─► voice guard ─► radio
+    Radio receive ─► hiss removal, levelling, speech EQ, limiter ─► both ears
 ```
 
 ### Why this shape
 
-**Two paths, because prediction fails on impulses (2.2).** The neural core
-handles what is predictable. The transient path detects and reacts — it does
-not try to predict. That is the direct consequence of cross-finding A, and it
-is the architectural claim the project rests on.
+**Two lanes, because the physics differ.** Anti-noise must reach the ear before
+the sound does (sub-millisecond); the radio voice tolerates tens of milliseconds
+but needs intelligence. One processor cannot do both.
 
-**BMRI as the impulsive path**, because it is proven on exactly this noise
-class, is genuinely lightweight (2048-sample blocks, AR order 16/32, single
-pass, no neural component), and its acknowledged weakness — steady Gaussian
-noise — is precisely where the neural core is strong.
+**Two paths inside Lane B, because prediction fails on impulses (2.2).** The
+neural core handles what is predictable; the transient path detects and reacts
+— it does not predict. This is the direct consequence of cross-finding A.
 
-**GTCRN-class as the neural core**, because it is the smallest architecture
-with published enhancement results, and H-GTCRN shows the dual-mic hybrid form
-works at the negative SNRs gunfire produces.
+**BMRI as the impulsive path**, scoped to short cracks: it is lightweight and
+classical, and its acknowledged weakness — steady Gaussian noise — is where the
+neural core is strong. Long blasts are "conceal and recover", measured by IRT.
 
-**Robust normalisation in front of everything**, because RMS is formally
-invalid here (2.3) and a broken preprocessing step makes every downstream
-result meaningless.
+**GTCRN as the neural core**, extended to three inputs: the smallest
+architecture with published enhancement results, with the reference and throat
+mics as extra channels (H-GTCRN's finding that extra conditioning channels give
+the largest single gain).
 
-**The adaptive element the PS demands** is the transient classifier: it
-estimates residual kurtosis, classifies the frame as stationary /
-non-stationary / impulsive, and tunes the detection percentage γ and threshold
-offset β. That is what makes it *adaptive* rather than a fixed pipeline.
+**Robust normalisation in front**, because RMS is formally invalid here (2.3).
 
-**Operator-selectable mission modes** fall out for free, because γ has a known
-relationship to noise reduction: a low-γ *listening* mode preserving ambient
-situational cues, a high-γ *combat* mode aggressively protecting voice commands
-during gunfire.
+**The adaptive element** is the scene classifier: kurtosis, stationarity and
+level choose the mode for both lanes (AWARE / COMBAT / VEHICLE) and tune the
+BMRI settings γ and β. Operator behaviour falls out of it: quiet sounds brought
+up in AWARE, harder clamping in COMBAT.
 
----
+**Aux-IVA was dropped.** With 2–3 microphones and five or more real sources the
+separation is underdetermined; the throat mic gives the network a noise-immune
+view of the voice more cheaply.
 
 ## 5. Dataset generation
 
@@ -530,14 +520,18 @@ speech *and* noise channels gives the largest gain of the three.
 | **STOI** | Intelligibility — can the words be understood | > 0.85 |
 | **PESQ** | Perceptual quality | > 2.5 |
 | **NMSE** | Residual noise energy, for the ANC comparison | more negative is better |
-| **DNSMOS SIG** | Speech quality alone | **4.1 target** |
-| **DNSMOS BAK** | Background suppression alone | **4.2 target** |
+| **DNSMOS SIG** | Speech quality alone | **≥ 3.00** — hold GTCRN's own blind-test figure |
+| **DNSMOS BAK** | Background suppression alone | **≥ 3.90** — match GTCRN's own blind-test figure |
 | **Latency** | Per-frame processing time on the real board | real-time |
 | **Power** | Watts on the real board | **nobody in the literature reports this** |
 
 DNSMOS earns its place: it separates SIG from BAK, so **over-suppression
 becomes visible**. If the filter lowers gunshot noise (high BAK) but drops SIG
-below 3.5, DNSMOS flags that the device is degrading command clarity. That is
+below the noisy input's own score, DNSMOS flags that the device is degrading
+command clarity. The anchors are published figures, not aspirations: on the
+DNS3 blind test GTCRN scores SIG 3.00 / BAK 3.90 against a noisy input of
+SIG 3.20 / BAK 2.65 (Rong et al., 2024; metric from Reddy et al., DNSMOS
+P.835). The claim to defend is BAK at GTCRN's level without giving up SIG. That is
 the exact failure mode the PS's intelligibility requirement is about, and a
 single SNR number hides it completely.
 
@@ -571,8 +565,8 @@ two-path architecture directly.
 1. **Structured pruning** — sparse group lasso, iterative prune-then-finetune. Whole groups, because hardware can actually skip them; scattered zeros still get multiplied. Reference: 290.44K → 103.07K with little quality loss.
 2. **Quantization** — the study Tan et al never did. Report the interaction: prune-then-quantize is not the same as quantize-then-prune, and enhancement is sensitive to reduced precision because it manipulates fine spectral detail.
 3. **α-stable vs Gaussian prune-ability** (2.7) — one experiment, two deliverables.
-4. **ONNX / TensorRT conversion**, per the PS.
-5. **Measure on the actual board**: MMAC/s, ms per frame, and **watts**.
+4. **ONNX → TensorRT on the Jetson Orin Nano Super**, per the PS (FP16, then INT8).
+5. **Measure on the actual board**: ms per frame (worst case and 99th percentile), MMAC/s, and **watts** (`tegrastats`).
 6. **Hard design constraints from BMRI**: small block size, low AR order, single-pass interpolation — benchmark AR order and block length against latency and CPU budget.
 
 ---
@@ -644,9 +638,9 @@ findings the whole story rests on.
 
 **Open decisions:**
 1. Clean speech corpus — English on disk (LibriSpeech + Lombard GRID); Hindi still open
-2. Target board — Raspberry Pi 5 for Lane B on the bench (`architecture.md` §9); Lane A's DSP / microcontroller unnamed
-3. Mic models and exact headset geometry — with the hardware team
-4. Whether Aux-IVA (H-GTCRN's first stage) is worth its cost on our geometry
+2. ~~Target board~~ — decided: Jetson Orin Nano Super (Lane B), ADAU1787 + STM32 (Lane A)
+3. ~~Mic models and headset geometry~~ — decided: modified 3M PELTOR Optime III, six mics (`HARDWARE.md`)
+4. ~~Aux-IVA~~ — decided: dropped (underdetermined; the throat mic replaces its role)
 
 ---
 
@@ -658,8 +652,8 @@ papers themselves, converted to Markdown, in [`../research/`](../research/):
 gap analysis §2 is built on), `Combined_Research_Papers_GTCRN_IS3_NOISEX92.docx`,
 `Speech_Enhancement_Literature_Review.docx` (H-GTCRN, DeepFilterNet2),
 `1.docx` (Wang & Chen, FullSubNet, DCCRN),
-`ANC_Hackathon_Problem_Solution.pdf` (Ruhland BMRI), and the two Notes
-screenshots covering Widrow and the DNSMOS targets.
+`ANC_Hackathon_Problem_Solution.pdf` (Ruhland BMRI), and a Notes screenshot
+covering Widrow.
 
 | # | Work | Year |
 |---|---|---|
@@ -677,3 +671,5 @@ screenshots covering Widrow and the DNSMOS targets.
 | 12 | Rong et al. — GTCRN, ICASSP | 2024 |
 | 13 | H-GTCRN — hybrid dual-channel Aux-IVA + GTCRN | — |
 | 14 | IS³ — Generic Impulsive–Stationary Sound Separation, arXiv:2509.02622, WASPAA | 2025 |
+| 15 | Le Roux, Wisdom, Erdogan & Hershey — SDR: Half-baked or Well Done?, ICASSP (why SI-SDR, not SDR, exposes over-suppression) | 2019 |
+| 16 | Reddy, Gopal & Cutler — DNSMOS P.835, ICASSP (the SIG / BAK / OVRL metric) | 2022 |

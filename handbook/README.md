@@ -1,200 +1,84 @@
 # handbook/
 
-Standalone explainers for PS 26052, written to be handed to an evaluator
-outside the team. Each file is a **single self-contained HTML page** — no build
-step, no bundler, no local server. Open it in a browser, or publish it.
+The evaluator-facing pages for **ANVIL** (Adaptive Noise Void with Intelligent
+Lanes), Team ZEIT's entry for Smart India Hackathon 2026, PS 26052. This folder
+is the site root of the deployment at
+[zeit-handbook.netlify.app](https://zeit-handbook.netlify.app).
 
-| File | What it is |
+| Page | What it is |
 |---|---|
-| [`index.html`](index.html) | **The whole project in one page** — the System Handbook. Named `index.html` so it is the site root on the deployment. Written so that nobody has to read `docs/` to understand the system — architecture, capture rig, measurement engine, offline pipeline, evaluation, papers, competition. Ten numbered figures carry the architecture; technical terms are marked and explained on hover. |
-| [`zeit-audit.html`](zeit-audit.html) | **The design review.** Thirteen ranked findings, each traced to a specific paper, document or reproduced result. |
-| [`zeit-bench-3d.html`](zeit-bench-3d.html) | **Interactive 3D model of the whole prototype**, with **both lanes modelled**. Headset, UMC202HD, Raspberry Pi 5 and the communication unit, wired as they actually connect. The earcup is cut away so the driver, the error microphone and the Lane A module are visible. Fires a simulated shot, writes every event to a timestamped log, and shows a four-channel signal monitor. |
+| [`index.html`](index.html) | **The System Handbook.** The whole project on one page: the problem, the two lanes, the headset, both signal chains, training, the measured proof, one gunshot traced through both lanes, how each clause of the problem statement is met, fail-safe behaviour and cost. |
+| [`zeit-bench-3d.html`](zeit-bench-3d.html) | **The prototype bench in 3D, with both lanes running.** Every part at its datasheet size, the signal spine wired between them, the earcup opens on a click, and underneath Lane A and Lane B run as real DSP code at 16 kHz with a four-trace scope, sound-pressure meters and the Jetson to STM32 firmware link. "Fire a shot" traces one gunshot through both lanes in slow motion. |
+| [`zeit-audit.html`](zeit-audit.html) | **The design review.** The team's audit of its own first design: thirteen findings, each traced to a paper, a document or a reproduced result, with what the locked architecture did about every one and where to check it. |
 
-## The ten figures
+## The proof is real output
 
-The handbook's architecture is carried by diagrams rather than prose. If an
-evaluator reads only four, they should be 1, 2, 3 and 4.
+The terminal panels in the handbook are not typed. Each one is the saved output of
+a real run, kept in [`proof/`](proof/) and inserted by the build as it stands.
 
-| # | Section | Shows |
+| File | Command | Shows |
 |---|---|---|
-| 1 | masthead | **The whole system on one page** — air, three microphones, two lanes, two outputs, and the voice path into Mic 2 that must not exist |
-| 2 | 03 Lanes | **Lane A in full** — the FxLMS loop, the secondary path, and why it is "filtered-x" |
-| 3 | 04 Architecture | **Why the crack arrives 42 ms before the blast** — the geometry above, the true-millisecond timeline below |
-| 4 | 05 Blocks | **Lane B, eleven blocks** — the classifier fork, the two paths, the merge, and the vocoder that is not ours |
-| 5 | 05 Blocks | **What the classifier decides** — kurtosis to class to γ and β |
-| 6 | 06 Hardware | **The real recordings are the reference, not the training set** |
-| 7 | 06 Hardware | **The capture chain** and the staggered-gain array |
-| 8 | 08 Offline | **The offline pipeline** — five stages, one shipped file |
-| 9 | 09 Evaluation | **Where the metrics are measured**, and where they should also be |
-| 10 | 16 Build order | **What blocks what** — the build dependency graph, and which stage to start first |
+| `proof/training-selftest.txt` | `training/` · `python selftest.py` | The voice-lane pipeline end to end, 13 of 13 checks |
+| `proof/latency-benchmark.txt` | `training/` · `python bench_latency.py` | The three-input network timed frame by frame, with export parity |
+| `proof/capture-validate.txt` | `data_collection/` · `python validate.py good_shots.wav --expect-events 5` | The range-day verdict on one take |
+| `proof/capture-selftest.txt` | `data_collection/` · `python selftest.py testdata/` | The capture toolkit checking itself |
+| `proof/normalisation.txt` | `synthetic_generator/experiments/` · `python p1_normalisation.py` | Why RMS does not converge on impulsive noise |
+| `proof/gunshot-run.txt` | `handbook/proof/` · `node gunshot_run.mjs` | The 3D bench's gunshot run, computed without a browser |
+
+The recovery-time chart is drawn from `synthetic_generator/metrics/irt_real.json`,
+the recorded result of `irt.py` on the team's own range recordings.
+
+## Building
+
+```
+python build_handbook.py                              # src/*.html + proof/ -> index.html, zeit-audit.html
+cat src3d/0*.html > zeit-bench-3d.html                # the 3D bench, from its ten source parts
+```
+
+To refresh a terminal panel, re-run its command, save the output over the file in
+`proof/`, and build again. `build_handbook.py` lists every command at its top.
+
+## Layout
+
+```
+handbook/
+  index.html            built: the System Handbook
+  zeit-bench-3d.html    built: the 3D bench
+  zeit-audit.html       built: the design review
+  build_handbook.py     builds both pages
+  src/handbook.html     the handbook's template (its style is shared with the review)
+  src/audit.html        the design review's template
+  src3d/01 ... 09       the 3D bench's source, in order
+  proof/                saved terminal output, and the headless gunshot runner
+  img/                  the three images the handbook uses (our own renders and range photographs)
+```
 
 ## Design
 
-All three share one neutral document theme: white ground, near-black text,
-hairline rules, generous spacing, and the **system typeface** — no web fonts are
-loaded at all. Colour is used only where it carries information: severity in the
-audit, lane identity in the handbook and the 3D model, status in the tables.
-Both light and dark appearance are defined from the same token set, and the
-diagrams inherit those tokens rather than hard-coding colours.
+The handbook is one page with no script and no web font. It loads three images
+from `img/` and nothing else. Colour carries meaning throughout: green is the ear
+lane, blue the voice lane, red impulse handling, orange adaptation, purple the
+neural network. Light and dark appearance come from the same token set at the top
+of `src/handbook.html`.
 
-To restyle every page at once, edit the `:root` block at the top of each file.
+The 3D bench loads `three.js` 0.169 as ES modules from jsDelivr, with
+`OrbitControls`, `RoomEnvironment` and `RoundedBoxGeometry`. The headset and every
+board are built in code from the dimensions in
+[`../synthetic_generator/HARDWARE.md`](../synthetic_generator/HARDWARE.md), so no
+third-party model file is carried. The DSP, the FFT, the scope and the meters are
+written in the page; no audio library is loaded and nothing is recorded or played.
 
-## Why single files
+### What the bench simulates
 
-These pages are published as Artifacts, which are served under a strict content
-security policy:
+Signals are synthetic and are carried in pascals, so every level on the panel is a
+real sound-pressure figure for the signal being computed. Lane A runs sample by
+sample: clip flag, hear-through band, level-dependent gain, crack guard, limiters
+and a 32-tap filtered-x LMS canceller with a secondary-path model. Lane B runs
+once per 16 ms frame: impulse detector, robust (90th-percentile) level
+normalisation, STFT, a Wiener mask standing in for the trained network, the
+throat-microphone voice guard, the scene classifier and the firmware link. The
+trained GTCRN network itself runs on the Jetson through TensorRT; it cannot run in
+a browser.
 
-- Scripts load **only** from `cdnjs.cloudflare.com`, `cdn.jsdelivr.net/npm`,
-  `cdn.tailwindcss.com` and `code.jquery.com`.
-- **Every other external fetch is blocked** — images, media, `fetch`/XHR, and any
-  3D asset file (`.gltf`, `.glb`, `.obj`, `.fbx`).
-
-That last point is why the headset is **built procedurally in code** rather than
-loaded from a downloaded model. It is also the better engineering choice: the
-geometry follows the dimensions in
-[`../docs/01-system/architecture.md`](../docs/01-system/architecture.md), so the
-distances on screen are the distances in the specification rather than an
-artist's approximation — and there is no third-party asset licence to carry into
-a DRDO deliverable.
-
-The same reasoning applies to the handbook's figures: they are **inline SVG**,
-written by hand against the CSS theme tokens, so they scale, they re-colour with
-the theme, and they are searchable text rather than pictures of text.
-
-## Dependencies
-
-| Page | Loads |
-|---|---|
-| `index.html` | Nothing |
-| `zeit-audit.html` | Nothing |
-| `zeit-bench-3d.html` | `three.js` r128 (UMD, global `THREE`) from cdnjs |
-
-Camera orbit, panning, pinch-zoom, label projection and picking are all
-hand-written — `OrbitControls` and `CSS2DRenderer` ship as ES modules the UMD
-build does not include, so depending on them would have added a second loading
-path for about sixty lines of code.
-
-## The 3D model
-
-### Layout
-
-Everything sits on **one bench plane**. The communication unit lies flat rather
-than standing upright, the power supply is set back behind the board, and the
-headset stand is cut to the height of the head it carries. The surface is
-divided into three marked zones — **CAPTURE**, **COMPUTE**, **SINK** — which are
-exactly the three stages of Lane B. Lane A appears in none of them, because
-Lane A never leaves the earcup.
-
-World scale is **1 unit = 10 mm** and component dimensions follow datasheets —
-the Pi 5 board is `8.5 × 5.6` units because it is 85 × 56 mm.
-
-### Both lanes
-
-| Control | Effect |
-|---|---|
-| **Both lanes** | Everything |
-| **Lane A only** | Hides the interface, the board, the radio and the Lane B cabling; moves to the earcup cutaway. The monitor drops to Mic 2 and Mic 3 |
-| **Lane B only** | Hides Mic 3, the driver and the Lane A loop entirely — which is the correction: Mic 3 belongs to Lane A alone |
-
-The right earcup's outer shell and face are **sectioned through one quadrant**,
-so the driver, Mic 3 and the Lane A module read without the exploded view.
-
-### The simulation
-
-One scenario: **a shooter at 30 m firing a supersonic round.** Every timing is
-derived from that geometry and the speed of sound, not chosen for effect.
-
-| t | Event |
-|---|---|
-| 0 ms | Trigger. The muzzle blast begins expanding at 343 m/s |
-| 36.5 ms | The bullet reaches its closest approach and generates the shockwave — about 3 m away, not 30 |
-| 45.2 ms | **Crack arrives** (36.5 ms of flight + 8.7 ms of sound over the last 3 m) |
-| 87.5 ms | **Blast arrives** (30 m ÷ 343 m/s). The 42.3 ms gap is the only genuine look-ahead a headset has |
-| +0.42 ms | **Lane A** emits anti-noise at the driver |
-| +0.55 ms | Lane A converged — in-ear residual 18.4 dB below the reference |
-| +0.58 ms | Mic 1 after Mic 2 — the two are 20 cm apart on one head |
-| +25.3 ms | **Lane B** completes, and goes out through the vocoder |
-
-Propagation **distances are compressed** so a 30 m stand-off and a 19 cm head fit
-in one frame. The **timings are not**: each wavefront reaches the head at its true
-physical moment. No trace is a measured result — neither lane has been built.
-
-## Editing
-
-Open the file, edit, reload. Both pages are assembled from parts.
-
-**The handbook** — edit `src/`, then rebuild:
-
-```bash
-cat src/01-head.html src/02-body-a.html src/03-blocks.html src/04-capture.html src/05-measure.html src/06-offline.html src/07-eval-papers.html src/08-gaps-ps.html src/09-drdo-comp.html src/10-build-open.html src/11-terms-a.html src/12-terms-b.html src/12b-terms-c.html src/13-script.html > index.html
-```
-
-- **Hover terms** are generated at runtime from the `TERMS` object in
-  `src/11-terms-a.html`, `src/12-terms-b.html` and `src/12b-terms-c.html`
-  (166 unique entries). Add an entry and every occurrence of that word in the prose is
-  marked automatically — the copy is never touched. Each entry is
-  `["definition", "how it is used here"]`.
-- The term walker **deliberately skips anything inside an `<svg>`**. An HTML
-  `<span>` inside an SVG `<text>` is not an SVG element, so the browser renders
-  nothing and the word silently disappears from the figure. Do not remove that
-  guard in `src/13-script.html`.
-- **Figures** are inline SVG on a `viewBox` roughly 1000 units wide, using the
-  `svg.dg` classes defined in `src/01-head.html` (`.box`, `.band`, `.t`, `.s`,
-  `.e`, `.el`, `.hd`, `.n`). Arrowheads come from the shared `<defs>` block near
-  the top of that file — `url(#ar)`, `#arT`, `#arA`, `#arB`, `#arC`.
-
-**The 3D page** — edit `src3d/`, then rebuild:
-
-```bash
-cat src3d/01-shell.html src3d/02-notes.html src3d/03-scene.html src3d/04-geometry.html src3d/05-sim.html src3d/06-loop.html > zeit-bench-3d.html
-```
-
-`01` is the page shell and stylesheet, `02` the prose below the viewport, `03`
-the scene, lane groups and damped camera, `04` all geometry, `05` labels, part
-data, the lane filter and the monitor, `06` the run loop. Files `03`–`06` are one
-continuous `<script>`, so `03` must not close it and `06` must.
-
-- **Geometry** is in `src3d/04`. Sensor positions are the `P_MIC1` / `P_MIC2` /
-  `P_MIC3` / `P_SPK` / `P_DSPA` constants; move one and the labels, cabling,
-  Lane A loop and simulation follow.
-- **The earcup cutaway** is an arc `CylinderGeometry` for the shell and a partial
-  `CircleGeometry` for the face. After `rotation.z`, the shell's angle maps to
-  world `(Y = r·sinθ, Z = r·cosθ)`; after `rotation.y`, the face's maps to
-  `(Y = r·sinθ, Z = −r·cosθ)`. That sign flip is why the two arcs start at
-  different angles for the same opening — the comment in `04` says so.
-- **Lane grouping** is in `src3d/03`: `gLaneA`, `gIface`, `gPi`, `gRadio`,
-  `gCabA`, `gCabB`. The lane filter in `05` just sets `.visible` on those.
-- **Simulation timings** are the `T_BULLET` / `T_CRACK` / `T_BLAST` constants in
-  `src3d/05`, and the log is the `EVENTS` array beside them — `[time, kind, html]`.
-- **Monitor traces** are the `speechAt` / `crackAt` / `blastAt` / `mic3At` /
-  `outAt` functions in `src3d/05`. They are a physical simulation, not
-  recordings, and the page says so.
-
-## Maintenance scripts
-
-One-off patchers kept for reproducibility. Both have already been applied to
-the sources; rerunning them is only needed if the sources are rolled back.
-
-| Script | What it did |
-|---|---|
-| `src/restyle_audit.py` | Replaced `zeit-audit.html`'s stylesheet with the neutral document theme, aliasing the old token names so its inline SVG charts keep resolving |
-| `src3d/patch_radio.py` | Replaced the bench monitor in the 3D model with the communication unit and the headphone return path |
-
-## Publishing
-
-The folder is deployed as a static site on Netlify:
-
-| Page | Live URL |
-|---|---|
-| `index.html` | <https://zeit-handbook.netlify.app/> |
-| `zeit-bench-3d.html` | <https://zeit-handbook.netlify.app/zeit-bench-3d> |
-
-These URLs are printed on the idea-submission deck, so **do not rename either
-file** without updating `presentation/build_deck.py`. The hardware renders on
-the deck (`presentation/hw/hw-*.png`) are captured from the 3D page.
-
-## Source of truth
-
-These pages **summarise** `docs/`; they do not replace it. Where the two
-disagree, `docs/` is authoritative and the handbook is stale. Findings numbered
-`F1`–`F13` refer to `zeit-audit.html`.
+`window.ZEIT` exposes the scene, the parts, the simulation (`ZEIT.SIM`) and
+`ZEIT.fireShot()` for testing from the console.

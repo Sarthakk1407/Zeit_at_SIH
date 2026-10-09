@@ -15,6 +15,12 @@ import argparse
 import json
 import os
 import sys
+# Windows consoles default to cp1252, which cannot print the block characters and
+# symbols these tools use. Without this a tool can crash after doing all its work.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 import time
 import numpy as np
 

@@ -1,0 +1,16 @@
+  [PASS] build_index
+  [PASS] fixed validation items are identical
+  [PASS] mixture shape (mics, samples)  (3, 16000)
+  [PASS] throat channel present, with dropout  8/20 items dropped
+  [PASS] mixture finite
+  [PASS] train (1 epoch, tiny)
+  [PASS] evaluate
+  [PASS] export ONNX + parity (stream==full, ORT==torch)
+  [PASS] streaming STFT/ISTFT reconstructs perfectly  max err 4.8e-07
+  [PASS] enhance with ONNX
+  [PASS] prune
+  [PASS] INT8 QDQ quantisation
+  [PASS] Jetson 48k<->16k resampler keeps a 1 kHz tone  gain 1.000
+
+  ALL CHECKS PASSED  (13/13)
+

@@ -1,0 +1,354 @@
+
+/* ============================================================
+   PART DATA — positions in millimetres on the bench.
+   x → right, z → toward the viewer, y → up. Bench top is y = 0.
+   ============================================================ */
+
+const PARTS = [
+/* ---------------- headset and sensors ---------------- */
+{ id:'head', hid:'H22', name:'Mannequin head + ear mic', grp:'Headset and sensors', build:'head',
+  pos:[-610,0,-30], lane:['A'], status:['must'], price:'≈ ₹2,000',
+  sum:'The headset is worn on a mannequin so every Lane A number — attenuation, hear-through, the 82 dB ceiling — is measured at an ear instead of guessed. A small microphone sits in the ear canal and goes to UMC input 4 in the lab.',
+  specs:[['Why','Every Lane A measurement needs an ear'],['Ear mic','Into UMC in 4 (lab); the radio uses that input in the field'],['Also used for','Fitting the cups, checking the seal']],
+  steps:['A11'] },
+
+{ id:'muff', hid:'H1', name:'3M PELTOR Optime III earmuff', grp:'Headset and sensors', build:'muff',
+  pos:[-610,0,-30], lane:['A'], status:['verified','must'], price:'₹2,000–5,000',
+  sum:'A passive safety earmuff, SNR 35 dB, modified by the team. It has no electronics of its own, so every decibel of improvement between "system off" and "system on" is ours. The right cup is drawn cut away.',
+  specs:[['Attenuation','SNR 35 dB (X5A: 37 dB) — VERIFIED'],['Casing','Double shell: a mic hole must pass and seal through both layers'],['Modified with','6 microphones, 2 speakers, one 8-core and one 4-core cable'],['Why not aviation','Those have their own electronics; then the improvement is not ours']],
+  steps:['A1','A11'] },
+
+{ id:'mic1', hid:'H1-B', name:'Mic 1 — boom microphone', grp:'Headset and sensors', build:'boom',
+  pos:[-610,0,-30], lane:['B'], status:['must'], price:'₹300–800',
+  sum:'A gooseneck electret 2–5 cm from the mouth, on the left so it is clear of a right-shouldered rifle. This is the voice the neural network cleans and the radio transmits — AI input 0.',
+  specs:[['Type','Electret, 2-wire, biased 2–5 V from the preamp'],['Position','Left boom, 2–5 cm from the mouth'],['Goes to','Preamp IN1 → OUT1 → UMC in 1 → AI input 0'],['Wind','Foam windshield (H5)']],
+  steps:['B1','B7'] },
+
+{ id:'mic2R', hid:'H2', name:'Mic 2R — outside right', grp:'Headset and sensors', build:'mic2',
+  pos:[-610,0,-30], lane:['A','B'], status:['verified','gate'], price:'₹1,600–5,000 (pair)',
+  sum:'The hardest-working microphone on the headset. It hears the world with the least voice in it, so it is the noise reference for the AI, the feed-forward input for right-ear ANC, and the source of right-ear hear-through — all at once, through separately buffered copies.',
+  specs:[['Part','Infineon IM73A135 analog MEMS'],['Handles','135 dB SPL before it distorts, SNR 73 dB — VERIFIED'],['Supply','2.8 V (its maximum is 3.0 V — never 3.3 V)'],['Three jobs','AI input 1 · right ANC reference · right hear-through'],['Gate','Availability as a ready breakout in India']],
+  steps:['A1','A2','A6','B1','B7'] },
+
+{ id:'mic2L', hid:'H2', name:'Mic 2L — outside left', grp:'Headset and sensors', build:'mic2',
+  pos:[-610,0,-30], lane:['A'], status:['verified','gate'], price:'(in the pair)',
+  sum:'The same microphone on the left cup. It runs left-ear ANC and left-ear hear-through. If the wearer is left-handed and moves the boom, a switch on the preamp makes this one the AI reference instead.',
+  specs:[['Part','Infineon IM73A135 analog MEMS'],['Jobs','Left ANC reference · left hear-through'],['Handedness','A switch on the preamp picks 2R or 2L as the AI reference'],['Why not the boom side','That side hears the wearer’s own voice, which is the opposite of a noise reference']],
+  steps:['A1','A2','A6'] },
+
+{ id:'mic3R', hid:'H3', name:'Mic 3R — inside right', grp:'Headset and sensors', build:'mic3',
+  pos:[-610,0,-30], lane:['A'], status:['verified','must'], price:'₹750–1,500 (3)',
+  sum:'The error microphone. It sits next to the ear and hears what actually got through — passive leakage plus whatever the anti-noise failed to cancel. Without it the system would be guessing.',
+  specs:[['Part','SparkFun ICS-40180 breakout (op-amp output on board)'],['Supply','2.8 V (part range 1.5–3.6 V)'],['Feeds','ADAU ADC 3 / 4 — the feedback canceller and the adaptation'],['Protected by','Acoustic mesh against sweat and fingers']],
+  steps:['A7','A8','A9'] },
+
+{ id:'mic3L', hid:'H3', name:'Mic 3L — inside left', grp:'Headset and sensors', build:'mic3',
+  pos:[-610,0,-30], lane:['A'], status:['verified','must'], price:'(in the set of 3)',
+  sum:'The same error microphone in the left cup. Both ears are cancelled, which is why one DSP has to carry two complete ANC paths.',
+  specs:[['Part','SparkFun ICS-40180 breakout'],['Feeds','ADAU ADC 3'],['Pairs with','Mic 2L for the left feed-forward path']],
+  steps:['A7','A8','A9'] },
+
+{ id:'spkR', hid:'H1-A', name:'Speaker R — 40 mm driver', grp:'Headset and sensors', build:'spk',
+  pos:[-610,0,-30], lane:['A','B'], status:['must'], price:'₹400–1,000 (4)',
+  sum:'One driver per ear, fitted by us on an acrylic ring. Three things are summed into it: anti-noise, hear-through, and the cleaned voice coming back from the radio — and the total is capped at 82 dB at the ear.',
+  specs:[['Size','40 mm, 32 Ω'],['Driven by','TPA6130A2 amplifier (H13)'],['Carries','Anti-noise + hear-through (ADAU) + radio voice (Jetson)'],['Budget','79 dB share each, 82 dB combined ceiling']],
+  steps:['A10','A11','R5'] },
+
+{ id:'spkL', hid:'H1-A', name:'Speaker L — 40 mm driver', grp:'Headset and sensors', build:'spk',
+  pos:[-610,0,-30], lane:['A','B'], status:['must'], price:'(in the set of 4)',
+  sum:'The left driver. Independent from the right one — this is the reason for a modified earmuff rather than a cheap aviation headset, which is usually mono.',
+  specs:[['Size','40 mm, 32 Ω'],['Driven by','TPA6130A2 left channel'],['Independent','Left and right are separate paths end to end']],
+  steps:['A10','A11','R5'] },
+
+{ id:'mic4', hid:'H4', name:'Mic 4 — throat microphone', grp:'Headset and sensors', build:'throat',
+  pos:[-610,0,-30], lane:['B'], status:['must'], price:'₹1,500–3,000',
+  sum:'A contact microphone on the neck. It hears the voice as vibration and almost no airborne noise, so even inside a burst of gunfire it still tells the network exactly where the words are. AI input 2.',
+  specs:[['Type','Laryngophone, electret, 3.5 mm — avoid the walkie-talkie plug versions'],['Band','Useful to roughly 1.5–3 kHz, then it rolls off'],['Goes to','Preamp IN6 → OUT3 → UMC in 3 → AI input 2'],['Trained for','30 % dropout, so the system still works if it is unplugged']],
+  steps:['B1','B7','B9'] },
+
+{ id:'ptt', hid:'H1-G', name:'Push-to-talk button', grp:'Headset and sensors', build:'ptt',
+  pos:[-455,0,168], lane:['B'], status:['must'], price:'₹100–300',
+  sum:'Wired to the STM32, not the Jetson. The Jetson’s header pins pass through level shifters that can only supply about 2–3 mA — not enough to drive the optocoupler that keys the radio. The STM32 can, and it tells the Jetson when the button is down.',
+  specs:[['Read by','STM32 input with an internal pull-up; press = ground'],['Keys','The radio, through the PC817 optocoupler in H19'],['Reported','"PTT 1 / PTT 0" to the Jetson over UART'],['Not VOX','Voice-activated transmit would key on gunshots']],
+  steps:['B11'] },
+
+{ id:'cable', hid:'H8', name:'Headset cables + GX16 connectors', grp:'Headset and sensors', build:'none',
+  pos:[-470,0,40], lane:['A','B'], status:['must'], price:'₹1,300–2,200',
+  sum:'One 8-core shielded cable for the microphones and one 4-core for the speakers, on screw-lock GX16 connectors so the headset can be unplugged without unsoldering anything.',
+  specs:[['Mic cable','8-pin GX16: 1 VDD 2.8 V, 2 GND, 3 Mic 1, 4 Mic 2L, 5 Mic 2R, 6 Mic 3L, 7 Mic 3R, 8 shield'],['Speaker cable','4-pin GX16: L+, L−, R+, R−'],['Separate','Throat mic and PTT have their own 3.5 mm leads'],['Sealing','Rubber grommets and neutral-cure silicone at every hole']],
+  steps:[] },
+
+/* ---------------- Lane A electronics ---------------- */
+{ id:'preamp', hid:'H6', name:'Microphone preamp / bias board', grp:'Lane A — the ear', build:'preamp',
+  pos:[-330,0,150], lane:['A','B'], status:['build'], price:'₹3,000–3,500', approx:true,
+  sum:'Six microphones in, seven buffered outputs out. It powers the microphones, sets the gain, and — this is the point of it — gives the reference microphone two independent buffered copies, one for the ear DSP and one for the AI, so unplugging one board never disturbs the other.',
+  specs:[['Inputs','IN1 boom · IN2–IN5 MEMS · IN6 throat'],['Bias','Electret 2–5 V; MEMS on a shared 2.8 V regulator'],['Op-amps','OPA1678 on 5 V, 2.5 V mid-rail, ≈ 1.2 Vrms maximum — VERIFIED'],['To the UMC','OUT1 boom · OUT2 reference · OUT3 throat (phantom power must stay OFF)'],['To the ADAU','OUT5–OUT8, AC-coupled with a 1 kΩ series resistor (the ADAU runs at 1.8 V)'],['Switch','SPDT: right-handed (Mic 2R) or left-handed (Mic 2L) reference']],
+  steps:['A1','B1'] },
+
+{ id:'adau', hid:'H9', name:'EVAL-ADAU1787Z — the ear DSP', grp:'Lane A — the ear', build:'adau',
+  pos:[-185,0,-150], lane:['A'], status:['verified','gate'], price:'≈ ₹32,000', approx:true,
+  sum:'The whole of Lane A runs here. Four microphones in, two speakers out, and a signal path short enough to place anti-noise at the ear before the sound itself arrives — about half a millisecond. It never waits for the Jetson, so hearing protection survives a software crash.',
+  specs:[['Converters','4 ADC, 2 DAC'],['FastDSP','Runs up to 768 kHz — this is what buys the sub-millisecond path'],['Core','28-bit SigmaDSP for envelopes, the crack guard and the scene settings'],['Programmed by','SigmaStudio; the STM32 loads the program at power-on over I²C'],['Voltage','1.8 V I/O — hence the level shifters'],['Gate','Whether one chip can carry two full ANC paths (FastDSP capacity)'],['Board size','Approximate here — the evaluation board drawing has not been read yet']],
+  steps:['A2','A3','A4','A5','A6','A7','A9','A10','A11'] },
+
+{ id:'stm', hid:'H11', name:'STM32 Nucleo-H743ZI2', grp:'Lane A — the ear', build:'nucleo',
+  pos:[20,0,-140], lane:['A','B'], status:['verified','must'], price:'≈ ₹3,500',
+  sum:'The manager. It loads the DSP program at power-on, carries the scene settings the Jetson decides, runs the adaptation maths, keys the radio, and sets the amplifier volume. It is never in the audio path — which is why a slow line of code here cannot make a click in the ear.',
+  specs:[['Board','133 × 70 mm, Cortex-M7 at 480 MHz'],['UART','To the Jetson: scene settings down, PTT and crack events up'],['I²C','ADAU1787 (through the PCA9306) and the TPA6130A2 volume'],['SAI','Mic data from the ADAU for the adaptation (through the TXB0104)'],['GPIO','PTT button in; PC817 optocoupler out through 330 Ω ≈ 6 mA'],['3V3 pin','Supplies the amplifier board']],
+  steps:['A8','B11'] },
+
+{ id:'pca', hid:'H12a', name:'PCA9306 — I²C level shifter', grp:'Lane A — the ear', build:'tiny',
+  pos:[-70,0,-60], lane:['A'], status:['verified','must'], price:'₹100–200',
+  sum:'The STM32 talks at 3.3 V and the ADAU listens at 1.8 V. This part translates between them. It replaced an 8-channel auto-direction shifter, which is known to misbehave on I²C’s open-drain lines.',
+  specs:[['Function','Bidirectional I²C translation, 1.8 V ↔ 3.3 V'],['Carries','Control and the DSP program load at power-on'],['Why not TXS0108','Auto-direction shifters latch and stretch on I²C — TI’s own forum says so'],['Only needed','If the evaluation board’s I/O really is 1.8 V (Gate 1)']],
+  steps:['A2'] },
+
+{ id:'txb', hid:'H12b', name:'TXB0104 — TDM level shifter', grp:'Lane A — the ear', build:'tiny',
+  pos:[-26,0,-60], lane:['A'], status:['must'], price:'₹100–200',
+  sum:'Phase 2 only. When the adaptive filter is switched on, the microphone data has to travel from the DSP to the STM32 as a fast clocked stream — push-pull, three lines, one direction.',
+  specs:[['Function','Push-pull translation, 1.8 V → 3.3 V'],['Lines','BCLK, FSYNC, SDATA'],['For','A8 — the filtered-x LMS adaptation'],['Not needed','For the fixed-filter ANC of phase 1']],
+  steps:['A8'] },
+
+{ id:'tpa', hid:'H13', name:'TPA6130A2 headphone amplifier', grp:'Lane A — the ear', build:'tpa',
+  pos:[-150,0,55], lane:['A','B'], status:['verified','must'], price:'₹1,000–2,000',
+  sum:'The meeting point of the two lanes. Anti-noise and hear-through arrive from the ear DSP; the cleaned radio voice arrives from the Jetson; the two are summed through resistors and driven into the speakers — and the sum is what the 82 dB ceiling applies to.',
+  specs:[['Supply','2.5–5.5 V — run at 3.3 V from the Nucleo so its I²C matches'],['Drives','32 Ω directly'],['Volume','Set by I²C at calibration and then locked'],['Sums','ADAU DAC L/R + UMC output 2, each through its own resistor'],['Ceiling','79 dB share per path, 82 dB total at the ear']],
+  steps:['A10','A11','R5'] },
+
+/* ---------------- Lane B electronics ---------------- */
+{ id:'umc', hid:'H14', name:'Behringer UMC404HD', grp:'Lane B — the voice', build:'umc',
+  pos:[290,0,150], lane:['B'], status:['verified','must'], price:'≈ ₹15,000', approx:true,
+  sum:'The bench audio interface: four inputs in, four out, 24-bit, over one USB cable. Every microphone the AI uses arrives here, and both cleaned signals leave here. In a fielded unit this is a small codec chip on our own board — here it is a box we can trust and measure.',
+  specs:[['In 1–3','Boom · reference · throat — the three AI inputs'],['In 4','Radio receive in the field, mannequin ear mic in the lab'],['Out 1','Cleaned outgoing voice → radio'],['Out 2','Cleaned incoming voice → amplifier → speakers'],['Rate','48 kHz, 24-bit, 768-sample blocks (16 ms)'],['Phantom','OFF — 48 V would destroy the MEMS microphones'],['Linux','Class-compliant, VERIFIED; not yet tested on the Jetson']],
+  steps:['B1','B11','R1','R5'] },
+
+{ id:'jetson', hid:'H15', name:'Jetson Orin Nano Super', grp:'Lane B — the voice', build:'jetson',
+  pos:[250,0,-110], lane:['B'], status:['verified','gate'], price:'₹37,200–45,200',
+  sum:'Lane B runs here: the eleven-block outgoing chain with the neural network in the middle, the five-block incoming radio chain, and the scene classifier that re-tunes Lane A. The problem statement names this class of board and TensorRT by name.',
+  specs:[['Size','100 × 79 × 21 mm — VERIFIED'],['Compute','1024 CUDA + 32 tensor cores, 67 TOPS, 8 GB'],['Power','7–25 W'],['Model','GTCRN, 3 inputs, 25,109 parameters, TensorRT'],['Deadline','16 ms per frame, worst case — not the average'],['Display','DisplayPort, not HDMI'],['Not used for','PTT — the header pins are too weak to drive an optocoupler']],
+  steps:['B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','R2','R3','R4'] },
+
+{ id:'sd', hid:'H16', name:'128 GB microSD card', grp:'Lane B — the voice', build:'none',
+  pos:[250,0,-110], lane:['B'], status:['must'], price:'≈ ₹1,500',
+  sum:'The Jetson kit ships without storage. A fast A2 / U3 card holds the operating system, the TensorRT engine and the recordings.',
+  specs:[['Class','A2 / U3 / V30'],['Holds','JetPack, the engine, logs and range recordings']],
+  steps:[] },
+
+{ id:'mon', hid:'—', name:'Setup monitor (DisplayPort)', grp:'Lane B — the voice', build:'monitor',
+  pos:[430,0,-250], lane:['B'], status:['have'], price:'—',
+  sum:'For setup and for the live display: input levels, the detected scene, frame time, and whether the radio is speaking. Not part of a fielded unit.',
+  specs:[['Connection','DisplayPort from the Jetson'],['Shows','99th-percentile frame time — the number that matters'],['Field','Removed; the unit runs headless']],
+  steps:['B5'] },
+
+/* ---------------- radio ---------------- */
+{ id:'rbox', hid:'H19', name:'Radio interface box', grp:'Communication unit', build:'rbox',
+  pos:[500,0,45], lane:['B'], status:['must'], price:'₹600–1,200', approx:true,
+  sum:'A small hand-built box that keeps the radio electrically separate from everything else: two isolation transformers for audio in and out, an optocoupler for the key line, and a capacitor that stops the transformer from shorting the radio’s own microphone bias — which would otherwise hold it in transmit.',
+  specs:[['Out to radio','Divider → transformer → 1–4.7 µF DC-blocking capacitor → radio mic line'],['Key line','PC817 optocoupler, driven by the STM32'],['In from radio','Divider → transformer → UMC in 4; both primary ends float (the radio’s amplifier may be bridged)'],['Why isolate','The radio has its own battery and its own ground; joining them makes hum and risk'],['Gate','Which contact on the K-plug keys transmit on the radio we buy']],
+  steps:['B11','R1'] },
+
+{ id:'radioA', hid:'H18', name:'PMR446 radio — ours', grp:'Communication unit', build:'radio',
+  pos:[615,0,-75], lane:['B'], status:['verified','gate'], price:'₹2,500–6,000 (pair)',
+  sum:'A licence-free handheld standing in for a tactical radio. The cleaned voice goes out through it, and whatever comes back is what the incoming chain has to make understandable.',
+  specs:[['Band','446–446.2 MHz, ≤ 0.5 W ERP — licence rule VERIFIED'],['India','WPC Equipment Type Approval required'],['Accessory jack','K-type (3.5 mm + 2.5 mm)'],['Keyed by','The STM32 through the optocoupler, never by voice detection']],
+  steps:['B11','R1'] },
+
+{ id:'radioB', hid:'H18', name:'PMR446 radio — the other end', grp:'Communication unit', build:'radio',
+  pos:[700,0,-40], lane:['B'], status:['verified'], price:'(in the pair)',
+  sum:'The listener’s radio. This is where the problem statement’s scores are really decided: SNR, STOI and PESQ are measured on what comes out of this one.',
+  specs:[['Role','The far end of the link'],['Measured here','Intelligibility of the transmitted voice'],['Also','Sends the voice our incoming chain has to clean']],
+  steps:['B11','R1'] },
+
+/* ---------------- power and test ---------------- */
+{ id:'psu5', hid:'H20', name:'Clean 5 V supply', grp:'Power and test', build:'psu',
+  pos:[-520,0,265], lane:['A'], status:['must'], price:'≈ ₹1,000',
+  sum:'Separate from the Jetson’s supply, because a microphone noise floor is only as quiet as the rail behind it. It feeds the preamp, the DSP board and the STM32; the amplifier takes 3.3 V from the Nucleo.',
+  specs:[['Feeds','H6 preamp, H9 DSP board, H11 STM32'],['Not','The Jetson — that has its own 19 V adapter'],['Grounding','Star ground on the preamp board']],
+  steps:[] },
+
+{ id:'psu19', hid:'—', name:'19 V Jetson adapter', grp:'Power and test', build:'psu',
+  pos:[400,0,15], lane:['B'], status:['have'], price:'included',
+  sum:'Supplied with the developer kit. For an outdoor demonstration it is replaced by a 100 W USB-PD power bank with a 19 V trigger cable.',
+  specs:[['In the kit','Yes'],['Field option','100 W USB-PD bank + 19 V trigger (H21)'],['Draw','7–25 W depending on the power mode']],
+  steps:[] },
+
+{ id:'slm', hid:'H23', name:'Sound level meter', grp:'Power and test', build:'slm',
+  pos:[-430,0,285], lane:['A'], status:['must'], price:'≈ ₹2,500',
+  sum:'Keeps the tests honest and safe: it sets the level of the noise we play, and it is how the 82 dB ceiling stops being a claim in a document.',
+  specs:[['Used for','Calibration, safe test levels, the ceiling check'],['With','The mannequin head and its ear microphone'],['Optional','A 94 dB / 1 kHz calibrator for absolute readings']],
+  steps:['A11'] },
+];
+
+/* ============================================================
+   WIRES — every connection on the bench.
+   pts are world-space waypoints; the first and last sit at the
+   connector they belong to.
+   ============================================================ */
+
+const LINKS = [
+{ id:'w_mics', key:1, t:'mic', lane:'A', from:'muff', to:'preamp', name:'Headset mic cable (8-core, GX16-8)',
+  note:'Five microphones and the 2.8 V supply on one screw-lock cable.',
+  pts:[[-698,14,-16],[-660,18,60],[-560,16,140],[-450,14,160],[-380,12,152]], steps:['A1','B1'] },
+
+{ id:'w_throat', key:1, t:'mic', lane:'B', from:'mic4', to:'preamp', name:'Throat mic lead (3.5 mm)',
+  note:'Separate lead so the mic can be moved or removed without opening the main cable.',
+  pts:[[-546,10,30],[-500,16,92],[-440,12,142],[-380,12,164]], steps:['B1'] },
+
+{ id:'w_ptt', t:'ptt', lane:'B', from:'ptt', to:'stm', name:'PTT button → STM32 input',
+  note:'Internal pull-up on the STM32; pressing the button grounds the pin.',
+  pts:[[-431,8,226],[-250,22,250],[-60,22,190],[-40,10,-108]], steps:['B11'] },
+
+{ id:'w_umcin', key:1, t:'mic', lane:'B', from:'preamp', to:'umc', name:'Preamp OUT1–3 → UMC in 1, 2, 3',
+  note:'Boom, reference and throat — the three AI inputs, in that order. Phantom power stays off.',
+  pts:[[-280,12,158],[-100,30,214],[80,30,232],[216,20,218]], steps:['B1'] },
+
+{ id:'w_adauin', key:1, t:'adau', lane:'A', from:'preamp', to:'adau', name:'Preamp OUT5–8 → ADAU ADC 1–4',
+  note:'Mic 2L, Mic 2R, Mic 3L, Mic 3R — AC-coupled, 1 kΩ in series, kept under the ADAU full scale.',
+  pts:[[-282,10,128],[-300,26,30],[-290,18,-100],[-244,10,-148]], steps:['A1','A6','A7'] },
+
+{ id:'w_dac', key:1, t:'spk', lane:'A', from:'adau', to:'tpa', name:'ADAU DAC L/R → amplifier',
+  note:'Anti-noise plus hear-through, already limited to its 79 dB share.',
+  pts:[[-160,10,-104],[-168,18,-30],[-166,10,38]], steps:['A10','A11'] },
+
+{ id:'w_rx', key:1, t:'radio', lane:'B', from:'umc', to:'tpa', name:'UMC out 2 → amplifier (radio voice)',
+  note:'The cleaned incoming voice, summed into the same speakers through its own resistor.',
+  pts:[[238,10,83],[120,28,40],[-40,22,54],[-160,10,66]], steps:['R5'] },
+
+{ id:'w_spk', key:1, t:'spk', lane:'A', from:'tpa', to:'muff', name:'Amplifier → speakers (4-core, GX16-4)',
+  note:'Both drivers, 32 Ω each. Everything the ear hears arrives on this cable.',
+  pts:[[-134,8,58],[-300,22,128],[-480,26,80],[-640,30,0],[-696,58,-40]], steps:['A11','R5'] },
+
+{ id:'w_usb', key:1, t:'usb', lane:'B', from:'umc', to:'jetson', name:'UMC → Jetson (USB 2.0)',
+  note:'Class-compliant audio, bus-powered. If hum appears, grounding is fixed first; a USB isolator is the last resort and must be a high-speed one.',
+  pts:[[338,14,84],[320,26,10],[270,16,-50],[222,10,-70]], steps:['B1','B11','R1'] },
+
+{ id:'w_uart', key:1, t:'i2c', lane:'A', from:'jetson', to:'stm', name:'Jetson ↔ STM32 (UART, 115200)',
+  note:'Scene settings down: quiet, gunfire, steady noise, radio voice. Status up: PTT, crack events, acknowledgement.',
+  pts:[[228,16,-142],[170,30,-196],[110,16,-172],[84,10,-148]], steps:['A2','B5','B11'] },
+
+{ id:'w_i2c', t:'i2c', lane:'A', from:'stm', to:'pca', name:'STM32 I²C → PCA9306',
+  note:'3.3 V side. Carries the DSP program at power-on and every scene change after that.',
+  pts:[[-38,10,-144],[-52,13,-95],[-70,6,-68]], steps:['A2'] },
+
+{ id:'w_i2c2', t:'i2c', lane:'A', from:'pca', to:'adau', name:'PCA9306 → ADAU I²C (1.8 V)',
+  note:'The translated side. Without this the two boards cannot speak at all.',
+  pts:[[-78,6,-68],[-115,12,-88],[-150,8,-106]], steps:['A2'] },
+
+{ id:'w_tdm', t:'tdm', lane:'A', from:'adau', to:'txb', name:'ADAU TDM → TXB0104 (phase 2)',
+  note:'Microphone data leaving the DSP for the adaptation maths. Only fitted when adaptive ANC is switched on.',
+  pts:[[-140,8,-106],[-88,12,-84],[-34,6,-68]], steps:['A8'] },
+
+{ id:'w_tdm2', t:'tdm', lane:'A', from:'txb', to:'stm', name:'TXB0104 → STM32 SAI (3.3 V)',
+  note:'Three lines: bit clock, frame sync, data.',
+  pts:[[-18,6,-68],[6,12,-100],[4,10,-146]], steps:['A8'] },
+
+{ id:'w_tpapwr', t:'pwr', lane:'A', from:'stm', to:'tpa', name:'STM32 3V3 → amplifier supply',
+  note:'Running the amplifier at 3.3 V keeps its I²C on the same levels as the STM32.',
+  pts:[[-30,10,-120],[-90,16,-20],[-140,8,42]], steps:['A11'] },
+
+{ id:'w_i2cvol', t:'i2c', lane:'A', from:'stm', to:'tpa', name:'STM32 I²C → amplifier volume',
+  note:'Set once at calibration, then locked, so nothing can turn the ear path up later.',
+  pts:[[-22,10,-118],[-70,14,-10],[-136,8,46]], steps:['A11'] },
+
+{ id:'w_pttopto', key:1, t:'ptt', lane:'B', from:'stm', to:'rbox', name:'STM32 GPIO → optocoupler (key the radio)',
+  note:'About 6 mA through 330 Ω. This is the link the Jetson could not have driven.',
+  pts:[[86,10,-140],[250,28,-30],[400,22,20],[456,12,40]], steps:['B11'] },
+
+{ id:'w_tx', key:1, t:'radio', lane:'B', from:'umc', to:'rbox', name:'UMC out 1 → radio interface (voice out)',
+  note:'Line level padded down to microphone level, then through the transformer and the DC-blocking capacitor.',
+  pts:[[220,10,83],[300,26,58],[400,24,50],[456,12,52]], steps:['B11'] },
+
+{ id:'w_radiotx', key:1, t:'radio', lane:'B', from:'rbox', to:'radioA', name:'Radio interface → radio (K-plug)',
+  note:'Microphone line and key line on the same plug — which is exactly why the capacitor is needed.',
+  pts:[[544,12,44],[575,40,-10],[604,96,-58],[609,106,-66]], steps:['B11'] },
+
+{ id:'w_radiorx', t:'radio', lane:'B', from:'radioA', to:'rbox', name:'Radio speaker → radio interface',
+  note:'Both ends of the transformer float; grounding one side can short a bridged speaker amplifier.',
+  pts:[[609,104,-74],[576,40,0],[544,10,34]], steps:['R1'] },
+
+{ id:'w_in4', key:1, t:'radio', lane:'B', from:'rbox', to:'umc', name:'Radio interface → UMC in 4',
+  note:'In the lab this same input takes the mannequin ear microphone instead — one cable swap.',
+  pts:[[500,12,82],[450,26,170],[360,22,214],[318,20,218]], steps:['R1'] },
+
+{ id:'w_dp', t:'usb', lane:'B', from:'jetson', to:'mon', name:'Jetson DisplayPort → monitor',
+  note:'Setup and the live display. The dev kit has DisplayPort, not HDMI.',
+  pts:[[286,12,-148],[330,36,-200],[412,40,-244]], steps:['B5'] },
+
+{ id:'w_p5a', t:'pwr', lane:'A', from:'psu5', to:'preamp', name:'5 V → preamp board',
+  note:'A separate clean supply: the microphone noise floor depends on it.',
+  pts:[[-480,12,262],[-420,18,218],[-350,10,186]], steps:[] },
+
+{ id:'w_p5b', t:'pwr', lane:'A', from:'psu5', to:'stm', name:'5 V → STM32 (and the DSP board)',
+  note:'The STM32 then passes 3.3 V on to the amplifier.',
+  pts:[[-474,12,256],[-300,24,250],[-60,24,140],[10,10,-104]], steps:[] },
+
+{ id:'w_p19', t:'pwr', lane:'B', from:'psu19', to:'jetson', name:'19 V → Jetson',
+  note:'Its own adapter, deliberately not shared with the analog side.',
+  pts:[[388,14,10],[330,22,-30],[240,24,-58],[206,8,-118]], steps:[] },
+];
+
+/* ============================================================
+   THE WALKTHROUGH — every step of both lanes.
+   ============================================================ */
+
+const STEPS = [
+/* ---- Lane A: the ear ---- */
+{ id:'A1', sim:{scene:'street'}, lane:'A', t:'Clip detection', x:'Mic 2L and 2R are watched for samples near full scale. If the reference microphone itself has clipped, the anti-noise built from it would be wrong — so that path is held instead of trusted. This is why the 135 dB microphone was chosen.',
+  p:['mic2L','mic2R','preamp','adau'], w:['w_mics','w_adauin'], cam:[[-360,300,240],[-380,40,40]] },
+{ id:'A2', sim:{scene:'street',hear:1}, lane:'A', t:'Hear-through band filter', x:'A band-pass of roughly 150 Hz to 6 kHz on the outside microphones. Wide enough for speech and a snapping twig, narrow enough to leave out the rumble and the hiss that make a headset tiring to wear.',
+  p:['adau','mic2R','pca','stm'], w:['w_adauin','w_i2c','w_i2c2'], cam:[[-120,260,180],[-170,30,-90]] },
+{ id:'A3', sim:{scene:'quiet',hear:1}, lane:'A', t:'Level-dependent gain', x:'Quiet sounds are lifted, loud sounds are pushed down — the same idea as Peltor’s level-dependent muffs and Apple’s adaptive transparency, but done in our own DSP so the behaviour is ours to tune.',
+  p:['adau'], w:[], cam:[[-120,240,150],[-180,26,-120]] },
+{ id:'A4', sim:{scene:'fire',hear:1}, lane:'A', t:'Crack guard', x:'A fast peak and high-frequency detector. A supersonic bullet’s crack arrives tens of milliseconds before the muzzle blast, so when the crack is seen the hear-through path is ducked before the loud part ever reaches the ear.',
+  p:['adau','mic2R'], w:['w_adauin'], cam:[[-260,220,120],[-300,30,-60]] },
+{ id:'A5', sim:{scene:'fire',hear:1}, lane:'A', t:'Hear-through limiter', x:'A peak limiter on the hear-through path, calibrated on the mannequin so a gunshot cannot be passed through as a gunshot.',
+  p:['adau','head','slm'], w:[], cam:[[-420,260,200],[-480,40,60]] },
+{ id:'A6', sim:{scene:'street',anc:1}, lane:'A', t:'Feed-forward ANC', x:'The anti-noise itself: a filter on Mic 2L and 2R that produces the opposite of the noise before it arrives at the ear. Sound crosses an earcup in about half a millisecond, so this has to be faster than that — no general-purpose processor need apply.',
+  p:['mic2L','mic2R','adau','spkL','spkR'], w:['w_adauin','w_dac','w_spk'], cam:[[-300,240,260],[-380,40,0]] },
+{ id:'A7', sim:{scene:'vehicle',anc:1}, lane:'A', t:'Feedback ANC', x:'A second, fixed filter on the inside microphones cleans up what the first one missed — leakage through a bad seal, low frequencies, a cup pushed out of place by a helmet strap.',
+  p:['mic3L','mic3R','adau'], w:['w_adauin'], cam:[[-520,200,160],[-590,40,-10]] },
+{ id:'A8', sim:{scene:'vehicle',anc:1,adapt:1}, lane:'A', t:'Adaptation (phase 2)', x:'The filtered-x LMS update, running on the STM32 — never in the audio path. It is frozen during impulses and while the radio is speaking, so neither a gunshot nor a teammate’s voice can corrupt the filter.',
+  p:['stm','txb','adau','mic3R'], w:['w_tdm','w_tdm2'], cam:[[-40,230,120],[-60,20,-110]] },
+{ id:'A9', sim:{scene:'street',anc:1,rx:1}, lane:'A', t:'Playback removal', x:'The error microphone also hears what we are playing. That part is subtracted first, otherwise the canceller would try to cancel the very voice it is supposed to deliver.',
+  p:['adau','mic3R','spkR'], w:[], cam:[[-480,180,140],[-560,45,-10]] },
+{ id:'A10', sim:{scene:'street',anc:1,hear:1}, lane:'A', t:'Mixer', x:'Anti-noise and hear-through are combined per ear with weights that follow the scene the classifier reports: quiet, gunfire, steady noise or radio voice.',
+  p:['adau','tpa'], w:['w_dac'], cam:[[-160,220,180],[-170,20,-30]] },
+{ id:'A11', sim:{scene:'fire',anc:1,hear:1}, lane:'A', t:'Output limiter → the ear', x:'The last guard before the speakers: a brick-wall limiter, then the amplifier, where the radio voice is summed in. Each path gets a 79 dB share; the total at the ear stays under 82 dB.',
+  p:['adau','tpa','spkL','spkR','head'], w:['w_dac','w_spk','w_tpapwr','w_i2cvol'], cam:[[-340,220,240],[-400,45,20]] },
+
+/* ---- Lane B: the outgoing voice ---- */
+{ id:'B1', sim:{scene:'street',talk:1}, lane:'B', t:'Capture and resample', x:'Three microphones at 48 kHz in 16 ms blocks — boom, reference, throat — then down to the 16 kHz the network was trained at. Channel order is fixed here and must never drift from the training order.',
+  p:['mic1','mic2R','mic4','preamp','umc','jetson'], w:['w_mics','w_throat','w_umcin','w_usb'], cam:[[300,300,420],[240,30,120]] },
+{ id:'B2', sim:{scene:'fire',talk:1}, lane:'B', t:'Impulse detector', x:'A peak, kurtosis and high-frequency test at full rate, before anything is smoothed. Gunshots are found here so that later blocks can treat them as damage to repair rather than noise to suppress.',
+  p:['jetson'], w:[], cam:[[300,240,140],[250,20,-90]] },
+{ id:'B3', sim:{scene:'fire',talk:1}, lane:'B', t:'Robust normalisation', x:'Scaling by a percentile rather than by the average, because one gunshot destroys an average. Here it is the 90th-percentile level of each frame, tracked slowly and held through a flagged impulse; the readout shows it beside the RMS it replaces.',
+  p:['jetson'], w:[], cam:[[300,230,130],[250,20,-90]] },
+{ id:'B4', sim:{scene:'street',talk:1}, lane:'B', t:'STFT + ERB bands', x:'512-point FFT, 256 hop, square-root Hann — the exact settings the network was trained with, which is what keeps its published size and quality valid.',
+  p:['jetson'], w:[], cam:[[300,230,130],[250,20,-90]] },
+{ id:'B5', sim:{scene:'fire',talk:1}, lane:'B', t:'Scene classifier', x:'Half a second of kurtosis, stationarity and level decides the scene — and that decision is what travels down the UART to re-tune Lane A. This is the one place where the AI changes what the ear hears.',
+  p:['jetson','stm','mon'], w:['w_uart','w_dp'], cam:[[300,260,120],[160,25,-120]] },
+{ id:'B6', sim:{scene:'fire',talk:1}, lane:'B', t:'Impulse repair', x:'Inside a gunshot window the damaged part of the signal is rebuilt from the speech around it, instead of being left as a hole for the network to guess at.',
+  p:['jetson'], w:[], cam:[[300,230,130],[250,20,-90]] },
+{ id:'B7', sim:{scene:'street',talk:1,clean:1}, lane:'B', t:'GTCRN — the neural network', x:'The only trained block: three inputs, 25,109 parameters, one 16 ms frame at a time, running on TensorRT. The reference microphone tells it what the noise is; the throat microphone tells it where the voice is, even inside a burst.',
+  p:['jetson','mic1','mic2R','mic4'], w:['w_usb'], cam:[[260,220,160],[250,25,-100]] },
+{ id:'B8', sim:{scene:'fire',talk:1,clean:1}, lane:'B', t:'Merge', x:'The repaired signal is crossfaded in only inside impulse windows. Everywhere else the network’s output is left alone.',
+  p:['jetson'], w:[], cam:[[300,230,130],[250,20,-90]] },
+{ id:'B9', sim:{scene:'fire',talk:1,clean:1}, lane:'B', t:'Voice guard', x:'If the output has fallen below what the throat microphone says the wearer is actually saying, the voice bands are restored. This is the guard against the classic failure of over-suppression — clean, and unintelligible.',
+  p:['jetson','mic4'], w:[], cam:[[300,230,130],[250,20,-90]] },
+{ id:'B10', sim:{scene:'vehicle',talk:1,clean:1}, lane:'B', t:'Residual LMS (optional)', x:'A small classical filter on the reference channel for slow leftover hum. An optional stage, bypassed in this build.',
+  p:['jetson'], w:[], cam:[[300,230,130],[250,20,-90]] },
+{ id:'B11', sim:{scene:'street',talk:1,clean:1,ptt:1}, lane:'B', t:'Back to sound → the radio', x:'Overlap-add, up to 48 kHz, out of UMC output 1, through the isolation transformer and the DC-blocking capacitor into the radio. The STM32 keys the radio when the button is pressed — never voice-activated, which would transmit gunshots.',
+  p:['jetson','umc','rbox','radioA','stm','ptt'], w:['w_usb','w_tx','w_radiotx','w_pttopto','w_ptt'], cam:[[560,280,320],[460,30,10]] },
+
+/* ---- Radio receive ---- */
+{ id:'R1', sim:{scene:'street',rx:1}, lane:'R', t:'Capture + voice detect', x:'The teammate’s voice arrives at the radio, crosses the transformer into UMC input 4, and a detector decides whether the radio is actually speaking. That decision goes to Lane A, which quiets the hear-through so the voice is not competing with the street.',
+  p:['radioB','radioA','rbox','umc','jetson','stm'], w:['w_radiorx','w_in4','w_usb','w_uart'], cam:[[600,300,300],[440,30,40]] },
+{ id:'R2', sim:{scene:'street',rx:1}, lane:'R', t:'Hiss and static removal', x:'A gate and spectral subtraction take out the channel hiss and the squelch tail — the part of radio audio that is most tiring to listen to.',
+  p:['jetson'], w:[], cam:[[320,230,140],[250,20,-90]] },
+{ id:'R3', sim:{scene:'street',rx:1}, lane:'R', t:'Automatic gain', x:'A shouted transmission and a whispered one arrive at the ear at the same level.',
+  p:['jetson'], w:[], cam:[[320,230,140],[250,20,-90]] },
+{ id:'R4', sim:{scene:'street',rx:1}, lane:'R', t:'Speech EQ', x:'Emphasis where intelligibility actually lives, 1–4 kHz, plus a small low-frequency lift to offset what the feedback canceller removes.',
+  p:['jetson'], w:[], cam:[[320,230,140],[250,20,-90]] },
+{ id:'R5', sim:{scene:'street',rx:1,anc:1}, lane:'R', t:'Limiter → the ear', x:'The incoming voice is capped at its 79 dB share, then summed with Lane A at the amplifier. The wearer hears the radio clearly without the total at the ear ever passing 82 dB.',
+  p:['jetson','umc','tpa','spkL','spkR','head'], w:['w_rx','w_spk'], cam:[[-120,260,300],[-200,30,60]] },
+];

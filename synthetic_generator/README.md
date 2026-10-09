@@ -24,7 +24,7 @@ events. Phase 1 (real reference), Phase 2.1 (robust normalisation) and Phase 7
 |---|---|
 | **`DATASET_SPEC.md`** | 20 noise classes, every corpus, clean speech, RIRs, HRTFs, sizes, licences |
 | **`MODEL_VALUES.md`** | Every number the model needs — STFT/ERB, architecture, training, SNR range, augmentation, evaluation targets, edge |
-| **`HARDWARE.md`** | The bench: 3-mic headset, Behringer UMC202HD, Pi 5, sensor positions, the 42.3 ms look-ahead timing |
+| **`HARDWARE.md`** | Every part, port and wire of the final design: modified 3M PELTOR earmuff with 6 mics, ADAU1787 + STM32 (Lane A), Jetson Orin Nano Super + UMC404HD (Lane B), PMR446 radio, build steps, tests, budget |
 | **`STORAGE.md`** | How much is downloaded vs generated, and how big an SSD you need |
 | **`DOWNLOAD.md`** | Every dataset's download URL, in priority order |
 | **`DATA_SOURCES.md`** | Auto-generated: what is on the drive and where each piece came from. ⚠️ Last generated 11 Sep, when only LibriSpeech was on disk — rerun `make_manifest.py` with the drive attached. `STORAGE.md` Part 0 has the current inventory |

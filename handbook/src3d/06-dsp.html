@@ -1,0 +1,573 @@
+
+/* ============================================================
+   THE SIMULATION — real DSP, running in this browser.
+
+   16 kHz, 256-sample frames (16 ms), paced against the wall
+   clock. Amplitudes are carried in pascals, 1 Pa = 94 dB SPL,
+   so every level on the panel is a real sound-pressure figure
+   for the signals being computed here.
+
+   The machine is built by createMachine(). The live bench runs
+   one; the gunshot run builds a second, identical one with a
+   seeded random source and a scripted shot, so every number in
+   the shot log comes from this same code.
+
+   What is real: the band filter, level-dependent gain, crack
+   guard, limiters, the filtered-x LMS canceller, microphone
+   overload, the acoustic leak model, framing, the impulse
+   detector, the STFT, the Wiener mask, the voice guard, the
+   scene classifier and the firmware link. What is NOT real: the
+   trained GTCRN network (it runs on the Jetson, not here — a
+   classical Wiener mask stands in for it), the signals
+   themselves (synthetic), and the frame time, which is this
+   browser's, not the Jetson's.
+   ============================================================ */
+
+const SR = 16000, BLK = 256;
+const dbToPa = db => Math.pow(10, (db - 94) / 20);
+const paToDb = pa => 94 + 20 * Math.log10(Math.max(pa, 1e-9));
+
+/* ---------- biquad ---------- */
+class BQ {
+  constructor() { this.b0 = 1; this.b1 = this.b2 = this.a1 = this.a2 = 0; this.x1 = this.x2 = this.y1 = this.y2 = 0; }
+  set(b0, b1, b2, a0, a1, a2) {
+    this.b0 = b0 / a0; this.b1 = b1 / a0; this.b2 = b2 / a0; this.a1 = a1 / a0; this.a2 = a2 / a0; return this;
+  }
+  lp(f, Q = 0.707) {
+    const w = 2 * Math.PI * f / SR, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q);
+    return this.set((1 - c) / 2, 1 - c, (1 - c) / 2, 1 + al, -2 * c, 1 - al);
+  }
+  hp(f, Q = 0.707) {
+    const w = 2 * Math.PI * f / SR, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q);
+    return this.set((1 + c) / 2, -(1 + c), (1 + c) / 2, 1 + al, -2 * c, 1 - al);
+  }
+  bp(f, Q = 0.9) {
+    const w = 2 * Math.PI * f / SR, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q);
+    return this.set(al, 0, -al, 1 + al, -2 * c, 1 - al);
+  }
+  peak(f, Q, gainDb) {
+    const A = Math.pow(10, gainDb / 40), w = 2 * Math.PI * f / SR, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q);
+    return this.set(1 + al * A, -2 * c, 1 - al * A, 1 + al / A, -2 * c, 1 - al / A);
+  }
+  run(x) {
+    const y = this.b0 * x + this.b1 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
+    this.x2 = this.x1; this.x1 = x; this.y2 = this.y1; this.y1 = y;
+    return y;
+  }
+}
+
+/* seeded random numbers, so a scripted run gives the same figures every time */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ---------- sources ---------- */
+class Pink {                         // Paul Kellet's pink-noise filter
+  constructor(rand = Math.random) { this.b = new Float64Array(7); this.rand = rand; }
+  next() {
+    const w = this.rand() * 2 - 1, b = this.b;
+    b[0] = 0.99886 * b[0] + w * 0.0555179; b[1] = 0.99332 * b[1] + w * 0.0750759;
+    b[2] = 0.96900 * b[2] + w * 0.1538520; b[3] = 0.86650 * b[3] + w * 0.3104856;
+    b[4] = 0.55000 * b[4] + w * 0.5329522; b[5] = -0.7616 * b[5] - w * 0.0168980;
+    const o = (b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6] + w * 0.5362) * 0.11;
+    b[6] = w * 0.115926;
+    return o;
+  }
+}
+class Voice {                        // synthetic speech: glottal pulses through three formants
+  constructor(f0 = 118, rand = Math.random) {
+    this.f0 = f0; this.rand = rand; this.ph = 0; this.env = 0; this.tgt = 0; this.hold = 0;
+    this.F = [new BQ().bp(620, 4), new BQ().bp(1180, 6), new BQ().bp(2500, 8)];
+    this.fset = [[620, 1180, 2500], [400, 900, 2400], [730, 1300, 2600], [300, 2200, 3000]];
+  }
+  next() {
+    if (--this.hold <= 0) {                       // a new syllable every 120–260 ms
+      this.hold = (0.12 + this.rand() * 0.14) * SR | 0;
+      this.tgt = this.rand() < .28 ? 0 : .5 + this.rand() * .5;
+      const f = this.fset[this.rand() * this.fset.length | 0];
+      this.F.forEach((b, i) => b.bp(f[i], 4 + i * 2));
+    }
+    this.env += (this.tgt - this.env) * 0.0016;
+    this.ph += (this.f0 + Math.sin(this.ph * 0.0007) * 4) / SR;
+    if (this.ph >= 1) this.ph -= 1;
+    const pulse = Math.exp(-this.ph * 9) * 2 - 0.35 + (this.rand() - .5) * .04;
+    let v = 0;
+    for (const b of this.F) v += b.run(pulse);
+    return v * this.env * 0.6;
+  }
+}
+class Gunfire {                      // repeated shots close by: crack, then blast 42.3 ms later
+  constructor(rand = Math.random) { this.rand = rand; this.next = 1.2 * SR; this.crackAt = -1; this.blastAt = -1; this.n = 0; }
+  sample() {
+    this.n++;
+    if (this.n >= this.next) {
+      this.crackAt = this.n; this.blastAt = this.n + Math.round(0.0423 * SR);
+      this.next = this.n + (1.1 + this.rand() * 0.9) * SR;
+    }
+    let s = 0;
+    const dc = this.n - this.crackAt, db = this.n - this.blastAt;
+    if (dc >= 0 && dc < 0.004 * SR) {
+      const t = dc / SR;
+      s += dbToPa(150) * Math.sin(2 * Math.PI * 1400 * t) * Math.exp(-t * 900);
+    }
+    if (db >= 0 && db < 0.09 * SR) {
+      const t = db / SR;
+      s += dbToPa(157) * (Math.sin(2 * Math.PI * 180 * t) + 0.6 * (this.rand() - .5)) * Math.exp(-t * 55);
+    }
+    return s;
+  }
+}
+
+/* ---------- small FFT (radix 2, in place) ---------- */
+const NFFT = 512, NBIN = NFFT / 2 + 1;
+const REV = new Uint16Array(NFFT), COSV = new Float32Array(NFFT / 2), SINV = new Float32Array(NFFT / 2);
+(() => {
+  for (let i = 0, j = 0; i < NFFT; i++) {
+    REV[i] = j;
+    let m = NFFT >> 1;
+    while (m >= 1 && j >= m) { j -= m; m >>= 1; }
+    j += m;
+  }
+  for (let i = 0; i < NFFT / 2; i++) { COSV[i] = Math.cos(-2 * Math.PI * i / NFFT); SINV[i] = Math.sin(-2 * Math.PI * i / NFFT); }
+})();
+function fft(re, im, inverse) {
+  for (let i = 0; i < NFFT; i++) {
+    const j = REV[i];
+    if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let size = 2; size <= NFFT; size <<= 1) {
+    const half = size >> 1, step = NFFT / size;
+    for (let i = 0; i < NFFT; i += size) {
+      for (let j = i, k = 0; j < i + half; j++, k += step) {
+        const c = COSV[k], s = inverse ? -SINV[k] : SINV[k];
+        const jr = re[j + half] * c - im[j + half] * s;
+        const ji = re[j + half] * s + im[j + half] * c;
+        re[j + half] = re[j] - jr; im[j + half] = im[j] - ji;
+        re[j] += jr; im[j] += ji;
+      }
+    }
+  }
+  if (inverse) for (let i = 0; i < NFFT; i++) { re[i] /= NFFT; im[i] /= NFFT; }
+}
+const WIN = new Float32Array(NFFT);
+for (let i = 0; i < NFFT; i++) WIN[i] = Math.sqrt(0.5 - 0.5 * Math.cos(2 * Math.PI * i / NFFT));
+
+const SCENE = {
+  quiet:   { db: 42, rumble: .1, fire: 0, label: 'quiet range, 42 dB' },
+  street:  { db: 74, rumble: .35, fire: 0, label: 'street / camp, 74 dB' },
+  vehicle: { db: 92, rumble: 1, fire: 0, label: 'inside a vehicle, 92 dB' },
+  fire:    { db: 86, rumble: .5, fire: 1, label: 'gunfire close by, 86 dB between shots' },
+};
+
+/* microphone overload points. IM73A135: 135 dB SPL (datasheet). The boom is a
+   generic electret — 130 dB is an assumption, not a datasheet figure. */
+const AOP_REF = dbToPa(135) * Math.SQRT2, AOP_BOOM = dbToPa(130) * Math.SQRT2;
+
+/* ============================================================
+   THE MACHINE
+   options: rand (seeded source), impulse(n) → {ref, boom} extra
+   pressure at Mic 2 and Mic 1, probe(n, sample) and
+   probeFrame(frame) hooks for recording, live (drives the DOM).
+   ============================================================ */
+/* The classifier's four decisions, as the panel and the firmware link name them. */
+const SCENE_NAME = { AWARE: 'QUIET', COMBAT: 'GUNFIRE', VEHICLE: 'STEADY NOISE', RADIO: 'RADIO VOICE' };
+
+function createMachine(opt = {}) {
+  const rand = opt.rand || Math.random;
+  const S = {
+    s: { scene: 'street', anc: 1, hear: 1, adapt: 1, talk: 1, clean: 1, ptt: 0, rx: 0 },
+    m: { ear: 0, passive: 0, noiseEar: 0, ancDb: 0, peak: 0, snrIn: 0, snrOut: 0, frameMs: 0, mode: 'AWARE',
+         crack: 0, limiting: 0, clip: 0, duck: 0, adapting: 0, impulse: 0, voiced: 0, shots: 0, play: 0,
+         frames: 0, t: 0 },
+    n: 0, log: [],
+    trace: { mic2: new Float32Array(600), ear: new Float32Array(600), pass: new Float32Array(600),
+             boom: new Float32Array(600), tx: new Float32Array(600), w: 0 },
+  };
+
+  const dsp = {
+    pink: new Pink(rand), rumble: new BQ().lp(140, .8), voice: new Voice(116, opt.voiceRand || rand), radioVoice: new Voice(142, rand),
+    gun: new Gunfire(rand),
+    passLF: new BQ().lp(500, .7),                       // the earmuff leaks low frequencies
+    htA: new BQ().hp(150, .7), htB: new BQ().lp(6000, .7),   // A2 hear-through band
+    ancLP: new BQ().lp(1200, .7),                       // feed-forward ANC is a low-frequency device
+    hfDet: new BQ().hp(2500, .7),                       // crack detector listens high
+    rxHP: new BQ().hp(300, .7), rxLP: new BQ().lp(3400, .7), rxEQ: new BQ().peak(2200, 1.1, 6),
+    throatLP: new BQ().lp(2200, .7),
+    absBuf: new Float32Array(BLK), normScale: 0,          // B3 robust normalisation
+    boomHP: new BQ().hp(90, .7),
+
+    // FxLMS
+    W: new Float32Array(32), X: new Float32Array(32), XF: new Float32Array(32),
+    SHAT: new Float32Array([0, 0, .62, .28, .10]),        // what the canceller believes the speaker path is
+    SPATH: new Float32Array([0, .04, .58, .31, .13]),     // what it really is — they never match exactly
+    SBUF: new Float32Array(8),
+    PBUF: new Float32Array(8), HBUF: new Float32Array(8), // speaker → ear, and the part we played on purpose
+    delay: new Float32Array(16), di: 0,                 // 0.5 ms acoustic crossing, 8 samples
+    clipHold: 0,                                        // A1: reference held after it overloads
+
+    envFast: 0, envSlow: 0, duck: 0, rxEnv: 0, throatEnv: 0,
+    earAcc: 0, passAcc: 0, residAcc: 0, playAcc: 0, peakHold: 0, clsHold: 0,
+    // Lane B framing
+    prevBoom: new Float32Array(BLK), prevClean: new Float32Array(BLK), prevNoise: new Float32Array(BLK),
+    ola: new Float32Array(NFFT), noisePsd: new Float32Array(NBIN), gPrev: new Float32Array(NBIN).fill(1),
+    re: new Float32Array(NFFT), im: new Float32Array(NFFT),
+    re2: new Float32Array(NFFT), im2: new Float32Array(NFFT),
+    re3: new Float32Array(NFFT), im3: new Float32Array(NFFT),
+    clsAcc: 0, clsPeak: 0, clsN: 0, modeCand: 'AWARE',
+    sInAcc: 0, nInAcc: 1e-12, sOutAcc: 0, nOutAcc: 1e-12, silent: 0, wasImpulse: false,
+    bgRms: 0, impFrames: 0, impHold: 0,
+  };
+  S.dsp = dsp;
+
+  const bufOut = new Float32Array(BLK), bufBoom = new Float32Array(BLK),
+        bufClean = new Float32Array(BLK), bufNoise = new Float32Array(BLK), bufRef = new Float32Array(BLK),
+        bufThroat = new Float32Array(BLK), bufTx = new Float32Array(BLK), bufPass = new Float32Array(BLK);
+
+  function logLine(kind, text) {
+    S.log.unshift({ t: S.m.t, kind, text });
+    if (S.log.length > 90) S.log.pop();
+  }
+  S.logLine = logLine;
+
+  let lastMode = 'AWARE', lastPtt = 0, lastRx = 0;
+  const sample = {};                                   // reused object handed to the probe
+
+  /* ---------- one 16 ms frame ---------- */
+  S.tick = function () {
+    const t0 = performance.now();
+    const s = S.s, m = S.m, sc = SCENE[s.scene];
+    const noiseGain = dbToPa(sc.db);
+    const frameStart = S.n;
+
+    /* ---------------- Lane A, sample by sample ---------------- */
+    let earSq = 0, passSq = 0, residSq = 0, playSq = 0, peak = 0, limitHits = 0, clipped = 0;
+
+    for (let i = 0; i < BLK; i++, S.n++) {
+      // --- the world outside the cup
+      let out = dsp.pink.next() * noiseGain * 1.4;
+      out += dsp.rumble.run(dsp.pink.next()) * noiseGain * sc.rumble * 3;
+      if (sc.fire) out += dsp.gun.sample();
+      let atBoom = out;
+      if (opt.impulse) { const e = opt.impulse(S.n); out += e.ref; atBoom += e.boom; }
+
+      // the reference microphone: its own noise floor (SNR 73 dB), and it overloads at 135 dB
+      let mic2 = out + (rand() - .5) * dbToPa(27);
+      let clipNow = false;
+      if (Math.abs(mic2) > AOP_REF) { mic2 = Math.sign(mic2) * AOP_REF; clipNow = true; clipped++; }
+
+      // --- passive protection, with the 0.5 ms crossing the anti-noise must beat
+      const lf = dsp.passLF.run(out);
+      const hf = out - lf;
+      const passive = lf * dbToPa(94 - 18) + hf * dbToPa(94 - 32);   // −18 dB low, −32 dB high
+      dsp.delay[dsp.di] = passive;
+      dsp.di = (dsp.di + 1) % 8;
+      const passiveAtEar = dsp.delay[dsp.di];
+
+      // --- A1: a clipped reference is not trusted; hold the anti-noise for 2 ms after it
+      if (clipNow) dsp.clipHold = 0.002 * SR;
+      else if (dsp.clipHold > 0) dsp.clipHold--;
+      const refOk = dsp.clipHold <= 0;
+
+      // --- A4 crack guard (peak + high-frequency energy)
+      const hfE = Math.abs(dsp.hfDet.run(mic2));
+      dsp.envFast += (Math.abs(mic2) - dsp.envFast) * (Math.abs(mic2) > dsp.envFast ? .5 : .0008);
+      if (dsp.envFast > dbToPa(118) && hfE > dbToPa(110) && dsp.duck <= 0) {
+        dsp.duck = 0.25 * SR;
+        if (m.crack === 0) { logLine('e', 'STM32 → Jetson   CRACK   hear-through ducked'); m.crack = 12; }
+      }
+      if (dsp.duck > 0) dsp.duck--;
+      const duckGain = dsp.duck > 0 ? 0.03 : 1;
+
+      // --- A2 band, A3 level-dependent gain, A5 limiter
+      let ht = dsp.htB.run(dsp.htA.run(mic2));
+      dsp.envSlow += (Math.abs(ht) - dsp.envSlow) * (Math.abs(ht) > dsp.envSlow ? .02 : .0004);
+      const envDb = paToDb(dsp.envSlow + 1e-9);
+      let g = 1;
+      if (envDb < 50) g = Math.pow(10, Math.min(18, (50 - envDb) * 0.5) / 20);   // lift the quiet
+      else if (envDb > 78) g = Math.pow(10, -Math.min(30, (envDb - 78) * 0.8) / 20);
+      ht *= g * duckGain * (s.hear ? 1 : 0) * (s.rx && lastRx ? 0.25 : 1);       // RADIO mode ducks it
+      const htCap = dbToPa(79) * 1.41;
+      if (Math.abs(ht) > htCap) { ht = Math.sign(ht) * htCap; limitHits++; }
+
+      // --- radio voice coming back (R2–R5), summed at the amplifier
+      let rxv = 0;
+      if (s.rx) {
+        let v = dsp.radioVoice.next() * dbToPa(88);
+        v += (rand() - .5) * dbToPa(58);                               // channel hiss
+        v = dsp.rxLP.run(dsp.rxHP.run(v));                             // R4 speech band
+        v = dsp.rxEQ.run(v);                                           // R4 presence lift
+        dsp.rxEnv += (Math.abs(v) - dsp.rxEnv) * (Math.abs(v) > dsp.rxEnv ? .01 : .0006);
+        v *= Math.min(4, dbToPa(74) / (dsp.rxEnv + 1e-9));             // R3
+        const rxCap = dbToPa(79) * 1.41;                               // R5
+        if (Math.abs(v) > rxCap) v = Math.sign(v) * rxCap;
+        rxv = v;
+      }
+
+      // --- A6/A8 feed-forward canceller
+      const x = dsp.ancLP.run(mic2);
+      for (let k = 31; k > 0; k--) dsp.X[k] = dsp.X[k - 1];
+      dsp.X[0] = x;
+      let y = 0;
+      for (let k = 0; k < 32; k++) y += dsp.W[k] * dsp.X[k];
+      const anti = s.anc && refOk ? y : 0;
+
+      // --- what the speaker plays, and what the ear gets. The driver reaches the
+      // eardrum through a short response S(z); the canceller only has an estimate of it.
+      const play = anti + ht + rxv;
+      for (let k = 7; k > 0; k--) { dsp.PBUF[k] = dsp.PBUF[k - 1]; dsp.HBUF[k] = dsp.HBUF[k - 1]; }
+      dsp.PBUF[0] = play; dsp.HBUF[0] = ht + rxv;
+      let playAtEar = 0, htAtEar = 0;
+      for (let k = 0; k < 5; k++) {
+        playAtEar += dsp.SPATH[k] * dsp.PBUF[k];
+        htAtEar += dsp.SPATH[k] * dsp.HBUF[k];
+      }
+      const antiAtEar = playAtEar - htAtEar;
+      const ear = passiveAtEar + playAtEar;
+      const resid = passiveAtEar + antiAtEar;             // noise-only, for the honest ANC figure
+
+      // --- A7/A9: the error mic hears the ear, minus what we know we played
+      const errClean = ear + (rand() - .5) * dbToPa(34) - htAtEar;
+
+      // --- A8 filtered-x update, frozen on impulses, on a clipped reference, and while the radio talks
+      for (let k = 7; k > 0; k--) dsp.SBUF[k] = dsp.SBUF[k - 1];
+      dsp.SBUF[0] = x;
+      let xf = 0;
+      for (let k = 0; k < 5; k++) xf += dsp.SHAT[k] * dsp.SBUF[k];
+      for (let k = 31; k > 0; k--) dsp.XF[k] = dsp.XF[k - 1];
+      dsp.XF[0] = xf;
+      const adapting = s.anc && s.adapt && refOk && dsp.duck <= 0 && !(s.rx && lastRx);
+      if (adapting) {
+        let pow = 1e-9;
+        for (let k = 0; k < 32; k++) pow += dsp.XF[k] * dsp.XF[k];
+        const mu = 0.03 / pow;
+        const leak = 1 - 2e-6;
+        for (let k = 0; k < 32; k++) dsp.W[k] = dsp.W[k] * leak - mu * errClean * dsp.XF[k];
+      }
+
+      earSq += ear * ear; passSq += passiveAtEar * passiveAtEar; residSq += resid * resid;
+      playSq += htAtEar * htAtEar;
+      if (Math.abs(ear) > peak) peak = Math.abs(ear);
+
+      // --- Lane B inputs for this sample
+      const sp = s.talk ? dsp.voice.next() * dbToPa(96) : 0;          // voice at the boom, ~96 dB at 3 cm
+      const nAtBoom = atBoom * dbToPa(94 - 8);                        // the boom still hears the world
+      let boomMic = sp + nAtBoom;
+      if (Math.abs(boomMic) > AOP_BOOM) boomMic = Math.sign(boomMic) * AOP_BOOM;
+      bufClean[i] = sp; bufNoise[i] = nAtBoom;
+      bufBoom[i] = dsp.boomHP.run(boomMic);
+      bufRef[i] = mic2;
+      bufThroat[i] = dsp.throatLP.run(sp) * 1.05 + nAtBoom * dbToPa(94 - 30);
+      bufOut[i] = ear; bufPass[i] = passiveAtEar;
+      dsp.clsAcc += mic2 * mic2; dsp.clsPeak = Math.max(dsp.clsPeak, Math.abs(mic2)); dsp.clsN++;
+
+      if (opt.probe) {
+        sample.field = out; sample.mic2 = mic2; sample.clip = clipNow; sample.refOk = refOk;
+        sample.duck = dsp.duck > 0; sample.passive = passiveAtEar; sample.ear = ear;
+        sample.play = htAtEar; sample.resid = resid; sample.anti = antiAtEar; sample.adapting = adapting;
+        sample.boom = bufBoom[i]; sample.limit = Math.abs(ht) >= htCap;
+        opt.probe(S.n, sample);
+      }
+    }
+
+    /* ---------------- Lane B, once per frame ---------------- */
+    const fr = laneB(bufBoom, bufRef, bufThroat, bufClean, bufNoise, bufTx);
+    if (opt.probeTx) opt.probeTx(frameStart, bufTx);
+
+    /* ---------------- meters ---------------- */
+    const a = 0.12;
+    dsp.earAcc += (earSq / BLK - dsp.earAcc) * a;
+    dsp.passAcc += (passSq / BLK - dsp.passAcc) * a;
+    dsp.residAcc += (residSq / BLK - dsp.residAcc) * a;
+    dsp.playAcc += (playSq / BLK - dsp.playAcc) * a;
+    m.ear = paToDb(Math.sqrt(dsp.earAcc));           // everything: noise left over + hear-through + radio
+    m.passive = paToDb(Math.sqrt(dsp.passAcc));      // the same noise with the earmuff alone
+    m.noiseEar = paToDb(Math.sqrt(dsp.residAcc));    // the noise part only, after the canceller
+    m.play = paToDb(Math.sqrt(dsp.playAcc));         // hear-through + radio voice: what the 82 dB cap covers
+    m.ancDb = Math.max(0, m.passive - m.noiseEar);
+    dsp.peakHold = Math.max(dsp.peakHold * 0.985, peak);
+    m.peak = paToDb(dsp.peakHold);
+    m.limiting = limitHits / BLK;
+    m.clip = clipped > 0 ? 1 : 0;
+    m.duck = dsp.duck > 0 ? 1 : 0;
+    m.adapting = (s.anc && s.adapt && dsp.clipHold <= 0 && dsp.duck <= 0 && !(s.rx && lastRx)) ? 1 : 0;
+    m.t += BLK / SR;
+    m.frames++;
+
+    /* ---------------- B5 scene classifier and the firmware link ---------------- */
+    if (dsp.clsN >= SR * 0.5) {
+      const rms = Math.sqrt(dsp.clsAcc / dsp.clsN);
+      dsp.clsHold = Math.max(dsp.clsHold * 0.55, dsp.clsPeak);   // a shot keeps its evidence for a few seconds
+      const cr = dsp.clsHold / (rms + 1e-9);
+      const db = paToDb(rms);
+      let mode = 'AWARE';
+      if (cr > 7 || paToDb(dsp.clsHold) > 118) mode = 'COMBAT';
+      else if (db > 84 && cr < 5) mode = 'VEHICLE';
+      if (S.s.rx) mode = 'RADIO';
+      if (mode !== dsp.modeCand) { dsp.modeCand = mode; mode = lastMode; }   // two windows must agree
+      if (mode !== lastMode) {
+        logLine('u', `Jetson → STM32   SCENE ${SCENE_NAME[mode]}   (${db.toFixed(0)} dB, crest ${cr.toFixed(1)})`);
+        logLine('u', `STM32 → Jetson   ACK ${SCENE_NAME[mode]}`);
+        lastMode = mode;
+      }
+      m.mode = mode;
+      dsp.clsAcc = 0; dsp.clsPeak = 0; dsp.clsN = 0;
+    }
+    if (S.s.ptt !== lastPtt) {
+      lastPtt = S.s.ptt;
+      logLine('k', `STM32 → Jetson   PTT ${lastPtt}` + (lastPtt ? '   opto on, radio keyed' : '   opto off'));
+    }
+    if (S.s.rx !== lastRx) {
+      lastRx = S.s.rx;
+      logLine('u', `Jetson → STM32   RADIO ${lastRx}` + (lastRx ? '   hear-through ducked, adaptation frozen' : ''));
+    }
+    if (m.crack > 0) m.crack--;
+
+    const ms = performance.now() - t0;
+    m.frameMs = m.frameMs * 0.85 + ms * 0.15;
+    if (opt.probeFrame) { fr.n0 = frameStart; fr.ms = ms; fr.mode = m.mode; opt.probeFrame(fr); }
+
+    /* ---------------- traces (decimated to 4 kHz) ---------------- */
+    const tr = S.trace;
+    for (let i = 0; i < BLK; i += 4) {
+      tr.mic2[tr.w] = bufRef[i]; tr.ear[tr.w] = bufOut[i]; tr.pass[tr.w] = bufPass[i];
+      tr.boom[tr.w] = bufBoom[i]; tr.tx[tr.w] = bufTx[i];
+      tr.w = (tr.w + 1) % tr.mic2.length;
+    }
+  };
+
+  /* ---------- Lane B: framing, detector, STFT, mask, guard ---------- */
+  function laneB(boom, ref, throat, clean, noise, txOut) {
+    const s = S.s, m = S.m;
+
+    // B2 impulse detector: a jump above a slowly-tracked background (a 90 ms blast
+    // fills whole frames, so crest factor alone cannot see it)
+    let pk = 0, sq = 0;
+    for (let i = 0; i < BLK; i++) { const a = Math.abs(boom[i]); if (a > pk) pk = a; sq += boom[i] * boom[i]; }
+    const rms = Math.sqrt(sq / BLK);
+    if (dsp.bgRms <= 0 || !isFinite(dsp.bgRms)) dsp.bgRms = rms;
+    const jump = rms / (dsp.bgRms + 1e-12);
+    const impulse = rms > dsp.bgRms * 6 || pk > dsp.bgRms * 18;
+    dsp.bgRms = impulse ? dsp.bgRms * 0.995 + rms * 0.005 : dsp.bgRms * 0.95 + rms * 0.05;
+    dsp.impFrames = impulse ? dsp.impFrames + 1 : 0;
+    if (dsp.impFrames > 40) { dsp.bgRms = rms; dsp.impFrames = 0; }
+    dsp.impHold = impulse ? 8 : Math.max(0, dsp.impHold - 1);   // ~130 ms after a trigger
+    const impulseNear = impulse || dsp.impHold > 0;
+    m.impulse = impulse ? 1 : 0;
+
+    // B3 robust normalisation: the level Lane B works at is the frame's 90th-percentile
+    // magnitude, tracked slowly and held through a flagged impulse. A gunshot moves an RMS
+    // by tens of dB inside one frame; it barely moves this, so the mask keeps its footing.
+    for (let i = 0; i < BLK; i++) dsp.absBuf[i] = Math.abs(boom[i]);
+    dsp.absBuf.sort();
+    const p90 = dsp.absBuf[Math.floor(BLK * 0.9)];
+    if (!(dsp.normScale > 0)) dsp.normScale = p90 || 1e-6;
+    if (!impulseNear) dsp.normScale = dsp.normScale * 0.9 + p90 * 0.1;
+    const inv2 = 1 / (dsp.normScale * dsp.normScale + 1e-24);
+    m.normDb = paToDb(dsp.normScale); m.rmsDb = paToDb(rms);
+
+    let sIn0 = 0, nIn0 = 0;
+    for (let i = 0; i < BLK; i++) { sIn0 += clean[i] * clean[i]; nIn0 += noise[i] * noise[i]; }
+    const frame = { impulse, impulseNear, jump, norm: m.normDb, rmsDb: m.rmsDb, sIn: sIn0, nIn: nIn0, sOut: sIn0, nOut: nIn0, voiced: false, maskMean: 1 };
+
+    if (!s.clean) {                                  // bypass: raw boom mic to the radio
+      for (let i = 0; i < BLK; i++) txOut[i] = s.ptt ? boom[i] : 0;
+      if (!impulseNear && sIn0 > dbToPa(70) ** 2 * BLK) accSnr(sIn0, nIn0, sIn0, nIn0);
+      dsp.prevBoom.set(boom); dsp.prevClean.set(clean); dsp.prevNoise.set(noise);
+      return frame;
+    }
+
+    // B4 STFT of the mixture, and of the clean and noise parts separately so the
+    // SNR figures are measured, not guessed
+    loadFrame(dsp.re, dsp.im, dsp.prevBoom, boom);
+    loadFrame(dsp.re2, dsp.im2, dsp.prevClean, clean);
+    loadFrame(dsp.re3, dsp.im3, dsp.prevNoise, noise);
+    fft(dsp.re, dsp.im, false); fft(dsp.re2, dsp.im2, false); fft(dsp.re3, dsp.im3, false);
+
+    // throat envelope — the voice guard's evidence (B9)
+    let thr = 0;
+    for (let i = 0; i < BLK; i++) thr += throat[i] * throat[i];
+    dsp.throatEnv = dsp.throatEnv * .6 + Math.sqrt(thr / BLK) * .4;
+    const voiced = paToDb(dsp.throatEnv) > 62;
+    m.voiced = voiced ? 1 : 0;
+
+    let sOut = 0, nOut = 0, gSum = 0;
+    for (let k = 0; k <= NFFT / 2; k++) {
+      const Nraw = dsp.re3[k] * dsp.re3[k] + dsp.im3[k] * dsp.im3[k];
+      const P = (dsp.re[k] * dsp.re[k] + dsp.im[k] * dsp.im[k]) * inv2;   // B3: normalised power
+      const N = Nraw * inv2;
+      dsp.noisePsd[k] = dsp.noisePsd[k] * .92 + (voiced ? dsp.noisePsd[k] * .08 : N * .08);
+      let g = 1 - 1.6 * dsp.noisePsd[k] / (P + 1e-18);
+      const fHz = k * SR / NFFT;
+      let floorG = impulse ? .25 : .06;                       // B6/B8: repair rather than gouge
+      // B9 voice guard — not on a frame with a gunshot in it: a 145 dB crack reaches even a
+      // contact microphone, and the guard would then protect the crack instead of the voice
+      if (voiced && !impulse && fHz > 250 && fHz < 3600) floorG = Math.max(floorG, .35);
+      g = Math.max(floorG, Math.min(1, g));
+      g = dsp.gPrev[k] * .45 + g * .55;
+      dsp.gPrev[k] = g;
+      gSum += g;
+
+      const gg = g * g;
+      sOut += (dsp.re2[k] * dsp.re2[k] + dsp.im2[k] * dsp.im2[k]) * gg;
+      nOut += Nraw * gg;
+
+      dsp.re[k] *= g; dsp.im[k] *= g;
+      if (k > 0 && k < NFFT / 2) { dsp.re[NFFT - k] = dsp.re[k]; dsp.im[NFFT - k] = -dsp.im[k]; }
+    }
+    fft(dsp.re, dsp.im, true);
+
+    // B11 overlap-add, then the PTT gate — nothing leaves unless the button is down
+    for (let i = 0; i < BLK; i++) {
+      const v = dsp.ola[i] + dsp.re[i] * WIN[i];
+      txOut[i] = s.ptt ? v : 0;
+      dsp.ola[i] = dsp.re[i + BLK] * WIN[i + BLK];
+    }
+
+    // SNR is a speech metric: only where the wearer is speaking and no shot is in the frame
+    if (!impulseNear && sIn0 > dbToPa(70) ** 2 * BLK) accSnr(sIn0, nIn0, sOut, nOut);
+    if (impulse && !dsp.wasImpulse) m.shots++;
+    dsp.wasImpulse = impulse;
+    dsp.prevBoom.set(boom); dsp.prevClean.set(clean); dsp.prevNoise.set(noise);
+    frame.sOut = sOut; frame.nOut = nOut; frame.voiced = voiced; frame.maskMean = gSum / NBIN;
+    return frame;
+  }
+
+  /* SNR over about two seconds of speech and noise energy; the output figures come
+     from pushing the clean part and the noise part through the same mask */
+  function accSnr(sIn, nIn, sOut, nOut) {
+    const b = 0.008;
+    dsp.sInAcc += (sIn - dsp.sInAcc) * b; dsp.nInAcc += (nIn - dsp.nInAcc) * b;
+    dsp.sOutAcc += (sOut - dsp.sOutAcc) * b; dsp.nOutAcc += (nOut - dsp.nOutAcc) * b;
+    dsp.silent = sIn < dbToPa(55) ** 2 * BLK ? dsp.silent + 1 : 0;
+    const quiet = dsp.silent > 45;
+    S.m.snrIn = quiet ? NaN : 10 * Math.log10((dsp.sInAcc + 1e-20) / (dsp.nInAcc + 1e-20));
+    S.m.snrOut = quiet ? NaN : 10 * Math.log10((dsp.sOutAcc + 1e-20) / (dsp.nOutAcc + 1e-20));
+  }
+
+  S.set = function (patch) {
+    const before = JSON.stringify(S.s);
+    Object.assign(S.s, patch);
+    if (patch.scene && JSON.stringify(S.s) !== before) logLine('e', `scene → ${SCENE[S.s.scene].label}`);
+    if ('anc' in patch) logLine('e', `Lane A ANC ${patch.anc ? 'on' : 'off'}`);
+    if ('clean' in patch) logLine('e', `Lane B clean-up ${patch.clean ? 'on' : 'off'}`);
+    if ('adapt' in patch && !patch.adapt) logLine('e', 'adaptation frozen by hand');
+    if (opt.live && typeof syncControls === 'function') syncControls();
+  };
+  S.reset = function () { dsp.W.fill(0); logLine('e', 'canceller reset'); };
+  return S;
+}
+
+function loadFrame(re, im, prev, cur) {
+  for (let i = 0; i < BLK; i++) { re[i] = prev[i] * WIN[i]; im[i] = 0; }
+  for (let i = 0; i < BLK; i++) { re[i + BLK] = cur[i] * WIN[i + BLK]; im[i + BLK] = 0; }
+}
+
+const SIM = createMachine({ live: true });
+SIM.logLine('e', 'bench powered — STM32 loads the DSP program into the ADAU over I²C');

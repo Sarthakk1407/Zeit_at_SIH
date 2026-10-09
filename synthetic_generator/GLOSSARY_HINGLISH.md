@@ -306,10 +306,10 @@ Aur bins delete karna **exactly wahi hai jo mask-based denoiser karta hai**. Toh
 **Lane A — kaan bachana:**
 reference mic → speaker → kaan. Budget **1 ms se kam**. FxLMS. Metric NMSE.
 
-**Lane B — radio pe awaaz bhejna:**
-boom mic → denoiser → radio. Budget **20–40 ms**. Neural network. Metric PESQ/STOI.
+**Lane B — radio pe awaaz:**
+boom mic + reference mic + throat mic → Jetson pe AI (GTCRN) → radio. Aur radio se aane wali awaaz saaf karke kaano tak. Budget **≈ 70–85 ms** (radio ke liye 150 ms tak theek). Metric PESQ/STOI.
 
-**Kyun alag:** Anti-noise ko **sound wave se pehle** kaan tak pahunchna hai — earcup se kaan tak 0.3–0.6 ms lagta hai. 25.3 ms budget usse **40–80 guna** slow hai. Neural network Lane A mein reh hi nahi sakta.
+**Kyun alag:** Anti-noise ko **sound wave se pehle** kaan tak pahunchna hai — earcup se kaan tak 0.3–0.6 ms lagta hai. Lane B ka 32 ms ka frame hi usse **50–100 guna** slow hai. Isliye Lane A ADAU1787 DSP chip pe chalta hai, bina neural network ke.
 
 **Example:** Lane A = airbag (millisecond mein khulna hai). Lane B = GPS route recalculation (do second theek hai). Dono zaroori, dono ka time-scale alag.
 
@@ -338,13 +338,13 @@ boom mic → denoiser → radio. Budget **20–40 ms**. Neural network. Metric P
 
 ## 31. Frame, hop, latency
 
-- **Frame:** ek baar mein kitna audio process. 20 ms.
-- **Hop:** har kitni der mein naya frame. 10 ms (50% overlap).
-- **Algorithmic latency:** frame + buffer = **25.3 ms**.
+- **Frame:** ek baar mein kitna audio process. **32 ms** (16 kHz pe 512 samples).
+- **Hop:** har kitni der mein naya frame. **16 ms** (50% overlap).
+- **Algorithmic latency:** frame = **32 ms**; buffers + resampling ke saath muh se radio tak **≈ 70–85 ms**.
 
 **Example:** Frame = ek chammach. Hop = do chammach ke beech ka gap. Awaaz aur nikalne ke beech ka delay = latency.
 
-**Sandarbh:** 25.3 ms radio ke liye theek hai (insaan ~40 ms tak notice nahi karta). Par true ANC ke liye 40–80 guna slow hai.
+**Sandarbh:** ITU-T G.114 kehta hai 150 ms tak ka one-way delay baat-cheet mein pata nahi chalta, toh ≈ 70–85 ms radio ke liye theek hai. Par true ANC ke liye bahut slow — isliye ANC alag chip (ADAU1787) pe.
 
 ---
 

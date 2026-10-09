@@ -21,6 +21,7 @@ import os
 import numpy as np
 import soundfile as sf
 import torch
+from scipy.signal import butter, sosfilt
 from torch.utils.data import Dataset
 
 from . import augment as A
@@ -184,8 +185,32 @@ class DualMicMix(Dataset):
         if rng.random() < m.clip_prob:
             mic2 = A.clip(mic2, rng.uniform(*m.clip_over_db), rng)
 
-        mics = np.stack([mic1, mic2])[: self.cfg.model.mics].astype(np.float32)
+        chans = [mic1, mic2]
+        if self.cfg.model.mics >= 3:
+            chans.append(self._throat(speech, g * n1, lvl, rng))
+        mics = np.stack(chans)[: self.cfg.model.mics].astype(np.float32)
         return torch.from_numpy(mics), torch.from_numpy(target.astype(np.float32)), torch.tensor(snr, dtype=torch.float32)
+
+    def _throat(self, speech, noise_at_mic1, lvl, rng):
+        """Input 2, the throat mic (Mic 4): the voice as neck vibration.
+
+        Simulated until paired throat/air corpora (TAPS, Vibravox) are indexed:
+        the voice low-passed at 1.5–3 kHz (body conduction loses the highs), a
+        small leak of the airborne noise, a random sensor gain — and, with
+        probability `throat_dropout`, all zeros, so one trained model works with
+        or without the throat mic.
+        """
+        m = self.mix
+        if rng.random() < m.get("throat_dropout", 0.3):
+            return np.zeros(self.n, np.float32)
+        fc = rng.uniform(*m.get("throat_lowpass_hz", [1500, 3000]))
+        sos_lp = butter(4, fc, btype="low", fs=self.sr, output="sos")
+        sos_hp = butter(2, 80, btype="high", fs=self.sr, output="sos")
+        voice = sosfilt(sos_hp, sosfilt(sos_lp, speech))
+        leak = A.db2lin(rng.uniform(*m.get("throat_noise_leak_db", [-40, -25])))
+        noise = sosfilt(sos_lp, noise_at_mic1) * leak
+        gain = A.db2lin(rng.uniform(*m.get("throat_gain_db", [-6, 6])))
+        return ((voice + noise) * gain * lvl).astype(np.float32)
 
 
 class PairFolder(Dataset):

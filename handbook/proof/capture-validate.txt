@@ -1,0 +1,28 @@
+
+==============================================================================
+ good_shots.wav
+ 30.00 s   96000 Hz   24-bit pcm   1 ch   2,880,000 frames
+==============================================================================
+[ PASS ] Format             96000 Hz / 24-bit pcm
+[ PASS ] Clipping           0.000%                     24-bit full scale
+[ PASS ] Bandwidth          48.0 kHz of 48 kHz         noise floor reaches Nyquist
+[ PASS ] Dropouts           0.00%  max 0 ms            0.01% single-sample zeros = quantisation, not gating
+[ PASS ] DC offset          +0.00000 (-109 dBFS)
+[ PASS ] Noise floor        -62.3 dBFS
+[ PASS ] Wind / rumble      -22.5 dB below total
+[ PASS ] Impulse complete   clean edges
+[ PASS ] Events found       5 events, worst SNR 58 dB  median 59 dB
+[ PASS ] Handling noise     none                       all LF is broadband, i.e. real
+------------------------------------------------------------------------------
+
+   ██████    ██████
+  ██        ██    ██
+  ██   ███  ██    ██
+  ██    ██  ██    ██
+   ██████    ██████
+
+ Clean. Carry on.
+
+ checked in 0.6 s
+==============================================================================
+

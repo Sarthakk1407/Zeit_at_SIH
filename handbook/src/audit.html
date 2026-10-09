@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANVIL Design Review · Team ZEIT · SIH 2026</title>
+<meta name="description" content="The team's review of its own first design for ANVIL: thirteen findings, each traced to a paper or a reproduced result, and what the locked architecture did about every one.">
+{{STYLE}}
+<style>
+.f{border:1.3px solid var(--rule);border-left:6px solid var(--c);border-radius:12px;padding:14px 18px;margin-bottom:12px;background:var(--bg)}
+.f-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:8px}
+.f-id{font:700 13px Consolas,"Cascadia Mono",monospace;color:var(--c)}
+.f h3{font-size:17px;flex:1 1 320px}
+.sev{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border-radius:999px;
+  border:1.3px solid var(--c);color:var(--c)}
+.done{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border-radius:999px;
+  background:var(--green);color:var(--bg)}
+.f-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 26px}
+.f-grid h4{margin:0 0 3px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.f-grid p{margin:0;font-size:14.5px}
+.f .where{grid-column:1/-1;font-size:13px;color:var(--muted);margin-top:6px}
+.crit{--c:var(--red)} .high{--c:var(--orange)} .med{--c:var(--blue)}
+@media (max-width:900px){.f-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="top"><div class="wrap">
+  <b>ANVIL</b>
+  <a href="index.html">Handbook</a><a href="zeit-bench-3d.html">3D bench</a>
+  <a href="#findings">The thirteen findings</a><a href="#before-after">Before and after</a>
+  <a href="#kept">What the review kept</a><a href="#proof">Proof</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">Design review · Smart India Hackathon 2026 · PS 26052 · DRDO</div>
+  <h1 style="font-size:56px">ANVIL Design Review</h1>
+  <p class="lede" style="max-width:46em">Before building, the team audited its own first design: every document and
+    tool in the repository, checked line by line against the papers it cites. Thirteen findings came
+    out. This page records each one, what the locked architecture did about it, and where to check.</p>
+  <div class="meta"><span><b>First review</b> 6 September 2026</span><span><b>Architecture locked</b> 19 September 2026</span>
+    <span><b>This record</b> {{DATE}}</span><span><b>Team</b> ZEIT v.1.0</span></div>
+  <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+    <div class="stat r"><div class="v">13</div><div class="l">Findings</div><div class="s">2 critical · 6 high · 5 medium</div></div>
+    <div class="stat g"><div class="v">12</div><div class="l">Closed</div><div class="s">in the design, the code or the documents</div></div>
+    <div class="stat b"><div class="v">1</div><div class="l">Adopted</div><div class="s">into the evaluation chain</div></div>
+    <div class="stat p"><div class="v">16</div><div class="l">Sources checked</div><div class="s">papers and standards the design cites</div></div>
+  </div>
+</div></header>
+
+<!-- ================================================================ 1 -->
+<section id="findings" class="red"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">1</div><h2>The thirteen findings</h2></div>
+  <p class="sec-lede">Each finding was traced to a specific paper, a specific line in the team's own
+    documents, or something run on the review machine. The two critical ones reshaped the system.</p>
+
+  <div class="f crit"><div class="f-top"><span class="f-id">F1</span><h3>The PS targets cannot be one pass/fail number</h3>
+    <span class="sev">Critical</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>No published lightweight model reaches PESQ 2.5 below 0 dB input SNR,
+        and the problem statement does not say whether "SNR &gt; 15 dB" is an output level or an improvement.</p></div>
+      <div><h4>What changed</h4><p>Every metric is reported as a curve against input SNR from −15 to +20 dB, with the
+        point where each target is first met. Output SNR and SNR improvement are both reported.</p></div>
+      <div class="where">Check: <code>training/evaluate.py</code> (per input-SNR bucket) · handbook §9</div>
+    </div></div>
+
+  <div class="f crit"><div class="f-top"><span class="f-id">F2</span><h3>Noise cancelling at the ear and voice clean-up were fused into one chain</h3>
+    <span class="sev">Critical</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>Anti-noise must beat 0.3–0.6 ms of acoustic travel; the single chain had a
+        25 ms budget. The in-ear microphone was also wired into the radio path, where no such signal flows.</p></div>
+      <div><h4>What changed</h4><p>The system is two lanes. Lane A runs on an audio DSP in under 1 ms with its own
+        metrics; Lane B runs the neural network on the Jetson in 70–85 ms. The in-ear microphones belong to Lane A only.</p></div>
+      <div class="where">Check: <code>docs/01-system/architecture.md</code> §2, §4, §5 · handbook §2</div>
+    </div></div>
+
+  <div class="f high"><div class="f-top"><span class="f-id">F3</span><h3>The "29 ms of look-ahead" belonged to the recording rig, not the headset</h3>
+    <span class="sev">High</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>The claim relied on a microphone placed at the gun. On one head the two
+        microphones are 0.6 ms apart.</p></div>
+      <div><h4>What changed</h4><p>The warning now comes from physics the headset really has: a supersonic bullet's
+        crack arrives 42.3 ms before its muzzle blast at 30 m. The crack guard ducks both ears in that gap.</p></div>
+      <div class="where">Check: handbook §4 timeline · the gunshot run in the 3D bench</div>
+    </div></div>
+
+  <div class="f high"><div class="f-top"><span class="f-id">F4</span><h3>Impulse repair was asked to do a job its authors designed it not to do</h3>
+    <span class="sev">High</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>Binary Mask Residual Interpolation was validated on dense, low-level clicks
+        lasting a few milliseconds. A muzzle blast destroys 50–200 ms, which no interpolation can fill.</p></div>
+      <div><h4>What changed</h4><p>Impulse repair is scoped to short cracks. For the blast the design conceals and
+        recovers, and scores how fast intelligibility returns with impulse recovery time.</p></div>
+      <div class="where">Check: <code>architecture.md</code> §5.3 · <code>synthetic_generator/metrics/irt.py</code></div>
+    </div></div>
+
+  <div class="f high"><div class="f-top"><span class="f-id">F5</span><h3>The DNSMOS targets came from a note, not from the literature</h3>
+    <span class="sev">High</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>SIG 4.1 / BAK 4.2 is beyond every published system. GTCRN itself scores
+        SIG 3.00 / BAK 3.90 on the DNS3 blind test, against a noisy input of 3.20 / 2.65.</p></div>
+      <div><h4>What changed</h4><p>The targets are re-anchored to those published figures: reach GTCRN's background
+        suppression without giving up speech quality. The metric is cited to Reddy et al.</p></div>
+      <div class="where">Check: <code>docs/01-system/workflow.md</code> §7 · <code>placement.md</code> §6</div>
+    </div></div>
+
+  <div class="f high"><div class="f-top"><span class="f-id">F6</span><h3>Sample rate and frame size did not agree across the stack</h3>
+    <span class="sev">High</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>The engine was specified at 48 kHz with 20 ms frames, the network at 16 kHz
+        with 32 ms windows. The published model size and band layout only hold at the network's own settings.</p></div>
+      <div><h4>What changed</h4><p>One rate chain, written down: capture at 48 kHz in 16 ms blocks, 3:1 down to 16 kHz,
+        512-point FFT with a 256 hop, back up to 48 kHz. Buffers and resampling are counted in the 70–85 ms budget.</p></div>
+      <div class="where">Check: <code>architecture.md</code> §6.3, §10 · the resampler line in <a href="proof/training-selftest.txt">the self-test</a></div>
+    </div></div>
+
+  <div class="f high"><div class="f-top"><span class="f-id">F7</span><h3>The radio's vocoder had dropped out of the evaluation</h3>
+    <span class="sev">High</span><span class="done" style="background:var(--blue)">Adopted</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>A tactical radio transmits a low-bit-rate vocoder, not the waveform. Scores
+        taken before the vocoder are not what the listener hears.</p></div>
+      <div><h4>What changed</h4><p>The evaluation chain scores every metric twice, before and after a Codec2 / MELPe
+        vocoder, so a method that only looks good before the radio is caught.</p></div>
+      <div class="where">Check: <code>architecture.md</code> §7, the evaluation step</div>
+    </div></div>
+
+  <div class="f high"><div class="f-top"><span class="f-id">F8</span><h3>Four good ideas had been left behind in the first plan</h3>
+    <span class="sev">High</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>Lombard speech (how people actually shout in noise), a decided clean-speech
+        corpus, two metrics that see impulse damage, and public gunshot corpora as an external reference.</p></div>
+      <div><h4>What changed</h4><p>All four are in. Training uses LibriSpeech with 20% Lombard GRID; impulse recovery
+        time and words lost per shot are implemented; the Zenodo and Cadre gunshot sets are in the training mix.</p></div>
+      <div class="where">Check: <code>training/configs/base.yaml</code> · <code>synthetic_generator/metrics/</code> · the recovery-time chart in handbook §7</div>
+    </div></div>
+
+  <div class="f med"><div class="f-top"><span class="f-id">F9</span><h3>Blind source separation on three microphones was over-claimed</h3>
+    <span class="sev">Medium</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>With three microphones and five or more sound sources, the separation is
+        underdetermined, and nothing says which output is the voice.</p></div>
+      <div><h4>What changed</h4><p>The separation stage is removed. A throat microphone gives the network a view of the
+        voice that airborne noise cannot reach, which does the same job more cheaply.</p></div>
+      <div class="where">Check: <code>architecture.md</code> §5.3, §6.2 · handbook §5</div>
+    </div></div>
+
+  <div class="f med"><div class="f-top"><span class="f-id">F10</span><h3>Two papers in the folder were never cited</h3>
+    <span class="sev">Medium</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>Le Roux et al. show why a plain SDR number hides over-suppression; Reddy et
+        al. define the DNSMOS metric the plan relies on. Neither appeared in the source list.</p></div>
+      <div><h4>What changed</h4><p>Both are cited, which makes sixteen sources. The fractional lower-order moment is
+        used as restated in Yuan et al., and its p &lt; α rule is reproduced by the team's own experiment.</p></div>
+      <div class="where">Check: <code>workflow.md</code> source table · <a href="proof/normalisation.txt">proof/normalisation.txt</a></div>
+    </div></div>
+
+  <div class="f med"><div class="f-top"><span class="f-id">F11</span><h3>The range-day tool crashed on Windows after every check had passed</h3>
+    <span class="sev">Medium</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>The GO banner uses block characters a default Windows console cannot print.
+        The crash made the self-test report fourteen false failures.</p></div>
+      <div><h4>What changed</h4><p>The tools set their own console encoding. The self-test passes on a plain Windows
+        console with no settings, shown below.</p></div>
+      <div class="where">Check: <code>data_collection/validate.py</code>, <code>monitor.py</code>, <code>report.py</code> · <a href="#proof">the run below</a></div>
+    </div></div>
+
+  <div class="f med"><div class="f-top"><span class="f-id">F12</span><h3>The holdout rule and the sample-size rule cancelled each other</h3>
+    <span class="sev">Medium</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>Fifteen shots per condition with 30% held out leaves four or five holdout
+        shots, too few for the tolerance they were meant to set.</p></div>
+      <div><h4>What changed</h4><p>The range recordings are not split at all. All 44 recorded impulses are the test
+        reference and none is used for training.</p></div>
+      <div class="where">Check: <code>training/configs/base.yaml</code> (the <code>zeit_range</code> source is test-only)</div>
+    </div></div>
+
+  <div class="f med"><div class="f-top"><span class="f-id">F13</span><h3>Smaller consistency flags</h3>
+    <span class="sev">Medium</span><span class="done">Closed</span></div>
+    <div class="f-grid">
+      <div><h4>What the review found</h4><p>Two documents disagreed on whether phase matters; the latency table left
+        out the buffers and filters; no power figure was planned.</p></div>
+      <div><h4>What changed</h4><p>The architecture was rewritten as one authoritative document. The latency table
+        counts every buffer and resampler, and power is read from the Jetson's own rails.</p></div>
+      <div class="where">Check: <code>architecture.md</code> §10 · <code>tech-stack.md</code> §8</div>
+    </div></div>
+</div></section>
+
+<!-- ================================================================ 2 -->
+<section id="before-after" class="blue"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">2</div><h2>Before and after</h2></div>
+  <p class="sec-lede">What the review changed, in one table.</p>
+  <div class="tbl scroll"><table>
+    <tr><th></th><th>First design, 6 September</th><th>Locked architecture</th></tr>
+    <tr><td>Structure</td><td>One eleven-block chain doing everything</td><td>Two lanes: the ear on a DSP, the voice on a Jetson</td></tr>
+    <tr><td>Ear path budget</td><td>25 ms, shared with the voice</td><td>Under 1 ms, on its own processor</td></tr>
+    <tr><td>Warning before a blast</td><td>29 ms, true only of the recording rig</td><td>42.3 ms, from the crack arriving before the blast</td></tr>
+    <tr><td>Microphones</td><td>Three</td><td>Six: two outside, two inside, boom and throat</td></tr>
+    <tr><td>Finding the voice</td><td>Blind source separation</td><td>A throat microphone as the third network input</td></tr>
+    <tr><td>Rates and frames</td><td>48 kHz engine, 16 kHz model, two frame sizes</td><td>One written chain: 48 → 16 → 48 kHz, 32 ms window, 16 ms hop</td></tr>
+    <tr><td>Impulse repair</td><td>Claimed to cover gunshots</td><td>Short cracks only; blasts are concealed and recovery is measured</td></tr>
+    <tr><td>Targets</td><td>Single numbers; DNSMOS from a note</td><td>Curves against input SNR; DNSMOS anchored to published scores</td></tr>
+    <tr><td>Speech data</td><td>Undecided; no Lombard speech</td><td>LibriSpeech with 20% Lombard GRID</td></tr>
+  </table></div>
+</div></section>
+
+<!-- ================================================================ 3 -->
+<section id="kept" class="green"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">3</div><h2>What the review kept</h2></div>
+  <p class="sec-lede">A review that only lists problems misleads. These parts were judged right and were
+    protected through every rewrite.</p>
+  <div class="cols c3">
+    <div class="card green"><h3>The normalisation argument</h3>RMS is a second moment, and impulsive noise has no
+      finite variance. Replacing it with a percentile or FLOM scale is cited, measured and explainable in
+      thirty seconds.</div>
+    <div class="card green"><h3>Freezing the measurement engine</h3>The capture toolkit takes a SHA-256 of its own
+      analysis code alongside every recording, so the reference cannot drift unnoticed.</div>
+    <div class="card green"><h3>Deciding the split before the data exists</h3>Which takes are held out is written
+      into the plan before any shot is fired, which rules out choosing it afterwards.</div>
+    <div class="card green"><h3>Checking that mixing adds up</h3>Voice-only plus gun-only is compared against both
+      at once, all three as real recordings. It tests additive mixing and the SNR bookkeeping together.</div>
+    <div class="card green"><h3>Lossless audio, with the measurement</h3>Compressed audio shifted the spectral
+      centroid 173 times more than real shot-to-shot variation. The dataset stays lossless.</div>
+    <div class="card green"><h3>Licence discipline</h3>No GPL library in the device path, and no native audio
+      library that could strand the team at the range. Both matter to this sponsor.</div>
+  </div>
+</div></section>
+
+<!-- ================================================================ 4 -->
+<section id="proof" class="teal"><div class="wrap">
+  <div class="sec-h"><div class="sec-n">4</div><h2>Proof: the fixed toolkit, on a plain Windows console</h2></div>
+  <p class="sec-lede">Finding F11, re-run after the fix with no console settings. Fourteen deliberately
+    good and broken recordings each get the right verdict.</p>
+  <div class="terms">
+    {{TERM.wide|capture-selftest.txt|data_collection|python selftest.py testdata/|2-19,51|The capture toolkit's self-test: every verdict as expected, then every tool and a bit-exact round trip (excerpt). Run on Windows 11, 10 October 2026.}}
+  </div>
+</div></section>
+
+<footer><div class="wrap">ANVIL · Team ZEIT v.1.0 · Smart India Hackathon 2026 · Problem Statement 26052 (DRDO).
+  First review 6 September 2026; this record built {{DATE}} from <code>handbook/src/audit.html</code>.
+  <a href="index.html">Back to the handbook</a>.</div></footer>
+</body>
+</html>

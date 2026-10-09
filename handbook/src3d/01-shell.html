@@ -1,6 +1,9 @@
+<!doctype html>
+<html lang="en">
 <meta charset="utf-8">
-<title>ZEIT Prototype Bench</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANVIL Prototype Bench · Team ZEIT</title>
+<meta name="description" content="The ANVIL prototype bench in three dimensions, with Lane A and Lane B running as real DSP code on the page.">
 
 <style>
 :root{
@@ -11,10 +14,10 @@
   --ok:#1d7a3e; --warn:#a15c00; --crit:#b3261e;
   --shadow:0 1px 3px rgba(0,0,0,.07), 0 8px 28px rgba(0,0,0,.06);
   --radius:12px;
-  --scene:#ececed; --grid:#c9c9ce; --bench:#dcdce0;
+  --scene:#e8e9ec; --bench:#d7d8dc;
   --m1:#0071e3; --m2:#b25000; --m3:#6a3fa0; --spk:#1d7a3e; --src:#b3261e;
   --laneA:#1d7a3e; --laneB:#0071e3;
-  --sig:#1d1d1f;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -23,10 +26,9 @@
     --rule:#424245; --rule-soft:#2c2c2e;
     --link:#2997ff; --ok:#4cc76a; --warn:#e3a34a; --crit:#ff6b5e;
     --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.4);
-    --scene:#0b0b0c; --grid:#2a2a2d; --bench:#141416;
+    --scene:#131315; --bench:#1c1c1f;
     --m1:#4aa8ff; --m2:#e3a34a; --m3:#a98bd8; --spk:#4cc76a; --src:#ff6b5e;
     --laneA:#4cc76a; --laneB:#4aa8ff;
-    --sig:#f5f5f7;
   }
 }
 :root[data-theme="dark"]{
@@ -35,32 +37,32 @@
   --rule:#424245; --rule-soft:#2c2c2e;
   --link:#2997ff; --ok:#4cc76a; --warn:#e3a34a; --crit:#ff6b5e;
   --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.4);
-  --scene:#0b0b0c; --grid:#2a2a2d; --bench:#141416;
+  --scene:#131315; --bench:#1c1c1f;
   --m1:#4aa8ff; --m2:#e3a34a; --m3:#a98bd8; --spk:#4cc76a; --src:#ff6b5e;
   --laneA:#4cc76a; --laneB:#4aa8ff;
-  --sig:#f5f5f7;
 }
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--text);
+body{background:var(--bg);color:var(--text);margin:0;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
   font-size:15px;line-height:1.5;letter-spacing:-.003em;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
-.mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+.mono{font-family:var(--mono)}
 
 .hdr{max-width:1720px;margin:0 auto;padding:48px 34px 26px}
 .hdr .eb{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
   font-weight:600;margin:0 0 13px}
-.hdr h1{font-size:clamp(29px,4.2vw,44px);margin:0 0 13px;font-weight:700;letter-spacing:-.026em;
-  line-height:1.06}
-.hdr p{margin:0;color:var(--text-2);max-width:76ch;font-size:17.5px;line-height:1.45;
-  letter-spacing:-.008em}
+.hdr h1{font-size:clamp(29px,4.2vw,44px);margin:0 0 13px;font-weight:700;letter-spacing:-.026em;line-height:1.06}
+.hdr p{margin:0;color:var(--text-2);max-width:78ch;font-size:17.5px;line-height:1.45;letter-spacing:-.008em}
+.hdr .meta{display:flex;flex-wrap:wrap;gap:8px 30px;margin-top:22px;padding-top:18px;
+  border-top:1px solid var(--rule-soft);font-size:12.5px;color:var(--text-3)}
+.hdr .meta b{color:var(--text-2);font-weight:600}
 
 .shell{max-width:1720px;margin:0 auto;padding:0 34px 90px}
-.stage{display:grid;grid-template-columns:222px minmax(0,1fr) 352px;gap:16px;align-items:start}
-@media(max-width:1400px){.stage{grid-template-columns:206px minmax(0,1fr)}
-  .side{grid-column:1 / -1}}
+.stage{display:grid;grid-template-columns:230px minmax(0,1fr) 352px;gap:16px;align-items:start}
+.stage > *{min-width:0}
+@media(max-width:1400px){.stage{grid-template-columns:214px minmax(0,1fr)} .side{grid-column:1 / -1}}
 @media(max-width:900px){.stage{grid-template-columns:1fr}}
 
 .card{background:var(--bg-alt);border-radius:var(--radius);overflow:hidden}
@@ -70,319 +72,344 @@ body{background:var(--bg);color:var(--text);
 
 /* ---------- viewport ---------- */
 #viewport{position:relative;background:var(--scene);border-radius:var(--radius);
-  height:clamp(480px,62vh,660px);overflow:hidden;touch-action:none}
+  height:clamp(460px,60vh,640px);overflow:hidden;touch-action:none}
 #viewport canvas{display:block;width:100%;height:100%}
 #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .lbl{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;
   font-size:10.5px;font-weight:600;white-space:nowrap;padding:4px 9px;background:var(--bg);
-  border-radius:13px;box-shadow:var(--shadow);color:var(--text);border:1px solid var(--rule-soft);
-  transition:opacity .16s,border-color .16s}
+  border-radius:13px;box-shadow:var(--shadow);color:var(--text);border:1px solid var(--rule-soft)}
 .lbl:hover{border-color:var(--text-3)}
-.lbl.dim{opacity:.3}
-.lbl .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:1px}
-.zlbl{position:absolute;transform:translate(-50%,-50%);font-size:9.5px;font-weight:600;
-  letter-spacing:.14em;color:var(--text-3);pointer-events:none;white-space:nowrap}
-#hint{position:absolute;left:14px;bottom:14px;font-size:11px;color:var(--text-3);
-  background:var(--bg);border-radius:8px;padding:6px 10px;box-shadow:var(--shadow)}
-#stagelab{position:absolute;left:14px;top:14px;font-size:11px;color:var(--text-3);
-  background:var(--bg);border-radius:8px;padding:7px 11px;box-shadow:var(--shadow);font-weight:600;
-  letter-spacing:.05em;text-transform:uppercase}
-#lanelab{position:absolute;right:14px;top:14px;font-size:11px;background:var(--bg);
-  border-radius:8px;padding:7px 11px;box-shadow:var(--shadow);font-weight:600;
-  letter-spacing:.04em}
-#lanelab i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;
-  vertical-align:0}
+.lbl .hid{font-family:var(--mono);font-size:9px;color:var(--text-3);margin-right:5px}
+.lbl.hot{border-color:var(--text)}
+#stagelab{position:absolute;left:14px;top:14px;font-size:11px;color:var(--text-3);background:var(--bg);
+  border-radius:8px;padding:7px 11px;box-shadow:var(--shadow);font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase}
+#hint{position:absolute;left:14px;bottom:14px;font-size:11px;color:var(--text-3);background:var(--bg);
+  border-radius:8px;padding:6px 10px;box-shadow:var(--shadow)}
+#modelab{position:absolute;right:14px;top:14px;font-size:11px;background:var(--bg);border-radius:8px;
+  padding:7px 11px;box-shadow:var(--shadow);font-weight:600;letter-spacing:.04em}
+#modelab i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px}
 #loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--scene);
   font-size:12.5px;color:var(--text-3);z-index:5}
 #loading[hidden]{display:none}
 
 /* ---------- buttons ---------- */
-.btn{display:block;width:100%;text-align:left;padding:9px 12px;margin-bottom:6px;
-  font-family:inherit;font-size:14px;font-weight:500;background:var(--bg);color:var(--text);
-  border:1px solid var(--rule-soft);border-radius:8px;cursor:pointer;line-height:1.26;
-  transition:background .14s,border-color .14s;letter-spacing:-.006em}
+.btn{display:block;width:100%;text-align:left;padding:8px 11px;margin-bottom:5px;font-family:inherit;
+  font-size:13.5px;font-weight:500;background:var(--bg);color:var(--text);border:1px solid var(--rule-soft);
+  border-radius:8px;cursor:pointer;line-height:1.24;transition:background .14s,border-color .14s;
+  letter-spacing:-.006em}
 .btn:hover{border-color:var(--text-3)}
 .btn.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:600}
-.btn.run{background:var(--text);border-color:var(--text);color:var(--bg);text-align:center;
-  font-size:14.5px;font-weight:600;padding:12px}
-.btn.run:hover{opacity:.86}
-.btn.run[disabled]{opacity:.4;cursor:default}
-.btn .sub{display:block;font-size:10.5px;font-weight:400;color:var(--text-3);margin-top:2px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.btn.on .sub{color:inherit;opacity:.7}
-.btn .sw{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;
-  vertical-align:1px}
+.btn .sub{display:block;font-size:10.5px;font-weight:400;color:var(--text-3);margin-top:2px;font-family:var(--mono)}
+.btn.on .sub{color:inherit;opacity:.72}
+.btn .sw{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:1px}
 .btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
-.grp{margin-bottom:18px}
-.grp:last-child{margin-bottom:0}
+.btn.run{background:var(--text);border-color:var(--text);color:var(--bg);text-align:center;font-weight:600;padding:11px}
+.btn.run:hover{opacity:.86}
+.btn.run .sub{color:inherit;opacity:.72}
+.grp{margin-bottom:17px}.grp:last-child{margin-bottom:0}
 .grp > .gl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
-  margin:0 0 8px;font-weight:600}
+  margin:0 0 7px;font-weight:600}
 
-/* ---------- oscilloscope ---------- */
+/* ---------- scope ---------- */
 .scope{margin-top:16px;background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 14px}
-.scope-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  margin-bottom:12px}
-.scope-h h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text-3);margin:0}
-.scope-h .note{font-size:11.5px;color:var(--text-3);
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-#scopecv{display:block;width:100%;height:238px;border-radius:8px;background:var(--bg)}
-.scope-k{display:flex;gap:20px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--text-3);
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.scope-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.scope-h h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:0}
+.scope-h .note{font-size:11.5px;color:var(--text-3);font-family:var(--mono)}
+#scopecv{display:block;width:100%;height:250px;border-radius:8px;background:var(--bg)}
+.scope-k{display:flex;gap:18px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--text-3);font-family:var(--mono)}
 .scope-k i{display:inline-block;width:18px;height:2px;vertical-align:3px;margin-right:7px}
 
 /* ---------- chain strips ---------- */
 .chainbar{margin-top:16px;background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 18px}
-.chainbar + .chainbar{margin-top:10px}
-.chainbar .ch{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
-  flex-wrap:wrap;margin:0 0 13px}
-.chainbar h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text-3);margin:0}
+.chainbar .ch{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 13px}
+.chainbar h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:0}
 .chainbar h3 i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
-.chainbar .bud{font-size:11px;color:var(--text-3);
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.chainbar .bud{font-size:11px;color:var(--text-3);font-family:var(--mono)}
 .cflow{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px}
-.cb{flex:1 0 78px;background:var(--bg);border-radius:7px;padding:9px 5px;text-align:center;
-  transition:background .18s,color .18s}
-.cb .n{font-size:9.5px;color:var(--text-3);display:block;font-weight:600;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.cb .t{font-size:11.5px;font-weight:600;display:block;margin-top:3px;line-height:1.18}
-.cb.lit{background:var(--text);color:var(--bg)}
-.cb.lit .n{color:inherit;opacity:.6}
-.cb.done{background:var(--rule-soft)}
+.cb{flex:1 0 76px;background:var(--bg);border-radius:7px;padding:9px 5px;text-align:center;
+  transition:background .18s,color .18s,box-shadow .18s}
+.cb .n{font-size:9.5px;color:var(--text-3);display:block;font-weight:600;font-family:var(--mono)}
+.cb .t{font-size:11px;font-weight:600;display:block;margin-top:3px;line-height:1.2}
+.cb.lit{background:var(--laneA);color:#fff}
+.cb.lit .n{color:inherit;opacity:.75}
+.chainbar.b .cb.lit{background:var(--laneB)}
+.cb.off{opacity:.45}
 .cb.ai{box-shadow:inset 0 0 0 2px var(--text)}
-.chainbar.a .cb.lit{background:var(--laneA);color:#fff}
 
 /* ---------- side column ---------- */
 .side{display:flex;flex-direction:column;gap:16px}
 .readout{background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 18px}
-.readout h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text-3);margin:0 0 12px}
+.readout h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:0 0 12px}
 .rrow{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:12.5px}
 .rrow span{color:var(--text-3)}
-.rrow b{font-weight:600;font-variant-numeric:tabular-nums;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
+.rrow b{font-weight:600;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12px}
+.rrow b.good{color:var(--ok)} .rrow b.bad{color:var(--crit)} .rrow b.warn{color:var(--warn)}
 .readout hr{border:none;border-top:1px solid var(--rule-soft);margin:10px 0}
-#bar{margin-top:12px;height:3px;background:var(--rule-soft);border-radius:2px;overflow:hidden}
-#barfill{height:100%;width:0;background:var(--text);border-radius:2px}
+.readout .cap{font-size:10.5px;color:var(--text-3);margin:10px 0 0;line-height:1.45}
 
-/* ---------- event log ---------- */
-.logcard{background:var(--bg-alt);border-radius:var(--radius);display:flex;flex-direction:column;
-  min-height:280px}
-.logcard .lh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
-  padding:16px 18px 10px}
-.logcard h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text-3);margin:0}
-.logcard .clear{font-size:11px;color:var(--link);cursor:pointer;background:none;border:none;
-  padding:0;font-family:inherit}
-.logcard .clear:hover{text-decoration:underline}
-#log{flex:1;overflow-y:auto;max-height:430px;padding:0 18px 16px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;
-  line-height:1.5}
-.le{display:grid;grid-template-columns:62px 46px 1fr;gap:9px;padding:5px 0;
-  border-top:1px solid var(--rule-soft)}
+.logcard{background:var(--bg-alt);border-radius:var(--radius);display:flex;flex-direction:column}
+.logcard .lh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:16px 18px 10px}
+.logcard h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:0}
+.logcard .clear{font-size:11px;color:var(--link);cursor:pointer;background:none;border:none;padding:0;font-family:inherit}
+#log{flex:1;overflow-y:auto;max-height:300px;padding:0 18px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.5}
+.le{display:grid;grid-template-columns:58px 52px minmax(0,1fr);gap:9px;padding:5px 0;border-top:1px solid var(--rule-soft)}
+.le .m{overflow-wrap:anywhere}
 .le:first-child{border-top:none}
 .le .t{color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
 .le .k{font-weight:600;letter-spacing:.03em}
 .le .m{color:var(--text-2)}
+.le.u .k{color:var(--laneB)} .le.e .k{color:var(--warn)} .le.k .k{color:var(--src)} .le.h .k{color:var(--text-3)}
+.le.rx .k{color:var(--m2)} .le.a .k{color:var(--laneA)} .le.ok .k{color:var(--ok)} .le.w .k{color:var(--crit)}
 .le .m b{color:var(--text);font-weight:600}
-.le.trig .k{color:var(--src)}
-.le.rx .k{color:var(--m2)}
-.le.cls .k{color:var(--warn)}
-.le.dsp .k{color:var(--laneB)}
-.le.out .k{color:var(--ok)}
-.le.a .k{color:var(--laneA)}
-.le.warn .k{color:var(--crit)}
-.le.hw .k{color:var(--text-3)}
-.logempty{color:var(--text-3);padding:14px 0;font-family:inherit;font-size:13px}
 
-/* ---------- info ---------- */
 .infocard{background:var(--bg-alt);border-radius:var(--radius);padding:16px 18px 20px}
-.infocard > h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text-3);margin:0 0 12px}
-#info .tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
-#info .tag i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
+.infocard > h3{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:0 0 12px}
+#info .tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--text-3);margin-bottom:8px;font-family:var(--mono)}
 #info h4{margin:0 0 9px;font-size:19px;font-weight:600;letter-spacing:-.018em;line-height:1.18}
 #info p{margin:0 0 11px;font-size:14px;color:var(--text-2);line-height:1.5}
-#info p:last-child{margin-bottom:0}
 #info dl{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--rule-soft);
   display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.8px}
-#info dt{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);
-  padding-top:3px;font-weight:600}
+#info dt{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);padding-top:3px;font-weight:600}
 #info dd{margin:0;color:var(--text-2)}
-#info .warn{background:var(--bg);border-radius:8px;box-shadow:inset 3px 0 0 var(--warn);
-  padding:12px 14px;margin-top:14px;font-size:13px;color:var(--text-2);line-height:1.48}
-#info .warn b{color:var(--warn);display:block;margin-bottom:4px;font-size:10px;
-  letter-spacing:.05em;text-transform:uppercase}
+#info .wire{display:flex;gap:8px;padding:4px 0;font-size:12.4px;color:var(--text-2);cursor:pointer}
+#info .wire:hover{color:var(--text)}
+#info .wire .sw{width:3px;border-radius:2px;flex:none}
+#info .pill{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.04em;
+  padding:2px 6px;border-radius:3px;margin:0 4px 4px 0;text-transform:uppercase;border:1px solid var(--rule)}
+#info .pill.v{border-color:var(--ok);color:var(--ok)}
+#info .pill.u{border-color:var(--crit);color:var(--crit)}
+#info .pill.c{border-color:var(--warn);color:var(--warn)}
 
 /* ---------- prose ---------- */
-.notes{max-width:78ch;margin:60px auto 0;color:var(--text-2);font-size:16px;line-height:1.55}
-.notes h3{font-size:21px;margin:36px 0 10px;color:var(--text);font-weight:600;letter-spacing:-.018em}
+.notes{max-width:78ch;margin:62px auto 0;color:var(--text-2);font-size:16px;line-height:1.55}
+.notes h2{font-size:26px;margin:48px 0 12px;color:var(--text);font-weight:700;letter-spacing:-.022em}
+.notes h3{font-size:20px;margin:34px 0 10px;color:var(--text);font-weight:600;letter-spacing:-.016em}
 .notes p{margin:0 0 14px}
-.notes ul{margin:0 0 14px;padding-left:22px}
-.notes li{margin-bottom:8px}
-.notes code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-  font-size:.86em;background:var(--bg-alt);padding:2px 6px;border-radius:5px}
-.tblwrap{overflow-x:auto;margin:20px 0 28px;border-top:1px solid var(--text);
-  border-bottom:1px solid var(--rule)}
+.notes ul{margin:0 0 14px;padding-left:22px}.notes li{margin-bottom:8px}
+.notes code{font-family:var(--mono);font-size:.86em;background:var(--bg-alt);padding:2px 6px;border-radius:5px}
+.notes strong{color:var(--text)}
+.tblwrap{overflow-x:auto;margin:20px 0 28px;border-top:1px solid var(--text);border-bottom:1px solid var(--rule)}
 table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:560px}
 th{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);
   text-align:left;padding:12px 14px 11px;border-bottom:1px solid var(--rule);white-space:nowrap}
-td{padding:12px 14px;border-bottom:1px solid var(--rule-soft);vertical-align:top;
-  font-size:14.5px;line-height:1.45;color:var(--text-2)}
+td{padding:12px 14px;border-bottom:1px solid var(--rule-soft);vertical-align:top;font-size:14.5px;
+  line-height:1.45;color:var(--text-2)}
 tr:last-child td{border-bottom:none}
 td.name{font-weight:600;color:var(--text)}
-td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:13px}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-family:var(--mono);font-size:13px}
 .lane-a{color:var(--laneA);font-weight:600}
 .lane-b{color:var(--laneB);font-weight:600}
+.caution{background:var(--bg-alt);border-radius:10px;box-shadow:inset 3px 0 0 var(--warn);
+  padding:14px 16px;margin:18px 0 24px;font-size:14.5px;color:var(--text-2)}
+.caution b{color:var(--warn);display:block;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
 
-footer{max-width:1720px;margin:70px auto 0;padding:30px 34px 0;border-top:1px solid var(--rule);
+footer{max-width:1720px;margin:70px auto 0;padding:30px 34px 60px;border-top:1px solid var(--rule);
   font-size:13px;color:var(--text-3);line-height:1.65}
 footer p{margin:0 0 12px;max-width:82ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-@media(max-width:700px){
-  .hdr{padding:34px 20px 22px}.shell{padding:0 20px 70px}
-  #scopecv{height:200px}
-}
+@media(max-width:700px){.hdr{padding:34px 20px 22px}.shell{padding:0 20px 70px}#scopecv{height:210px}}
 </style>
+
+<body>
 
 <header class="hdr">
   <p class="eb">Prototype bench · Smart India Hackathon 2026 · Problem Statement 26052 · DRDO</p>
-  <h1>ZEIT Prototype Bench</h1>
-  <p>The complete prototype in three dimensions, laid out as it is actually built: the three-microphone headset, the audio interface, the Raspberry&nbsp;Pi&nbsp;5 running the engine, and the communication unit the result is delivered to. <strong>Both lanes are modelled.</strong> Lane&nbsp;A — the sub-millisecond hearing-protection loop — runs inside the earcup, which is drawn cut away so the driver, the error microphone and the filter module are all visible. Lane&nbsp;B — the 25.3&nbsp;ms speech engine — runs across the bench. Fire a shot and the signal is traced through both.</p>
+  <h1>ANVIL Prototype Bench</h1>
+  <p>The locked prototype in three dimensions, laid out as it is actually built and wired: the six-microphone
+  headset on a measurement mannequin, the preamplifier, the <strong>ADAU1787</strong> that runs the ear, the STM32 that
+  manages it, the amplifier, the UMC404HD, the <strong>Jetson Orin Nano Super</strong> that runs the neural chain, and the
+  radio it all ends at. Every part is modelled at the size its datasheet gives.</p>
+  <p style="margin-top:14px"><strong>Both lanes run on this page.</strong> Underneath the bench, Lane A and Lane B execute as
+  real signal-processing code at 16 kHz in 16 ms frames — the hear-through filter, the level-dependent gain, the crack
+  guard, the limiters and a filtered-x LMS canceller; then framing, an STFT, a noise mask and the throat-microphone
+  voice guard. The monitor, the meters and the firmware log below are showing that computation, not an animation of it.</p>
+  <div class="meta">
+    <span><b>Architecture</b> locked 19 Sep 2026 · <code>docs/01-system/architecture.md</code></span>
+    <span><b>Hardware</b> <code>synthetic_generator/HARDWARE.md</code></span>
+    <span><b>Scale</b> 1 unit = 1 mm</span>
+    <span><b>Simulation</b> 16 kHz · 256-sample frames</span>
+  </div>
 </header>
 
 <div class="shell">
 <div class="stage">
 
-  <!-- controls -->
+  <!-- ---------------- controls ---------------- -->
   <div class="card">
     <h3>Controls</h3>
     <div class="pbody">
       <div class="grp">
-        <p class="gl">Run</p>
-        <button class="btn run" id="fire">Fire a shot</button>
-        <button class="btn" id="speed">Rate — 100× slow<span class="sub">20 s for 200 ms</span></button>
+        <p class="gl">Gunshot run</p>
+        <button class="btn run" id="fireBtn">Fire a shot<span class="sub">shooter at 30 m · traced through both lanes</span></button>
+        <button class="btn" id="rateBtn">Rate — 100× slow<span class="sub">20 s for 200 ms</span></button>
+        <button class="btn" id="liveBtn" hidden>Back to the live bench<span class="sub">instruments return to live</span></button>
       </div>
       <div class="grp">
-        <p class="gl">Show which lane</p>
-        <button class="btn on" data-lane="both">Both lanes</button>
-        <button class="btn" data-lane="a"><span class="sw" style="background:var(--laneA)"></span>Lane A only<span class="sub">hearing protection · &lt; 1 ms</span></button>
-        <button class="btn" data-lane="b"><span class="sw" style="background:var(--laneB)"></span>Lane B only<span class="sub">speech to radio · 25.3 ms</span></button>
+        <p class="gl">Scene outside the cup</p>
+        <button class="btn" data-scene="quiet">Quiet range<span class="sub">42 dB</span></button>
+        <button class="btn on" data-scene="street">Street / camp<span class="sub">74 dB</span></button>
+        <button class="btn" data-scene="vehicle">Inside a vehicle<span class="sub">92 dB, steady</span></button>
+        <button class="btn" data-scene="fire">Gunfire<span class="sub">crack, then blast 42.3 ms later</span></button>
+      </div>
+      <div class="grp">
+        <p class="gl">Lane A — the ear</p>
+        <button class="btn on" data-tog="anc"><span class="sw" style="background:var(--laneA)"></span>Anti-noise<span class="sub">FxLMS, 32 taps</span></button>
+        <button class="btn on" data-tog="hear">Hear-through<span class="sub">150 Hz – 6 kHz</span></button>
+        <button class="btn on" data-tog="adapt">Adaptation<span class="sub">frozen on impulses</span></button>
+      </div>
+      <div class="grp">
+        <p class="gl">Lane B and the radio</p>
+        <button class="btn on" data-tog="talk"><span class="sw" style="background:var(--laneB)"></span>Wearer talking</button>
+        <button class="btn on" data-tog="clean">Clean-up<span class="sub">STFT + mask + voice guard</span></button>
+        <button class="btn" id="bPtt">Hold to transmit<span class="sub">STM32 keys the radio</span></button>
+        <button class="btn" data-tog="rx">Radio speaking<span class="sub">R1–R5 into the same ear</span></button>
       </div>
       <div class="grp">
         <p class="gl">Camera</p>
-        <button class="btn on" data-view="system">System overview</button>
-        <button class="btn" data-view="headset">Headset<span class="sub">3 microphones</span></button>
-        <button class="btn" data-view="earcup">Earcup cutaway<span class="sub">Lane A loop</span></button>
-        <button class="btn" data-view="iface">Audio interface<span class="sub">UMC202HD</span></button>
-        <button class="btn" data-view="pi">Raspberry Pi 5<span class="sub">Lane B engine</span></button>
-        <button class="btn" data-view="radio">Communication unit<span class="sub">Lane B sink</span></button>
-        <button class="btn" data-view="field">Field<span class="sub">source at 30 m</span></button>
+        <button class="btn on" data-view="all">Whole bench</button>
+        <button class="btn" data-view="cup">Earcup, opened<span class="sub">what is inside</span></button>
+        <button class="btn" data-view="laneA">Lane A hardware</button>
+        <button class="btn" data-view="laneB">Lane B hardware</button>
+        <button class="btn" data-view="radio">Communication unit</button>
       </div>
       <div class="grp">
         <p class="gl">Display</p>
-        <button class="btn on" data-tog="waves">Wavefronts</button>
-        <button class="btn on" data-tog="flow">Signal flow</button>
-        <button class="btn on" data-tog="cables">Cabling</button>
-        <button class="btn on" data-tog="labels">Labels</button>
-        <button class="btn on" data-tog="zones">Bench zones</button>
-        <button class="btn" data-tog="explode">Exploded view</button>
-        <button class="btn on" data-tog="spin">Slow orbit</button>
+        <button class="btn on" data-disp="labels">Labels</button>
+        <button class="btn" data-disp="allwires">All cables<span class="sub">off: the signal spine only</span></button>
+        <button class="btn" data-disp="explode">Exploded headset</button>
+        <button class="btn" data-disp="spin">Slow orbit</button>
       </div>
     </div>
   </div>
 
-  <!-- centre -->
+  <!-- ---------------- centre ---------------- -->
   <div>
     <div id="viewport">
       <div id="loading">building geometry…</div>
+      <canvas id="c"></canvas>
       <div id="labels"></div>
-      <div id="stagelab">System overview</div>
-      <div id="lanelab"><i style="background:var(--laneA)"></i>A<i style="background:var(--laneB);margin-left:10px"></i>B</div>
-      <div id="hint">drag to orbit · scroll to zoom · right-drag to pan · click a part</div>
+      <div id="stagelab">Whole bench</div>
+      <div id="modelab"><i style="background:var(--laneA)"></i><span id="modeTxt">QUIET</span></div>
+      <div id="hint">drag to orbit · scroll to zoom · right-drag to pan · click a part · click the earcup to open it</div>
     </div>
 
     <div class="scope">
       <div class="scope-h">
-        <h3>Signal monitor — 0 to 200 ms</h3>
-        <span class="note" id="scopenote">idle</span>
+        <h3 id="scopeTitle">Signal monitor — the last 0.6 s, decibel axis</h3>
+        <span class="note" id="scopenote">street / camp, 74 dB</span>
       </div>
-      <canvas id="scopecv" width="1400" height="476"></canvas>
-      <div class="scope-k">
-        <span><i style="background:var(--m1)"></i>MIC 1 — voice + noise</span>
-        <span><i style="background:var(--m2)"></i>MIC 2 — reference</span>
-        <span><i style="background:var(--m3)"></i>MIC 3 — in-ear residual (lane A)</span>
-        <span><i style="background:var(--ok)"></i>ENGINE OUT — transmitted (lane B)</span>
-        <span id="irtnote"></span>
+      <canvas id="scopecv"></canvas>
+      <div class="scope-k" id="scopeKey">
+        <span><i style="background:var(--m2)"></i>MIC 2 — outside the cup</span>
+        <span><i style="background:var(--spk)"></i>MIC 3 — at the ear, system on</span>
+        <span><i style="background:var(--src)"></i>at the ear, earmuff alone</span>
+        <span><i style="background:var(--text-3)"></i>MIC 1 — boom, Lane B in</span>
+        <span><i style="background:var(--m1)"></i>Lane B out — to the radio</span>
       </div>
     </div>
 
     <div class="chainbar a">
       <div class="ch">
-        <h3><i style="background:var(--laneA)"></i>Lane A — hearing protection</h3>
-        <span class="bud">budget &lt; 1 ms · FxLMS · never touches the transmitted voice</span>
+        <h3><i style="background:var(--laneA)"></i>Lane A — the ear</h3>
+        <span class="bud">ADAU1787 · &lt; 1 ms · lit blocks are the ones doing something right now</span>
       </div>
-      <div class="cflow" id="cflowA">
-        <div class="cb" data-a="1"><span class="n">A1</span><span class="t">Mic 2 ref</span></div>
-        <div class="cb" data-a="2"><span class="n">A2</span><span class="t">Filtered-x</span></div>
-        <div class="cb" data-a="3"><span class="n">A3</span><span class="t">FxLMS W(z)</span></div>
-        <div class="cb" data-a="4"><span class="n">A4</span><span class="t">Anti-noise</span></div>
-        <div class="cb" data-a="5"><span class="n">A5</span><span class="t">Driver</span></div>
-        <div class="cb" data-a="6"><span class="n">A6</span><span class="t">Mic 3 error</span></div>
-      </div>
+      <div class="cflow" id="cflowA"></div>
     </div>
 
-    <div class="chainbar">
+    <div class="chainbar b">
       <div class="ch">
-        <h3><i style="background:var(--laneB)"></i>Lane B — speech enhancement</h3>
-        <span class="bud">budget 25.3 ms algorithmic · 10 ms compute per hop</span>
+        <h3><i style="background:var(--laneB)"></i>Lane B — the voice, and the radio coming back</h3>
+        <span class="bud">Jetson · 16 ms frames · B10 is an optional stage, bypassed here</span>
       </div>
-      <div class="cflow" id="cflow">
-        <div class="cb" data-b="1"><span class="n">01</span><span class="t">Audio in</span></div>
-        <div class="cb" data-b="2"><span class="n">02</span><span class="t">Aux-IVA</span></div>
-        <div class="cb" data-b="3"><span class="n">03</span><span class="t">Normalise</span></div>
-        <div class="cb" data-b="4"><span class="n">04</span><span class="t">STFT+ERB</span></div>
-        <div class="cb" data-b="5"><span class="n">05</span><span class="t">Classifier</span></div>
-        <div class="cb" data-b="6"><span class="n">06</span><span class="t">BMRI</span></div>
-        <div class="cb ai" data-b="7"><span class="n">07</span><span class="t">GTCRN</span></div>
-        <div class="cb" data-b="8"><span class="n">08</span><span class="t">Deep filter</span></div>
-        <div class="cb" data-b="9"><span class="n">09</span><span class="t">Voice guard</span></div>
-        <div class="cb" data-b="10"><span class="n">10</span><span class="t">Residual</span></div>
-        <div class="cb" data-b="11"><span class="n">11</span><span class="t">ISTFT</span></div>
-        <div class="cb" data-b="12"><span class="n">→</span><span class="t">Vocoder</span></div>
-      </div>
+      <div class="cflow" id="cflowB"></div>
+      <div class="cflow" id="cflowR" style="margin-top:6px"></div>
     </div>
   </div>
 
-  <!-- side -->
+  <!-- ---------------- side ---------------- -->
   <div class="side">
+    <div class="readout" id="shotCard" hidden>
+      <h3>Gunshot run — measured</h3>
+      <div class="rrow"><span>time in the run</span><b id="sT">—</b></div>
+      <div class="rrow"><span>crack at Mic 2</span><b id="sCrack">—</b></div>
+      <div class="rrow"><span>crack guard reacted</span><b id="sGuard">—</b></div>
+      <div class="rrow"><span>hear-through ducked</span><b id="sLead">—</b></div>
+      <div class="rrow"><span>played into the ear, in the blast</span><b id="sPlay">—</b></div>
+      <div class="rrow"><span>anti-noise on the blast</span><b id="sAnc">—</b></div>
+      <div class="rrow"><span>peak at the ear</span><b id="sPeak">—</b></div>
+      <div class="rrow"><span>impulse frames in Lane B</span><b id="sFrames">—</b></div>
+      <div class="rrow"><span>IRT, raw → Lane B</span><b id="sIrt">—</b></div>
+      <p class="cap">Only the scenario is an input: 30 m, a round at 822 m/s passing 3 m away, and the two source
+      levels. Every figure here is measured from the run, which is the same code as the live bench with a fixed
+      random seed — press fire again and the numbers repeat.</p>
+    </div>
+
     <div class="readout">
-      <h3>Run state</h3>
-      <div class="rrow"><span>state</span><b id="r-ev">idle</b></div>
-      <div class="rrow"><span>t from trigger</span><b id="r-t">— ms</b></div>
+      <h3>Measured in this simulation</h3>
+      <div class="rrow"><span>at the ear, everything</span><b id="rEar">—</b></div>
+      <div class="rrow"><span>of that, what we play</span><b id="rPlay">—</b></div>
+      <div class="rrow"><span>the noise part, now</span><b id="rNoise">—</b></div>
+      <div class="rrow"><span>same noise, earmuff alone</span><b id="rPassive">—</b></div>
+      <div class="rrow"><span>anti-noise removes</span><b id="rAnc" class="good">—</b></div>
+      <div class="rrow"><span>peak at the ear</span><b id="rPeak">—</b></div>
       <hr>
-      <div class="rrow"><span>crack arrives</span><b>45.2 ms</b></div>
-      <div class="rrow"><span>blast arrives</span><b>87.5 ms</b></div>
-      <div class="rrow"><span>look-ahead won</span><b>42.3 ms</b></div>
-      <hr>
-      <div class="rrow"><span>Δ mic 2 → mic 1</span><b id="r-d">— ms</b></div>
-      <div class="rrow"><span>lane A elapsed</span><b id="r-la">— / 1.0 ms</b></div>
-      <div class="rrow"><span>lane A residual</span><b id="r-res">— dB</b></div>
-      <div class="rrow"><span>lane B elapsed</span><b id="r-lb">— / 25.3 ms</b></div>
-      <div id="bar"><div id="barfill"></div></div>
+      <div class="rrow"><span>SNR into Lane B</span><b id="rSnrIn">—</b></div>
+      <div class="rrow"><span>SNR out of Lane B</span><b id="rSnrOut" class="good">—</b></div>
+      <div class="rrow"><span>scene decided</span><b id="rMode">—</b></div>
+      <div class="rrow"><span>level scale, P90</span><b id="rNorm">—</b></div>
+      <div class="rrow"><span>impulses seen</span><b id="rShots">—</b></div>
+      <div class="rrow"><span>compute per frame</span><b id="rFrame">—</b></div>
+      <p class="cap">SNR is averaged over frames where the wearer is speaking and no shot is present; gunshots are counted on the line above instead. Levels are sound pressure at the ear, computed from the signals on the left. The 82 dB ceiling
+      applies to what the system itself plays — hear-through plus radio voice; a gunshot leaking through the earmuff
+      is judged by the peak line against 140 dBP. The frame
+      time is this browser's, not the Jetson's.</p>
     </div>
 
     <div class="logcard">
-      <div class="lh"><h3>Event log</h3><button class="clear" id="clearlog">clear</button></div>
-      <div id="log"><p class="logempty">No run yet. Press <strong>Fire a shot</strong> — every event is timestamped and kept here.</p></div>
+      <div class="lh"><h3>Firmware link and events</h3><button class="clear" id="logClear">clear</button></div>
+      <div id="log"></div>
     </div>
 
-    <div class="infocard" id="info">
+    <div class="infocard">
       <h3>Selected part</h3>
-      <div id="infobody"></div>
+      <div id="info"></div>
     </div>
   </div>
-</div>
+
+</div><!-- /stage -->
+</div><!-- /shell -->
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+/* ============================================================
+   ZEIT bench — 1 scene unit = 1 millimetre.
+   Sizes come from datasheets where published; anything
+   estimated carries approx:true in the part data.
+   ============================================================ */
+
+const SIG = {
+  mic  : { c:0xb07a3c, n:'Microphone, analog' },
+  line : { c:0x4a6f9c, n:'Line audio' },
+  adau : { c:0x6a4fa0, n:'To the ear DSP' },
+  spk  : { c:0x1d7a3e, n:'To the speakers' },
+  usb  : { c:0x8a8f98, n:'USB' },
+  i2c  : { c:0x2a7d8f, n:'Control (UART / I²C)' },
+  tdm  : { c:0x2a7d8f, n:'Mic data (TDM)' },
+  radio: { c:0x9c4a63, n:'Radio audio' },
+  ptt  : { c:0xa33b33, n:'Push-to-talk' },
+  pwr  : { c:0x8a6a20, n:'Power' },
+};
+const DEG = Math.PI / 180;

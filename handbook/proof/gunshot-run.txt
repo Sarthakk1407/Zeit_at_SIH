@@ -1,0 +1,20 @@
+ANVIL bench -- one gunshot traced through both lanes (16 kHz DSP simulation)
+scenario  shooter 30 m | round 822 m/s | passes 3 m from the head | seed 20260919
+
+   T+0.00 ms  TRIG  Shot fired 30 m away · round at 822 m/s (Mach 2.4) · scenario input
+  T+36.50 ms  PROP  Round passes 3 m from the head — its shock wave, the crack, starts here
+  T+45.24 ms  RX    Crack reaches Mic 2 · 144.6 dB peak outside the cup · the capsule overloads at 135 dB and clips for 0.25 ms
+  T+45.25 ms  A     A1 clip flag · reference not trusted — anti-noise held for 2.31 ms
+  T+45.25 ms  A     A4 crack guard fires 0.01 ms after the crack arrived · hear-through down 30 dB for 250 ms
+  T+45.25 ms  A     A8 adaptation frozen — a gunshot must not train the canceller
+  T+45.69 ms  OUT   Peak at the ear 112.8 dBP (earmuff alone: 112.9) · limit 140 dBP — 27.2 dB of margin
+  T+45.82 ms  RX    Crack reaches Mic 1 on the boom, 0.58 ms later — too close together to predict anything from
+  T+48.00 ms  B     B2 flags the frame T+32.0–48.0 ms as an impulse · 41.2 dB above the background
+  T+48.01 ms  B     B3 holds the level scale at 77.4 dB through the shot · the RMS of the same frame jumps to 113.1 dB
+  T+87.46 ms  RX    Muzzle blast reaches Mic 2 · 129.7 dB peak · below the 135 dB overload point, so the reference is intact
+  T+87.47 ms  A     Hear-through was already ducked 42.2 ms before the blast · the system plays 49.6 dB into the ear during it (58.6 dB just before the shot)
+  T+95.46 ms  A     Anti-noise on the blast: 29.6 dB of its energy removed over 30 ms, filter held · in this model the reference hears exactly what reaches the cup — a real shot from another direction will get far less
+ T+107.46 ms  B     B6/B8 repair · 1 frame around the blast kept at a higher mask floor instead of being cut to silence
+ T+254.10 ms  OUT   IRT, irt.py definition, wearer silent · raw boom mic 212.3 ms → Lane B output 192.0 ms
+ T+295.19 ms  A     Hear-through restored after 250 ms
+ T+295.19 ms  A     Adaptation resumes

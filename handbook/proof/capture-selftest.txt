@@ -1,0 +1,51 @@
+
+== validate.py verdicts ==
+
+  file                           expect  actual  failing check
+  ------------------------------ ------- ------- --------------------
+  good_shots.wav                 GO      GO                           ok
+  good_float32.wav               GO      GO                           ok
+  bad_clipped_on_impulse.wav     NO-GO   NO-GO   Clipping             ok
+  warn_clipped_off_impulse.wav   GO      GO                           ok
+  bad_windy.wav                  NO-GO   NO-GO   Wind / rumble, Impul ok
+  bad_truncated.wav              NO-GO   NO-GO   Impulse complete     ok
+  bad_starts_loud.wav            NO-GO   NO-GO   Impulse complete     ok
+  bad_wrong_rate.wav             NO-GO   NO-GO   Format               ok
+  bad_dc_offset.wav              NO-GO   NO-GO   DC offset, Noise flo ok
+  bad_buried.wav                 NO-GO   NO-GO   Events found         ok
+  bad_handling.wav               NO-GO   NO-GO   Wind / rumble, Handl ok
+  bad_resampled.wav              NO-GO   NO-GO   Bandwidth            ok
+  bad_gated.wav                  NO-GO   NO-GO   Dropouts             ok
+  ambience.wav                   GO      GO                           ok
+
+== other tools ==
+
+  [ ok ] calibrate.py
+  [ ok ] ir_extract.py (sweep)
+  [ ok ] ir_extract.py (balloon)
+  [ ok ] ingest.py
+  [ ok ] quicklook.py
+  [ ok ] analyze.py (calibrated)
+  [ ok ] analyze.py (uncalibrated)
+  [ ok ] report.py
+
+== lossless round-trip ==
+
+  [ ok ] 16-bit round-trip is bit-exact
+  [ ok ] 24-bit round-trip is bit-exact
+  [ ok ] 32-bit round-trip is bit-exact
+
+== monitor write path ==
+
+  [ ok ] monitor.py opens a streaming writer
+  [ ok ] monitor.py feeds every block to disk, not to RAM
+  [ ok ] monitor.py finalises the header on exit
+  [ ok ] monitor.py fails loudly on an empty capture
+  [ ok ] monitor.py warns when not recording
+
+== provenance guard ==
+
+  [ ok ] ingest.py refuses synthetic
+  [ ok ] analyze.py refuses synthetic
+
+  ALL CHECKS PASSED -- toolkit is range-ready.

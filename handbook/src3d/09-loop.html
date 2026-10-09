@@ -1,0 +1,244 @@
+
+/* ============================================================
+   LABELS, RENDER LOOP, START, AND THE PROSE UNDER THE BENCH
+   ============================================================ */
+
+function resize() {
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+}
+addEventListener('resize', resize);
+
+/* labels: nearest first, anything that would overlap is dropped */
+const v3 = new THREE.Vector3();
+const placed = [];
+function updateLabels() {
+  const w = vp.clientWidth, h = vp.clientHeight;
+  if (!showLabels) { for (const [, p] of PART) p.el.style.display = 'none'; return; }
+  placed.length = 0;
+  const cand = [];
+  for (const [id, p] of PART) {
+    if (!p.group.visible) { p.el.style.display = 'none'; continue; }
+    v3.copy(p.anchor).project(camera);
+    if (!(v3.z < 1 && v3.x > -1.08 && v3.x < 1.08 && v3.y > -1.05 && v3.y < 1.05)) { p.el.style.display = 'none'; continue; }
+    cand.push({ p, id, x: (v3.x * .5 + .5) * w, y: (-v3.y * .5 + .5) * h, z: v3.z, hot: hot.has(id) || selected === id });
+  }
+  cand.sort((a, b) => (b.hot - a.hot) || (a.z - b.z));
+  for (const c of cand) {
+    const el = c.p.el;
+    if (!c.p.lw) { el.style.display = ''; c.p.lw = el.offsetWidth || 120; c.p.lh = el.offsetHeight || 18; }
+    const r = { x1: c.x - c.p.lw / 2 - 4, x2: c.x + c.p.lw / 2 + 4, y1: c.y - c.p.lh / 2 - 3, y2: c.y + c.p.lh / 2 + 3 };
+    if (placed.some(o => !(r.x2 < o.x1 || r.x1 > o.x2 || r.y2 < o.y1 || r.y1 > o.y2)) && !c.hot) { el.style.display = 'none'; continue; }
+    placed.push(r);
+    el.style.display = '';
+    el.style.left = c.x + 'px';
+    el.style.top = c.y + 'px';
+  }
+}
+
+const clock = new THREE.Clock();
+let fanBlades = null, uiClock = 0, simAcc = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(.05, clock.getDelta());
+
+  // the simulation keeps its own clock: 16 ms frames against the wall clock,
+  // at most four caught up per rendered frame
+  simAcc += dt;
+  let guard = 0;
+  while (simAcc >= 0.016 && guard++ < 4) { SIM.tick(); simAcc -= 0.016; }
+  if (simAcc > 0.2) simAcc = 0;
+
+  stepTweens(dt);
+  controls.autoRotate = orbiting; controls.autoRotateSpeed = .4;
+  controls.update();
+  if (fanBlades) fanBlades.rotation.y += dt * 14;
+  if (outline.visible && hot.size) {
+    const b = new THREE.Box3();
+    for (const id of hot) { const p = PART.get(id); if (p && p.group.visible) b.union(new THREE.Box3().setFromObject(p.group)); }
+    if (!b.isEmpty()) outline.box.copy(b);
+  }
+  updateLabels();
+  stepShot(dt);
+  drawScope();
+  if (SHOT.active && SHOT.playing) { drawChains(); drawLog(); }   // the run needs every frame
+
+  uiClock += dt;
+  if (uiClock > .2) {
+    drawMeters(); drawLog(); drawChains(); drawMonitor(); updateLive(); updateCupLive(); updateShotCard();
+    uiClock = 0;
+  }
+  renderer.render(scene, camera);
+}
+
+function init() {
+  buildChains();
+  applyView();
+  syncControls();
+  renderInfo(null);
+  drawLog();
+
+  const mf = PART.get('muff');
+  if (mf && mf.group.userData.cutShell) {
+    mf.group.userData.cutShell.visible = false;
+    mf.group.userData.closedShell.visible = true;
+  }
+  const j = PART.get('jetson');
+  if (j) j.group.traverse(o => { if (o.userData && o.userData.spin) fanBlades = o.userData.spin; });
+
+  resize();
+  const [hp, ht] = homeFor('all');
+  HOME.copy(hp);
+  camera.position.copy(HOME).multiplyScalar(1.25);
+  tween(camera.position, HOME.clone(), 1600);
+  tween(controls.target, ht, 1600);
+
+  window.ZEIT = { THREE, scene, camera, controls, PART, WIRES, STEPS, SIM, SHOT, runShot, fireShot, select, traceWire, openCup, showStep, homeFor };
+  animate();
+  setTimeout(() => { const l = document.getElementById('loading'); if (l) l.hidden = true; }, 300);
+}
+
+try {
+  init();
+} catch (err) {
+  const l = document.getElementById('loading');
+  if (l) { l.hidden = false; l.textContent = 'the 3D view could not start — ' + (err && err.message ? err.message : err); }
+  console.error(err);
+}
+</script>
+
+<div class="shell">
+<div class="notes">
+
+  <h2>What this page is</h2>
+  <p>A working model of the ANVIL prototype: <strong>28 parts</strong> at the sizes their datasheets give, the
+  cables that join them, and both lanes running as real signal-processing code underneath. Nothing here is a video of
+  a system — the numbers in the readout are computed on this page, frame by frame, from the signals drawn in the
+  monitor above.</p>
+
+  <h3>Reading the bench</h3>
+  <p>The surface is marked into four zones, which are the four groups in the hardware document: the headset on its
+  measurement mannequin, Lane A (the ear DSP, its manager and the amplifier), Lane B (the audio interface and the
+  Jetson), and the communication unit. A part is clickable everywhere — in the viewport, in the cable list, and from
+  the chain strips.</p>
+  <p><strong>Only the signal spine is drawn.</strong> Thirteen of the twenty-five cables carry the path a reader has to
+  follow; power, I²C, TDM and the rest appear under <em>All cables</em>. Each cable is matte sleeving with a coloured
+  band at the ends for what it carries, because twenty-five coloured cables at once is unreadable.</p>
+
+  <h3>The two lanes, and why they are separate</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>&nbsp;</th><th>Lane A — the ear</th><th>Lane B — the voice</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Runs on</td><td class="lane-a">ADAU1787 + STM32</td><td class="lane-b">Jetson Orin Nano Super</td></tr>
+      <tr><td class="name">Budget</td><td class="lane-a">under 1 ms — sound crosses the cup in about 0.5 ms</td><td class="lane-b">16 ms per frame, ≈ 70–85 ms mouth to radio</td></tr>
+      <tr><td class="name">Serves</td><td class="lane-a">the wearer's hearing and awareness</td><td class="lane-b">the listener on the radio, and the reply coming back</td></tr>
+      <tr><td class="name">Measured by</td><td class="lane-a">dB at the ear, peak against 140 dBP, the 82 dB ceiling</td><td class="lane-b">SNR, STOI, PESQ, latency</td></tr>
+      <tr><td class="name">If it fails</td><td class="lane-a">the passive earmuff still protects</td><td class="lane-b">bypass: the raw boom microphone goes to the radio</td></tr>
+    </tbody>
+  </table></div>
+  <p>They cannot be fused. A network that needs tens of milliseconds cannot place anti-noise at the ear in half a
+  millisecond, which is why Lane A is separate hardware that keeps working when the Jetson is not.</p>
+
+  <h3>What the simulation actually computes</h3>
+  <p>At <strong>16 kHz in 256-sample frames</strong>, against the wall clock. Levels are carried in pascals
+  (1 Pa = 94 dB SPL), so every figure in the readout is a sound-pressure number for the signals on this page.</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Block</th><th>What runs</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Sources</td><td>Pink noise, a low rumble, synthetic speech (glottal pulses through three formants), and gunfire as a supersonic crack followed by the muzzle blast <strong>42.3 ms</strong> later</td></tr>
+      <tr><td class="name">Earmuff</td><td>−18 dB below 500 Hz, −32 dB above it, and the 0.5 ms crossing delay the anti-noise has to beat</td></tr>
+      <tr><td class="name">Microphones</td><td>The IM73A135 reference overloads at 135 dB (datasheet) and clips; the boom electret is taken to overload at 130 dB (an assumption). The reference also carries its own noise floor</td></tr>
+      <tr><td class="name">A1–A5</td><td>Clip flag, 150 Hz – 6 kHz band-pass, level-dependent gain, crack guard (fast peak + high-frequency detector), hear-through limiter at the 79 dB share</td></tr>
+      <tr><td class="name">A6–A11</td><td>32-tap filtered-x LMS canceller with a secondary-path estimate, feedback path from the error microphone, playback removal, mixer, output limiter</td></tr>
+      <tr><td class="name">B1–B11</td><td>Framing, impulse detector, 512-point STFT with a √Hann window, a Wiener mask with a floor, impulse repair, the throat-microphone voice guard, overlap-add and the push-to-talk gate</td></tr>
+      <tr><td class="name">R1–R5</td><td>Gate, automatic gain, speech band and presence lift, limiter to the 79 dB share, summed into the same ear</td></tr>
+      <tr><td class="name">B5 + firmware</td><td>Scene classifier on level and crest factor — two windows must agree — driving <code>SCENE</code>, <code>RADIO</code>, <code>PTT</code> and <code>CRACK</code> on the Jetson ↔ STM32 link, printed with timestamps</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>The gunshot run</h2>
+  <p><strong>Fire a shot</strong> traces one shot through the whole system in slow motion — 200 ms of real time
+  spread over 20 seconds at the default rate — while the monitor, the chain strips, the log and the results card
+  follow it. It is the same code as the live bench: a second copy of the machine is given four seconds of street noise
+  to let the canceller settle, then the shot, all with a fixed random seed so the figures repeat run after run.</p>
+
+  <h3>The scenario — the only inputs</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Quantity</th><th>Value</th><th>Where it comes from</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Shooter to wearer</td><td class="num">30 m</td><td>chosen scenario</td></tr>
+      <tr><td class="name">Round speed</td><td class="num">822 m/s</td><td>about Mach 2.4, a 5.56 mm class round</td></tr>
+      <tr><td class="name">Closest approach of the round</td><td class="num">3 m</td><td>chosen scenario — a near miss</td></tr>
+      <tr><td class="name">Crack at 3 m</td><td class="num">145 dB peak</td><td>estimate for a small-arms N-wave, 0.35 ms long</td></tr>
+      <tr><td class="name">Muzzle blast</td><td class="num">157 dB at 1 m</td><td>estimate; spherical spreading brings it to 127.5 dB at 30 m, as a Friedlander wave with its ground reflection</td></tr>
+      <tr><td class="name">Crack arrives</td><td class="num">45.2 ms</td><td>36.5 ms of bullet flight + 8.7 ms of sound over the last 3 m</td></tr>
+      <tr><td class="name">Blast arrives</td><td class="num">87.5 ms</td><td>30 m at 343 m/s</td></tr>
+      <tr><td class="name">Mic 1 after Mic 2</td><td class="num">0.58 ms</td><td>the boom is on the far side of the head</td></tr>
+    </tbody>
+  </table></div>
+  <p>The crack arrives <strong>42.3 ms before the blast</strong> because the bullet outruns the sound of its own muzzle.
+  That gap is the only real look-ahead a headset ever gets, and the crack guard is built to use it: the run shows it
+  firing within a fraction of a millisecond of the crack, so hear-through is already down when the blast lands.</p>
+
+  <h3>What the run measures</h3>
+  <p>Everything after the microphones: when the capsule overloads (the IM73A135 is rated to 135 dB, so the crack clips
+  it and the A1 flag holds the anti-noise), when the crack guard fires, what the system plays into the ear during the
+  blast, how much of the blast the canceller removes, the peak at the ear against 140 dBP, which Lane B frames are
+  flagged as impulses, the compute time of every frame, and the <strong>Impulse Recovery Time</strong> of the raw boom
+  microphone and of the Lane B output — computed with the definition in <code>synthetic_generator/metrics/irt.py</code>:
+  octave bands from 125 Hz to 8 kHz, a 5 ms envelope, a baseline from the 150 ms before the loudest sample, and recovery
+  once the envelope stays within 1/0.9 of that baseline for 20 ms.</p>
+  <p>The boom microphone's own overload point is taken as 130 dB. That is an assumption for a generic electret, not a
+  datasheet figure, and it is the one number in the run that should be replaced once the boom is bought.</p>
+
+  <h3>How the SNR figures are obtained</h3>
+  <p>The clean speech and the noise are kept separately inside the simulation, so the same mask the mixture receives is
+  also applied to each part on its own. The two energies are then compared over about two seconds. The improvement is
+  <strong>measured on this page</strong>, not asserted — and it is the improvement of a classical mask, not of the
+  trained network.</p>
+  <p>Two frames are left out of that average, for the same reasons the project's own metrics leave them out.
+  <strong>Frames with no speech in them</strong> have no signal-to-noise ratio to report. <strong>Frames containing a
+  gunshot</strong> — and the 130 ms after one — are excluded as well: a 157 dB blast against a 96 dB voice gives a
+  number near −50 dB that says nothing about the enhancement. Those events are counted instead, on the
+  <em>impulses seen</em> line, and they are what the impulse measures in
+  <code>synthetic_generator/</code> exist to judge. Typical readings here: about <strong>+8 dB</strong> of SNR
+  improvement on the street scene and <strong>+10 dB</strong> between shots in the gunfire scene.</p>
+
+  <p>The cancellation figure the readout shows — typically 20–28 dB on these scenes — is what the canceller achieves
+  against <em>this</em> noise: pink noise and a low rumble, which is where feed-forward cancellation is strongest, with
+  a reference microphone that hears the same thing the ear does. A real headset also faces wind, a moving fit, a
+  secondary path that has to be measured rather than assumed, and noise that is not so obliging. Treat the number as
+  the behaviour of the algorithm, not as a promise about the built headset.</p>
+
+  <div class="caution"><b>How to read the simulation</b>
+  The signals are synthetic, not recordings. The trained GTCRN network cannot run in a browser, so a classical Wiener
+  mask stands in for block B7 — the real one runs on the Jetson through TensorRT. The frame time in the readout is
+  this browser's, not the Jetson's. Block B10, the residual LMS, is an optional stage and is drawn faded
+  because it is bypassed in this build.</div>
+
+  <h3>The earcup</h3>
+  <p>Click the cup, or press <code>E</code>. The shell opens, the driver and the error microphone slide clear, and the
+  card on the right lists what is in there with the live figures for that cup: the level outside, what gets through the
+  shell, how much the canceller is removing, what is left at the ear, and the peak against 140 dBP.</p>
+
+  <h3>Where the numbers come from</h3>
+  <p>Every dimension, port and cable on this bench comes from
+  <code>synthetic_generator/HARDWARE.md</code>; every block and budget from
+  <code>docs/01-system/architecture.md</code>; the open questions from
+  <code>docs/01-system/compatibility-audit.md</code>. Where a part's size is not published — the ADAU evaluation board,
+  the hand-built preamplifier, the radio interface box — its card says <em>size approx</em>.</p>
+
+</div>
+</div>
+
+<footer>
+  <p>ANVIL · Team ZEIT v.1.0 · Smart India Hackathon 2026 · Problem Statement 26052 · DRDO / Department of Defence Production.
+  Rendered with three.js. The simulation is our own code; the architecture it follows is the locked one of
+  19 September 2026.</p>
+</footer>
+
+</body>
+</html>
